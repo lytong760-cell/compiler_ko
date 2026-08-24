@@ -622,8 +622,21 @@ pub const Parser = struct {
         try self.expectLT();
         const tag = try self.parseSystemTagName();
         
+        var encoding_type: []const u8 = "";
+        if (std.mem.eql(u8, tag, "encode")) {
+            if (self.current() == .l_paren) {
+                _ = self.advance();
+                const enc_expr = try self.parseExpression();
+                if (enc_expr.* == .literal and enc_expr.literal.kind == .string) {
+                    encoding_type = enc_expr.literal.raw;
+                }
+                try self.expectRParen();
+            }
+        }
+        
+        try self.expectGT();
+        
         if (std.mem.eql(u8, tag, "if")) {
-            try self.expectGT();
             try self.expectLParen();
             const cond = try self.parseExpression();
             try self.expectRParen();
@@ -647,7 +660,6 @@ pub const Parser = struct {
         }
         
         if (std.mem.eql(u8, tag, "elif")) {
-            try self.expectGT();
             try self.expectLParen();
             const cond = try self.parseExpression();
             try self.expectRParen();
@@ -671,7 +683,6 @@ pub const Parser = struct {
         }
         
         if (std.mem.eql(u8, tag, "else")) {
-            try self.expectGT();
             try self.expectLBracket();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
             while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
@@ -692,7 +703,6 @@ pub const Parser = struct {
         }
         
         if (std.mem.eql(u8, tag, "catch")) {
-            try self.expectGT();
             try self.expectLParen();
             const err_type = try self.parseErrorType();
             try self.expectRParen();
@@ -713,7 +723,6 @@ pub const Parser = struct {
         }
         
         if (std.mem.eql(u8, tag, "now")) {
-            try self.expectGT();
             try self.expectLParen();
             _ = try self.parseExpression();
             try self.expectRParen();
@@ -727,7 +736,6 @@ pub const Parser = struct {
         }
         
         if (std.mem.eql(u8, tag, "memory")) {
-            try self.expectGT();
             if (self.current() == .caret) {
                 _ = self.advance();
                 const expr = try self.parseExpression();
@@ -754,16 +762,6 @@ pub const Parser = struct {
         }
         
         if (std.mem.eql(u8, tag, "encode")) {
-            var encoding_type: []const u8 = "";
-            if (self.current() == .l_paren) {
-                _ = self.advance();
-                const enc_expr = try self.parseExpression();
-                if (enc_expr.* == .literal and enc_expr.literal.kind == .string) {
-                    encoding_type = enc_expr.literal.raw;
-                }
-                try self.expectRParen();
-            }
-            try self.expectGT();
             try self.expectCaret();
             try self.expectLParen();
             const expr = try self.parseExpression();
