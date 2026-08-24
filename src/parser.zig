@@ -1,6 +1,7 @@
 const std = @import("std");
 const ast = @import("ast.zig");
 const lexer = @import("lexer.zig");
+const value_mod = @import("value.zig");
 
 pub const Parser = struct {
     tokens: []lexer.Token,
