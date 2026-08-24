@@ -747,7 +747,7 @@ pub const Parser = struct {
                 _ = self.advance();
                 var args = std.ArrayList(ast.Expr).init(self.allocator);
                 while (!(self.current() == .r_paren) and !self.isAtEnd()) {
-                    try args.append(try self.parseExpression());
+                    try args.append(try self.parseExpression() catch unreachable);
                     if (self.current() == .comma) _ = self.advance();
                 }
                 try self.expectRParen();
@@ -776,7 +776,7 @@ pub const Parser = struct {
                 _ = self.advance();
                 var args = std.ArrayList(ast.Expr).init(self.allocator);
                 while (!(self.current() == .r_paren) and !self.isAtEnd()) {
-                    try args.append(try self.parseExpression());
+                    try args.append(try self.parseExpression() catch unreachable);
                     if (self.current() == .comma) _ = self.advance();
                 }
                 try self.expectRParen();
