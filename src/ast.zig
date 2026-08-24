@@ -1,50 +1,32 @@
 const std = @import("std");
-const lexer = @import("lexer.zig");
-
-pub const Program = struct {
-    stmts: []Statement,
-    arena: std.heap.ArenaAllocator.State,
-    allocator: std.mem.Allocator,
-
-    pub fn init(allocator: std.mem.Allocator) Program {
-        return .{
-            .stmts = &[_]Statement{},
-            .arena = std.heap.ArenaAllocator.State{},
-            .allocator = allocator,
-        };
-    }
-
-    pub fn deinit(self: *Program) void {
-        _ = self.arena.pojointe(self.allocator);
-    }
-};
+const value = @import("value.zig");
 
 pub const Statement = union(enum) {
     var_decl: VarDecl,
     assignment: Assignment,
-    func_decl: FuncDecl,
-    class_decl: ClassDecl,
-    control_flow: ControlFlow,
-    memory_op: MemoryOp,
-    encoding_op: EncodingOp,
-    len_op: LenOp,
-    return_stmt: ReturnStmt,
+    func_decl: *FuncDecl,
+    class_decl: *ClassDecl,
+    control_flow: *ControlFlow,
+    memory_op: *MemoryOp,
+    encoding_op: *EncodingOp,
+    len_op: *LenOp,
+    return_stmt: *ReturnStmt,
     expr: *Expr,
-    catch_stmt: CatchStmt,
+    catch_stmt: *CatchStmt,
 
     pub fn deinit(self: *Statement) void {
         switch (self.*) {
             .var_decl => |*v| v.deinit(),
             .assignment => |*a| a.deinit(),
-            .func_decl => |*f| f.deinit(),
-            .class_decl => |*c| c.deinit(),
-            .control_flow => |*c| c.deinit(),
-            .memory_op => |*m| m.deinit(),
-            .encoding_op => |*e| e.deinit(),
-            .len_op => |*l| l.deinit(),
-            .return_stmt => |*r| r.deinit(),
-            .expr => |*e| e.deinit(),
-            .catch_stmt => |*c| c.deinit(),
+            .func_decl => |f| f.deinit(),
+            .class_decl => |c| c.deinit(),
+            .control_flow => |c| c.deinit(),
+            .memory_op => |m| m.deinit(),
+            .encoding_op => |e| e.deinit(),
+            .len_op => |l| l.deinit(),
+            .return_stmt => |r| r.deinit(),
+            .expr => |e| e.deinit(),
+            .catch_stmt => |c| c.deinit(),
         }
     }
 };
@@ -71,29 +53,31 @@ pub const Assignment = struct {
 
 pub const FuncDecl = struct {
     name: []const u8,
-    params: []Param,
+    params: []value.Param,
     body: []Statement,
     catch_stmts: []CatchStmt,
+    allocator: std.mem.Allocator,
 
     pub fn deinit(self: *FuncDecl) void {
         for (self.body) |*stmt| stmt.deinit();
         for (self.catch_stmts) |*c| c.deinit();
+        self.allocator.free(self.params);
+        self.allocator.free(self.body);
+        self.allocator.free(self.catch_stmts);
     }
-};
-
-pub const Param = struct {
-    type_name: []const u8,
-    name: []const u8,
 };
 
 pub const ClassDecl = struct {
     name: []const u8,
     private_body: []Statement,
     public_body: []Statement,
+    allocator: std.mem.Allocator,
 
     pub fn deinit(self: *ClassDecl) void {
         for (self.private_body) |*stmt| stmt.deinit();
         for (self.public_body) |*stmt| stmt.deinit();
+        self.allocator.free(self.private_body);
+        self.allocator.free(self.public_body);
     }
 };
 
@@ -103,6 +87,7 @@ pub const ControlFlow = struct {
     body: []Statement,
     elifs: []Elif,
     else_body: []Statement,
+    allocator: std.mem.Allocator,
 
     pub const Kind = enum { if_stmt, elif_stmt, else_stmt, for_loop, while_loop };
 
@@ -111,16 +96,21 @@ pub const ControlFlow = struct {
         for (self.body) |*stmt| stmt.deinit();
         for (self.elifs) |*e| e.deinit();
         for (self.else_body) |*stmt| stmt.deinit();
+        self.allocator.free(self.body);
+        self.allocator.free(self.elifs);
+        self.allocator.free(self.else_body);
     }
 };
 
 pub const Elif = struct {
     condition: *Expr,
     body: []Statement,
+    allocator: std.mem.Allocator,
 
     pub fn deinit(self: *Elif) void {
         self.condition.deinit();
         for (self.body) |*stmt| stmt.deinit();
+        self.allocator.free(self.body);
     }
 };
 
@@ -163,36 +153,37 @@ pub const ReturnStmt = struct {
 pub const CatchStmt = struct {
     error_type: []const u8,
     body: []Statement,
+    allocator: std.mem.Allocator,
 
     pub fn deinit(self: *CatchStmt) void {
         for (self.body) |*stmt| stmt.deinit();
+        self.allocator.free(self.body);
     }
 };
 
 pub const Expr = union(enum) {
     literal: Literal,
     identifier: []const u8,
-    binary: BinaryExpr,
-    unary: UnaryExpr,
-    call: CallExpr,
-    member_access: MemberAccess,
-    index_access: IndexAccess,
-    system_tag: SystemTagExpr,
-    input_expr: InputExpr,
-    now_expr: NowExpr,
+    binary: *BinaryExpr,
+    unary: *UnaryExpr,
+    call: *CallExpr,
+    member_access: *MemberAccess,
+    index_access: *IndexAccess,
+    system_tag: *SystemTagExpr,
+    input_expr: *InputExpr,
+    now_expr: *NowExpr,
 
     pub fn deinit(self: *Expr) void {
         switch (self.*) {
-            .literal => {},
-            .identifier => {},
-            .binary => |*b| b.deinit(),
-            .unary => |*u| u.deinit(),
-            .call => |*c| c.deinit(),
-            .member_access => |*m| m.deinit(),
-            .index_access => |*i| i.deinit(),
-            .system_tag => |*s| s.deinit(),
-            .input_expr => |*i| i.deinit(),
-            .now_expr => |*n| n.deinit(),
+            .binary => |b| b.deinit(),
+            .unary => |u| u.deinit(),
+            .call => |c| c.deinit(),
+            .member_access => |m| m.deinit(),
+            .index_access => |i| i.deinit(),
+            .system_tag => |s| s.deinit(),
+            .input_expr => |i| i.deinit(),
+            .now_expr => |n| n.deinit(),
+            else => {},
         }
     }
 };
@@ -202,8 +193,6 @@ pub const Literal = struct {
     raw: []const u8,
 
     pub const Kind = enum { int, freal, string, bool_true, bool_false, tuple, dict };
-
-    pub fn deinit(self: *Literal) void {}
 };
 
 pub const BinaryExpr = struct {
