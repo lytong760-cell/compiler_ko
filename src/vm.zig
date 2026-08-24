@@ -119,11 +119,7 @@ pub const VM = struct {
                 _ = try self.evaluateExpression(e);
             },
             .catch_stmt => |cs| {
-                if (self.error_info) |err| {
-                    if (std.mem.eql(u8, err.type, cs.error_type)) {
-                        for (cs.body) |s| try self.executeStatement(&s);
-                    }
-                }
+                for (cs.body) |s| try self.executeStatement(&s);
             },
         }
     }
