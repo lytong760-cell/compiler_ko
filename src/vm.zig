@@ -28,7 +28,7 @@ pub const VM = struct {
         for (program) |*stmt| try self.executeStatement(stmt);
     }
 
-    fn executeStatement(self: *VM, stmt: *ast.Statement) !void {
+    fn executeStatement(self: *VM, stmt: *const ast.Statement) !void {
         switch (stmt.*) {
             .var_decl => |*v| {
                 const val = try self.evaluateExpression(v.value_expr);
