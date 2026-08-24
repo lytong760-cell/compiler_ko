@@ -11,10 +11,6 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
 
-    exe.addModule("ko", b.createModule(.{
-        .source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/ko.zig" } },
-    }));
-
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
