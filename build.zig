@@ -6,9 +6,7 @@ pub fn build(b: *std.Build) !void {
 
     const exe = b.addExecutable(.{
         .name = "ko",
-        .root_module = b.createModule(.{
-            .source_file = .{ .path = "src/main.zig" },
-        }),
+        .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
