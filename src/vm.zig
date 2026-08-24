@@ -197,7 +197,7 @@ pub const VM = struct {
         };
     }
 
-    fn evaluateCall(self: *VM, call: *ast.CallExpr) !value_mod.Value {
+    fn evaluateCall(self: *VM, call: *const ast.CallExpr) !value_mod.Value {
         if (std.mem.eql(u8, call.callee, "Import")) {
             for (call.args) |arg| {
                 _ = try self.evaluateExpression(&arg);
