@@ -2,8 +2,15 @@ const std = @import("std");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 
-test "debug_1101" {
-    const source = "[ Box !class [ @private [ int(0)~value ] ] [ ~Box~b ] ]";
+test "debug_example" {
+    const source = 
+        \\Import($Random)@also%~random!`global`:random
+        \\
+        \\[
+        \\    int(10)~x
+        \\    <printf>^("Hello\n")
+        \\]
+        ;
     var lx = lexer.Lexer.init(source);
     const tokens = lx.tokenize(std.testing.allocator) catch |err| {
         std.debug.print("Lexer error: {any}\n", .{err});
