@@ -462,7 +462,7 @@ pub const Parser = struct {
     fn parseInputStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
         try self.expectLParen();
-        const expr = try self.parseExpression();
+        _ = try self.parseExpression();
         try self.expectRParen();
 
         if (self.current() == .equals) {
