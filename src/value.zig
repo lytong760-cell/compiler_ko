@@ -254,7 +254,7 @@ pub const Value = union(enum) {
 pub const Function = struct {
     name: []const u8,
     params: []Param,
-    body: []ast.Statement,
+    body: []const anyopaque,
     closure_scope: ?*Scope,
     allocator: std.mem.Allocator,
 
