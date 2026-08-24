@@ -102,7 +102,7 @@ pub const Parser = struct {
         }
 
         if (tok == .identifier) {
-            if (self.peek(1) == .at and self.peek(2) == .keyword and self.peek(2).keyword == .class_kw) {
+            if (self.peek(1) == .bang and self.peek(2) == .keyword and self.peek(2).keyword == .class_kw) {
                 return try self.parseClassDecl();
             }
             if (self.peek(1) == .l_paren) {
