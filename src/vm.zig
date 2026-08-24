@@ -213,7 +213,6 @@ pub const VM = struct {
             }
             return value_mod.Value{ .null = {} };
         }
-        _ = call;
         return value_mod.Value{ .null = {} };
     }
 
