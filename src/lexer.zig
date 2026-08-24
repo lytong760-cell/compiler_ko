@@ -175,19 +175,23 @@ pub const Lexer = struct {
             if (c == '<') return Token.lt;
             if (c == '>') return Token.gt;
             if (c == '^') return Token.caret;
-            if (c == '&') {
-                if (self.pos < self.source.len and self.source[self.pos] == '&') {
-                    self.pos += 1;
-                    self.col += 1;
-                    return Token.amp_amp;
-                }
-                continue;
-            }
+            if (c == '+') return Token.plus;
+            if (c == '-') return Token.minus;
+            if (c == '*') return Token.star;
+            if (c == '/') return Token.slash;
             if (c == '%') {
                 if (self.pos < self.source.len and self.source[self.pos] == '%') {
                     self.pos += 1;
                     self.col += 1;
                     return Token.pipe_pipe;
+                }
+                return Token.percent;
+            }
+            if (c == '&') {
+                if (self.pos < self.source.len and self.source[self.pos] == '&') {
+                    self.pos += 1;
+                    self.col += 1;
+                    return Token.amp_amp;
                 }
                 continue;
             }
