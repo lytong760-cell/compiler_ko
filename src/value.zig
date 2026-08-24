@@ -258,7 +258,6 @@ pub const Function = struct {
     allocator: std.mem.Allocator,
 
     pub fn deinit(self: *Function) void {
-        self.allocator.free(self.name);
         self.allocator.free(self.params);
     }
 };
