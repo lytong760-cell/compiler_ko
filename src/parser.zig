@@ -373,8 +373,8 @@ pub const Parser = struct {
         const cd = try self.allocator.create(ast.ClassDecl);
         cd.* = ast.ClassDecl{
             .name = name,
-            .private_body = private_body.toOwnedSlice(),
-            .public_body = public_body.toOwnedSlice(),
+            .private_body = try private_body.toOwnedSlice(),
+                .public_body = try public_body.toOwnedSlice(),
             .allocator = self.allocator,
         };
         return ast.Statement{ .class_decl = cd.* };
