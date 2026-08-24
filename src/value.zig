@@ -107,7 +107,7 @@ pub const Value = union(enum) {
     }
 
     pub fn equals(self: Value, other: Value) !bool {
-        if (@as(ValueType, self) != @as(ValueType, other)) return false;
+        if (@TagOf(self) != @TagOf(other)) return false;
         return switch (self) {
             .int => |a| switch (other) {
                 .int => |b| a == b,
