@@ -2,8 +2,23 @@ const std = @import("std");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 
-test "parser printf" {
-    const source = "[ <printf>^(sum) ]";
+test "parser medium" {
+    const source = 
+        \\[ 
+        \\
+        \\    int(10)~x
+        \\    int(20)~y
+        \\    int(x + y)~sum
+        \\
+        \\    <printf>^("Sum: ")
+        \\    <printf>^(sum)
+        \\
+        \\    <if>(sum > 25) [
+        \\        <printf>^("Sum is greater than 25\\n")
+        \\    ]
+        \\
+        \\]
+    ;
     var lx = lexer.Lexer.init(source);
     var gpa = std.testing.allocator;
     const tokens = lx.tokenize(gpa) catch |err| {
