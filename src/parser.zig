@@ -211,6 +211,52 @@ pub const Parser = struct {
         return ast.Statement{ .expr = e };
     }
 
+    fn parseFuncDecl(self: *Parser) anyerror!ast.Statement {
+        const name_tok = self.current();
+        const name = name_tok.identifier;
+        _ = self.advance();
+        try self.expectLParen();
+        var params = std.ArrayList(value_mod.Param).init(self.allocator);
+        while (!(self.current() == .r_paren) and !self.isAtEnd()) {
+            const type_tok = self.current();
+            if (type_tok == .keyword) {
+                const type_name = lexer.Token.keywordText(type_tok.keyword);
+                _ = self.advance();
+                try self.expectSigil();
+                const param_tok = self.current();
+                if (param_tok != .identifier) return error.ExpectedIdentifier;
+                const param_name = param_tok.identifier;
+                _ = self.advance();
+                try params.append(value_mod.Param{ .type_name = type_name, .name = param_name });
+            }
+            if (self.current() == .comma) _ = self.advance();
+        }
+        try self.expectRParen();
+        try self.expectLBracket();
+        var body = std.ArrayList(ast.Statement).init(self.allocator);
+        var catch_stmts = std.ArrayList(ast.CatchStmt).init(self.allocator);
+        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
+            if (self.current() == .keyword and self.current().keyword == .catch_kw) {
+                const cs = try self.parseCatchStmt();
+                try catch_stmts.append(cs);
+            } else {
+                const stmt = try self.parseStatement();
+                try body.append(stmt);
+            }
+        }
+        try self.expectRBracket();
+
+        const func = try self.allocator.create(ast.FuncDecl);
+        func.* = ast.FuncDecl{
+            .name = name,
+            .params = try params.toOwnedSlice(),
+            .body = try body.toOwnedSlice(),
+            .catch_stmts = try catch_stmts.toOwnedSlice(),
+            .allocator = self.allocator,
+        };
+        return ast.Statement{ .func_decl = func };
+    }
+
     fn parseLoopStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
 
