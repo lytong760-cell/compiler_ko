@@ -56,29 +56,14 @@ pub const Parser = struct {
 
         if (tok == .keyword) {
             switch (tok.keyword) {
-                .int_kw, .freal_kw, .string_kw, .booling_kw, .byte_kw, .bytes_kw => {
-                    return try self.parseVarDecl();
-                },
                 .import_kw => {
                     return try self.parseImportStmt();
                 },
                 .loop_kw => {
                     return try self.parseLoopStmt();
                 },
-                .if_kw => {
-                    return try self.parseIfStmt();
-                },
-                .elif_kw => {
-                    return try self.parseElifStmt();
-                },
-                .else_kw => {
-                    return try self.parseElseStmt();
-                },
                 .return_kw => {
                     return try self.parseReturnStmt();
-                },
-                .catch_kw => {
-                    return try self.parseCatchStmt();
                 },
                 .class_kw => {
                     return try self.parseClassDecl();
@@ -101,6 +86,9 @@ pub const Parser = struct {
                 .printf_kw => {
                     return try self.parsePrintfStmt();
                 },
+                .catch_kw => {
+                    return try self.parseCatchStmt();
+                },
                 else => {},
             }
         }
@@ -109,7 +97,29 @@ pub const Parser = struct {
             return try self.parseSystemTagStmt();
         }
 
-        if (tok == .identifier or tok == .sigil or tok == .dollar) {
+        if (tok == .identifier) {
+            if (self.peek(1) == .at and self.peek(2) == .keyword and self.peek(2).keyword == .class_kw) {
+                return try self.parseClassDecl();
+            }
+            if (self.peek(1) == .l_paren) {
+                var depth: usize = 1;
+                var i: usize = 2;
+                while (self.pos + i < self.tokens.len and depth > 0) {
+                    switch (self.tokens[self.pos + i]) {
+                        .l_paren => depth += 1,
+                        .r_paren => depth -= 1,
+                        else => {},
+                    }
+                    i += 1;
+                }
+                if (self.pos + i < self.tokens.len and self.tokens[self.pos + i] == .l_bracket) {
+                    return try self.parseFuncDecl();
+                }
+            }
+            return try self.parseExprStatement();
+        }
+
+        if (tok == .sigil or tok == .dollar) {
             return try self.parseExprStatement();
         }
 
