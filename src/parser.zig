@@ -130,7 +130,7 @@ pub const Parser = struct {
         try self.expectRBracket();
         const block = try self.allocator.create(ast.BlockStmt);
         block.* = ast.BlockStmt{
-            .body = body.toOwnedSlice(),
+            .body = try body.toOwnedSlice(),
             .allocator = self.allocator,
         };
         return ast.Statement{ .block = block.* };
