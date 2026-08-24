@@ -235,11 +235,11 @@ pub const Parser = struct {
         try self.expectRParen();
         try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
-        var catch_stmts = std.ArrayList(ast.CatchStmt).init(self.allocator);
+        var catch_stmts = std.ArrayList(ast.Statement).init(self.allocator);
         while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
             if (self.current() == .keyword and self.current().keyword == .catch_kw) {
-                const cs = try self.parseCatchStmt();
-                try catch_stmts.append(cs);
+                const cs_stmt = try self.parseCatchStmt();
+                try catch_stmts.append(cs_stmt);
             } else {
                 const stmt = try self.parseStatement();
                 try body.append(stmt);
