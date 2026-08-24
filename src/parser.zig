@@ -383,13 +383,13 @@ pub const Parser = struct {
     fn parseNowStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
         try self.expectLParen();
-        const expr = try self.parseExpression();
+        _ = try self.parseExpression();
         try self.expectRParen();
         try self.expectGT();
         const target = try self.parseExpression();
 
         const ne = try self.allocator.create(ast.NowExpr);
-        ne.* = ast.NowExpr{ .expr = expr };
+        ne.* = ast.NowExpr{ .expr = target };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .now_expr = ne.* };
         return ast.Statement{ .expr = e };
