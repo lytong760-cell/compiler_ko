@@ -478,16 +478,29 @@ pub const Parser = struct {
         var private_body = std.ArrayList(ast.Statement).init(self.allocator);
         var public_body = std.ArrayList(ast.Statement).init(self.allocator);
         var in_private = false;
+        var private_depth: usize = 0;
 
-        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
+        while (!(self.current() == .r_bracket) or in_private) {
             if (self.current() == .at and self.peek(1) == .keyword and self.peek(1).keyword == .private_kw) {
                 _ = self.advance();
                 _ = self.advance();
                 try self.expectLBracket();
                 in_private = true;
+                private_depth = 1;
                 continue;
             }
-            if (self.current() == .r_bracket) break;
+            if (self.current() == .r_bracket and in_private) {
+                private_depth -= 1;
+                if (private_depth == 0) {
+                    in_private = false;
+                    _ = self.advance();
+                    continue;
+                }
+            }
+            if (self.current() == .l_bracket and in_private) {
+                private_depth += 1;
+            }
+            if (self.current() == .r_bracket and !in_private) break;
             const stmt = try self.parseStatement();
             if (in_private) {
                 try private_body.append(stmt);
