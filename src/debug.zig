@@ -2,8 +2,8 @@ const std = @import("std");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 
-test "debug_encode" {
-    const source = "[ <encode(`UTF-8`)>^(\"hello\") ]";
+test "debug_import" {
+    const source = "Import($Test)@also%~t!`global`:t";
     var lx = lexer.Lexer.init(source);
     const tokens = lx.tokenize(std.testing.allocator) catch |err| {
         std.debug.print("Lexer error: {any}\n", .{err});
