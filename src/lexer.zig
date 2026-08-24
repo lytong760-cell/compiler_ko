@@ -191,7 +191,6 @@ pub const Lexer = struct {
                 }
                 continue;
             }
-            if (c == '|') return Token.pipe;
             if (c == '@') return Token.at;
             if (c == '!') return Token.bang;
             if (c == ':') return Token.colon;
