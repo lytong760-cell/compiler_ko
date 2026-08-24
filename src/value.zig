@@ -1,23 +1,7 @@
 const std = @import("std");
 
-pub const ValueType = enum {
+pub const Value = union(enum) {
     null,
-    int,
-    freal,
-    string,
-    booling,
-    byte,
-    bytes,
-    tuple,
-    list,
-    dict,
-    function,
-    class_instance,
-    error_obj,
-};
-
-pub const Value = union(ValueType) {
-    null: void,
     int: i64,
     freal: f64,
     string: []const u8,
@@ -33,7 +17,6 @@ pub const Value = union(ValueType) {
 
     pub fn deinit(self: *Value, allocator: std.mem.Allocator) void {
         switch (self.*) {
-            .string => {},
             .bytes => allocator.free(self.bytes),
             .tuple, .list => {
                 for (self.tuple) |*v| v.deinit(allocator);
@@ -57,7 +40,7 @@ pub const Value = union(ValueType) {
             },
             else => {},
         }
-        self.* = .{ .null = {} };
+        self.* = .null;
     }
 
     pub fn format(self: Value, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
@@ -264,15 +247,15 @@ pub const Value = union(ValueType) {
 
 pub const Function = struct {
     name: []const u8,
-    params: []const Param,
-    body: []const Statement,
+    params: []Param,
+    body: []*Statement,
     closure_scope: ?*Scope,
     allocator: std.mem.Allocator,
 
     pub fn deinit(self: *Function) void {
         self.allocator.free(self.name);
         self.allocator.free(self.params);
-        for (self.body) |*stmt| stmt.deinit();
+        for (self.body) |stmt| stmt.deinit();
         self.allocator.free(self.body);
     }
 };
@@ -314,16 +297,16 @@ pub const ErrorObj = struct {
 pub const Scope = struct {
     parent: ?*Scope,
     variables: std.StringHashMap(Value),
-    classes: std.StringHashMap(ClassDef),
-    functions: std.StringHashMap(Function),
+    classes: std.StringHashMap(*ClassDef),
+    functions: std.StringHashMap(*Function),
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator, parent: ?*Scope) Scope {
         return .{
             .parent = parent,
             .variables = std.StringHashMap(Value).init(allocator),
-            .classes = std.StringHashMap(ClassDef).init(allocator),
-            .functions = std.StringHashMap(Function).init(allocator),
+            .classes = std.StringHashMap(*ClassDef).init(allocator),
+            .functions = std.StringHashMap(*Function).init(allocator),
             .allocator = allocator,
         };
     }
@@ -353,9 +336,9 @@ pub const Scope = struct {
 pub const ClassDef = struct {
     name: []const u8,
     private_fields: std.StringHashMap(Value),
-    private_methods: std.StringHashMap(Function),
+    private_methods: std.StringHashMap(*Function),
     public_fields: std.StringHashMap(Value),
-    public_methods: std.StringHashMap(Function),
+    public_methods: std.StringHashMap(*Function),
     allocator: std.mem.Allocator,
 
     pub fn deinit(self: *ClassDef) void {
