@@ -177,7 +177,7 @@ pub const Parser = struct {
                     .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
                 };
                 const e = try self.allocator.create(ast.Expr);
-                e.* = .{ .system_tag = ste.* };
+                e.* = .{ .system_tag = ste };
                 return ast.Statement{ .expr = e };
             }
 
