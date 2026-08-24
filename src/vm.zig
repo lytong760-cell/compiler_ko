@@ -164,7 +164,7 @@ pub const VM = struct {
         return value_mod.Value{ .null = {} };
     }
 
-    fn evaluateBinary(self: *VM, bin: *ast.BinaryExpr) !value_mod.Value {
+    fn evaluateBinary(self: *VM, bin: *ast.BinaryExpr) anyerror!value_mod.Value {
         const left = try self.evaluateExpression(bin.left);
         const right = try self.evaluateExpression(bin.right);
 
