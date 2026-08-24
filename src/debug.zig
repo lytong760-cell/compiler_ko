@@ -2,13 +2,16 @@ const std = @import("std");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 
-test "debug_example" {
+test "debug_example2" {
     const source = 
-        \\Import($Random)@also%~random!`global`:random
-        \\
+        \\Hero !class [
+        \\    @private [
+        \\        string("")~name
+        \\    ]
+        \\]
         \\[
-        \\    int(10)~x
-        \\    <printf>^("Hello\n")
+        \\    ~Hero~p1
+        \\    string($p1~name)~player_name
         \\]
         ;
     var lx = lexer.Lexer.init(source);
