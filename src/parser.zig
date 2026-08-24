@@ -804,7 +804,7 @@ pub const Parser = struct {
             try self.expectRParen();
             const eo = try self.allocator.create(ast.EncodingOp);
             eo.* = ast.EncodingOp{
-                .encoding_type = tag,
+                .encoding_type = encoding_type,
                 .expr = expr,
             };
             return ast.Statement{ .encoding_op = eo };
