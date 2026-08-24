@@ -627,8 +627,16 @@ pub const Parser = struct {
             if (self.current() == .l_paren) {
                 _ = self.advance();
                 const enc_expr = try self.parseExpression();
-                if (enc_expr.* == .literal and enc_expr.literal.kind == .string) {
-                    encoding_type = enc_expr.literal.raw;
+                switch (enc_expr.*) {
+                    .literal => |lit| {
+                        if (lit.kind == .string) {
+                            encoding_type = lit.raw;
+                        }
+                    },
+                    .identifier => |name| {
+                        encoding_type = name;
+                    },
+                    else => {},
                 }
                 try self.expectRParen();
             }
