@@ -118,7 +118,7 @@ pub const Parser = struct {
 
     fn parseVarDecl(self: *Parser) anyerror!ast.Statement {
         const type_tok = self.advance();
-        const type_name = type_tok.keywordText();
+        const type_name = lexer.Token.keywordText(type_tok.keyword);
 
         try self.expectLParen();
         const value_expr = try self.parseExpression();
@@ -198,7 +198,7 @@ pub const Parser = struct {
                 .else_body = &[_]ast.Statement{},
                 .allocator = self.allocator,
             };
-            return ast.Statement{ .control_flow = cf.* };
+            return ast.Statement{ .control_flow = cf };
         }
 
         if (self.current() == .l_bracket) {
@@ -219,7 +219,7 @@ pub const Parser = struct {
                 .else_body = &[_]ast.Statement{},
                 .allocator = self.allocator,
             };
-            return ast.Statement{ .control_flow = cf.* };
+            return ast.Statement{ .control_flow = cf };
         }
 
         return error.UnexpectedToken;
@@ -250,7 +250,7 @@ pub const Parser = struct {
             .else_body = &[_]ast.Statement{},
             .allocator = self.allocator,
         };
-        return ast.Statement{ .control_flow = cf.* };
+        return ast.Statement{ .control_flow = cf };
     }
 
     fn parseElifStmt(self: *Parser) anyerror!ast.Statement {
@@ -278,7 +278,7 @@ pub const Parser = struct {
             .else_body = &[_]ast.Statement{},
             .allocator = self.allocator,
         };
-        return ast.Statement{ .control_flow = cf.* };
+        return ast.Statement{ .control_flow = cf };
     }
 
     fn parseElseStmt(self: *Parser) anyerror!ast.Statement {
@@ -300,7 +300,7 @@ pub const Parser = struct {
             .else_body = &[_]ast.Statement{},
             .allocator = self.allocator,
         };
-        return ast.Statement{ .control_flow = cf.* };
+        return ast.Statement{ .control_flow = cf };
     }
 
     fn parseReturnStmt(self: *Parser) anyerror!ast.Statement {
@@ -311,7 +311,7 @@ pub const Parser = struct {
 
         const rs = try self.allocator.create(ast.ReturnStmt);
         rs.* = ast.ReturnStmt{ .expr = expr };
-        return ast.Statement{ .return_stmt = rs.* };
+        return ast.Statement{ .return_stmt = rs };
     }
 
     fn parseCatchStmt(self: *Parser) anyerror!ast.Statement {
@@ -397,7 +397,7 @@ pub const Parser = struct {
         const ne = try self.allocator.create(ast.NowExpr);
         ne.* = ast.NowExpr{ .expr = target };
         const e = try self.allocator.create(ast.Expr);
-        e.* = .{ .now_expr = ne.* };
+        e.* = .{ .now_expr = ne };
         return ast.Statement{ .expr = e };
     }
 
@@ -414,7 +414,7 @@ pub const Parser = struct {
                 .kind = .dete,
                 .expr = expr,
             };
-            return ast.Statement{ .memory_op = mo.* };
+            return ast.Statement{ .memory_op = mo };
         }
         if (self.current() == .caret) {
             _ = self.advance();
@@ -427,7 +427,7 @@ pub const Parser = struct {
                 .kind = .address,
                 .expr = expr,
             };
-            return ast.Statement{ .memory_op = mo.* };
+            return ast.Statement{ .memory_op = mo };
         }
         return error.UnexpectedToken;
     }
@@ -447,7 +447,7 @@ pub const Parser = struct {
             .encoding_type = tag,
             .expr = expr,
         };
-        return ast.Statement{ .encoding_op = eo.* };
+        return ast.Statement{ .encoding_op = eo };
     }
 
     fn parseLenOpStmt(self: *Parser) anyerror!ast.Statement {
@@ -462,7 +462,7 @@ pub const Parser = struct {
 
         const lo = try self.allocator.create(ast.LenOp);
         lo.* = ast.LenOp{ .expr = expr };
-        return ast.Statement{ .len_op = lo.* };
+        return ast.Statement{ .len_op = lo };
     }
 
     fn parseInputStmt(self: *Parser) anyerror!ast.Statement {
@@ -477,14 +477,14 @@ pub const Parser = struct {
             const ie = try self.allocator.create(ast.InputExpr);
             ie.* = ast.InputExpr{ .target = target };
             const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .input_expr = ie.* };
+            e.* = .{ .input_expr = ie };
             return ast.Statement{ .expr = e };
         }
 
         const ie = try self.allocator.create(ast.InputExpr);
         ie.* = ast.InputExpr{ .target = null };
         const e = try self.allocator.create(ast.Expr);
-        e.* = .{ .input_expr = ie.* };
+        e.* = .{ .input_expr = ie };
         return ast.Statement{ .expr = e };
     }
 
@@ -522,7 +522,7 @@ pub const Parser = struct {
                 .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
             };
             const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .system_tag = ste.* };
+            e.* = .{ .system_tag = ste };
             return ast.Statement{ .expr = e };
         }
 
@@ -580,7 +580,7 @@ pub const Parser = struct {
                 .right = right,
             };
             left = try self.allocator.create(ast.Expr);
-            left.* = .{ .binary = bin.* };
+            left.* = .{ .binary = bin };
         }
         return left;
     }
@@ -597,7 +597,7 @@ pub const Parser = struct {
                 .right = right,
             };
             left = try self.allocator.create(ast.Expr);
-            left.* = .{ .binary = bin.* };
+            left.* = .{ .binary = bin };
         }
         return left;
     }
@@ -611,7 +611,7 @@ pub const Parser = struct {
                 const bin = try self.allocator.create(ast.BinaryExpr);
                 bin.* = ast.BinaryExpr{ .op = .eq, .left = left, .right = right };
                 left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin.* };
+                left.* = .{ .binary = bin };
             } else {
                 break;
             }
@@ -628,14 +628,14 @@ pub const Parser = struct {
                 const bin = try self.allocator.create(ast.BinaryExpr);
                 bin.* = ast.BinaryExpr{ .op = .lt, .left = left, .right = right };
                 left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin.* };
+                left.* = .{ .binary = bin };
             } else if (self.current() == .gt and self.peek(1) != .equals) {
                 _ = self.advance();
                 const right = try self.parseAdditiveExpr();
                 const bin = try self.allocator.create(ast.BinaryExpr);
                 bin.* = ast.BinaryExpr{ .op = .gt, .left = left, .right = right };
                 left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin.* };
+                left.* = .{ .binary = bin };
             } else {
                 break;
             }
@@ -659,7 +659,7 @@ pub const Parser = struct {
                 .right = right,
             };
             left = try self.allocator.create(ast.Expr);
-            left.* = .{ .binary = bin.* };
+            left.* = .{ .binary = bin };
         }
         return left;
     }
@@ -681,7 +681,7 @@ pub const Parser = struct {
                 .right = right,
             };
             left = try self.allocator.create(ast.Expr);
-            left.* = .{ .binary = bin.* };
+            left.* = .{ .binary = bin };
         }
         return left;
     }
@@ -892,7 +892,7 @@ pub const Parser = struct {
                 .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
             };
             const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .system_tag = ste.* };
+            e.* = .{ .system_tag = ste };
             return e;
         }
 
