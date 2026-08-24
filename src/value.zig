@@ -254,15 +254,14 @@ pub const Value = union(enum) {
 pub const Function = struct {
     name: []const u8,
     params: []Param,
-    body: []const anyopaque,
+    body_ptr: *anyopaque,
+    body_len: usize,
     closure_scope: ?*Scope,
     allocator: std.mem.Allocator,
 
     pub fn deinit(self: *Function) void {
         self.allocator.free(self.name);
         self.allocator.free(self.params);
-        for (self.body) |stmt| stmt.deinit();
-        self.allocator.free(self.body);
     }
 };
 
