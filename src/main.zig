@@ -41,7 +41,6 @@ pub fn main() !void {
     };
     defer {
         for (program) |*stmt| stmt.deinit();
-        allocator.free(program);
     }
 
     var virtual_machine = try vm.VM.init(allocator);
