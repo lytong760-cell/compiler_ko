@@ -541,7 +541,7 @@ pub const Parser = struct {
     fn parseSystemTagName(self: *Parser) ![]const u8 {
         const tok = self.current();
         if (tok == .keyword) {
-            const name = keywordText(tok.keyword);
+            const name = lexer.Token.keywordText(tok.keyword);
             _ = self.advance();
             return name;
         }
