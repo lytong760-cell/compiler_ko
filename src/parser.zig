@@ -845,7 +845,7 @@ pub const Parser = struct {
         if (tok == .l_brace) {
             _ = self.advance();
             var items = std.ArrayList(ast.Expr).init(self.allocator);
-            while (!self.current().isRBBrace() and !self.isAtEnd()) {
+                while (!(self.current() == .r_brace) and !self.isAtEnd()) {
                 try items.append(try self.parseExpression());
                 if (self.current() == .comma) _ = self.advance();
             }
