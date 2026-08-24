@@ -191,6 +191,11 @@ pub const Lexer = struct {
                     self.col += 1;
                     return Token.amp_amp;
                 }
+                if (self.pos < self.source.len and self.source[self.pos] == '=') {
+                    self.pos += 1;
+                    self.col += 1;
+                    return Token.amp_equals;
+                }
                 continue;
             }
             if (c == '@') return Token.at;
