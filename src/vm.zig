@@ -25,9 +25,7 @@ pub const VM = struct {
     }
 
     pub fn execute(self: *VM, program: []ast.Statement) !void {
-        for (program) |stmt| {
-            try self.executeStatement(&stmt);
-        }
+        for (program) |*stmt| try self.executeStatement(stmt);
     }
 
     fn executeStatement(self: *VM, stmt: *ast.Statement) !void {
