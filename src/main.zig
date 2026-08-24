@@ -39,6 +39,10 @@ pub fn main() !void {
         try std.io.getStdErr().writer().print("Parser error: {any}\n", .{err});
         return;
     };
+    defer {
+        for (program) |*stmt| stmt.deinit();
+        allocator.free(program);
+    }
 
     var virtual_machine = try vm.VM.init(allocator);
     defer virtual_machine.deinit();
