@@ -135,19 +135,21 @@ pub const Lexer = struct {
             if (c == '\"') {
                 var end = self.pos;
                 while (end < self.source.len and self.source[end] != '\"') : (end += 1) {}
-                const str = self.source[self.pos..end];
+                const raw = self.source[self.pos..end];
                 self.pos = end + 1;
                 self.col = end + 1;
-                return Token{ .string_lit = str };
+                const processed = processEscapes(raw);
+                return Token{ .string_lit = processed };
             }
 
             if (c == '\'') {
                 var end = self.pos;
                 while (end < self.source.len and self.source[end] != '\'') : (end += 1) {}
-                const str = self.source[self.pos..end];
+                const raw = self.source[self.pos..end];
                 self.pos = end + 1;
                 self.col = end + 1;
-                return Token{ .string_lit = str };
+                const processed = processEscapes(raw);
+                return Token{ .string_lit = processed };
             }
 
             if (c == '`') {
