@@ -197,16 +197,16 @@ pub const VM = struct {
         };
     }
 
-    fn evaluateCall(self: *VM, call: *const ast.CallExpr) !value_mod.Value {
+    fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Value {
         if (std.mem.eql(u8, call.callee, "Import")) {
             for (call.args) |arg| {
-                _ = try self.evaluateExpression(&arg);
+                _ = try self.evaluateExpression(@constCast(&arg));
             }
             return value_mod.Value{ .null = {} };
         }
         if (std.mem.eql(u8, call.callee, "printf")) {
             for (call.args) |arg| {
-                const val = try self.evaluateExpression(&arg);
+                const val = try self.evaluateExpression(@constCast(&arg));
                 try self.stdout.print("{any}\n", .{val});
             }
             return value_mod.Value{ .null = {} };
