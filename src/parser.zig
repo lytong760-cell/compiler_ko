@@ -447,11 +447,17 @@ pub const Parser = struct {
     }
 
     fn parseClassDecl(self: *Parser) anyerror!ast.Statement {
-        _ = self.advance();
         const name_tok = self.current();
         if (name_tok != .identifier) return error.ExpectedIdentifier;
         const name = name_tok.identifier;
         _ = self.advance();
+
+        if (self.current() == .at) {
+            _ = self.advance();
+            if (self.current() == .keyword and self.current().keyword == .class_kw) {
+                _ = self.advance();
+            }
+        }
 
         try self.expectLBracket();
         var private_body = std.ArrayList(ast.Statement).init(self.allocator);
