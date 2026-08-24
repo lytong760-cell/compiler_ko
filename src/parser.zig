@@ -777,6 +777,26 @@ pub const Parser = struct {
             return error.UnexpectedToken;
         }
         
+        if (std.mem.eql(u8, tag, "input")) {
+            try self.expectLParen();
+            const prompt_expr = try self.parseExpression();
+            try self.expectRParen();
+            if (self.current() == .amp_equals) {
+                _ = self.advance();
+                const target = try self.parseExpression();
+                const ie = try self.allocator.create(ast.InputExpr);
+                ie.* = ast.InputExpr{ .target = target };
+                const e = try self.allocator.create(ast.Expr);
+                e.* = .{ .input_expr = ie };
+                return ast.Statement{ .expr = e };
+            }
+            const ie = try self.allocator.create(ast.InputExpr);
+            ie.* = ast.InputExpr{ .target = null };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .input_expr = ie };
+            return ast.Statement{ .expr = e };
+        }
+        
         if (std.mem.eql(u8, tag, "encode")) {
             try self.expectCaret();
             try self.expectLParen();
@@ -784,7 +804,7 @@ pub const Parser = struct {
             try self.expectRParen();
             const eo = try self.allocator.create(ast.EncodingOp);
             eo.* = ast.EncodingOp{
-                .encoding_type = encoding_type,
+                .encoding_type = tag,
                 .expr = expr,
             };
             return ast.Statement{ .encoding_op = eo };
