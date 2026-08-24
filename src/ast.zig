@@ -13,6 +13,7 @@ pub const Statement = union(enum) {
     return_stmt: *ReturnStmt,
     expr: *Expr,
     catch_stmt: *CatchStmt,
+    block: BlockStmt,
 
     pub fn deinit(self: *Statement) void {
         switch (self.*) {
@@ -27,7 +28,18 @@ pub const Statement = union(enum) {
             .return_stmt => |r| r.deinit(),
             .expr => |e| e.deinit(),
             .catch_stmt => |c| c.deinit(),
+            .block => |b| b.deinit(),
         }
+    }
+};
+
+pub const BlockStmt = struct {
+    body: []Statement,
+    allocator: std.mem.Allocator,
+
+    pub fn deinit(self: *BlockStmt) void {
+        for (self.body) |*stmt| stmt.deinit();
+        self.allocator.free(self.body);
     }
 };
 
