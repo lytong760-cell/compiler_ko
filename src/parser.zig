@@ -713,7 +713,9 @@ pub const Parser = struct {
             const expr = try self.parseUnaryExpr();
             const unary = try self.allocator.create(ast.UnaryExpr);
             unary.* = ast.UnaryExpr{ .op = .neg, .expr = expr };
-            return try self.allocator.create(ast.Expr);
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .unary = unary };
+            return e;
         }
         return try self.parsePrimaryExpr();
     }
@@ -724,7 +726,7 @@ pub const Parser = struct {
         if (tok == .int_lit) {
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .int, .raw = "" };
+            lit.* = ast.Literal{ .kind = .int, .int_value = tok.int_lit, .freal_value = 0, .raw = "" };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;
@@ -733,7 +735,7 @@ pub const Parser = struct {
         if (tok == .freal_lit) {
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .freal, .raw = "" };
+            lit.* = ast.Literal{ .kind = .freal, .int_value = 0, .freal_value = tok.freal_lit, .raw = "" };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;
@@ -743,7 +745,7 @@ pub const Parser = struct {
             const str = tok.string_lit;
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .string, .raw = str };
+            lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = str };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;
@@ -752,7 +754,7 @@ pub const Parser = struct {
         if (tok == .bool_true) {
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .bool_true, .raw = "" };
+            lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "" };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;
@@ -761,7 +763,7 @@ pub const Parser = struct {
         if (tok == .bool_false) {
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .bool_false, .raw = "" };
+            lit.* = ast.Literal{ .kind = .bool_false, .int_value = 0, .freal_value = 0, .raw = "" };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;
@@ -883,7 +885,7 @@ pub const Parser = struct {
             try self.expectRBBrace();
 
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .dict, .raw = "" };
+            lit.* = ast.Literal{ .kind = .dict, .int_value = 0, .freal_value = 0, .raw = "" };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;

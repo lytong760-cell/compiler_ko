@@ -144,8 +144,8 @@ pub const VM = struct {
 
     fn evaluateLiteral(self: *VM, lit: ast.Literal) !value_mod.Value {
         return switch (lit.kind) {
-            .int => value_mod.Value{ .int = 0 },
-            .freal => value_mod.Value{ .freal = 0.0 },
+            .int => value_mod.Value{ .int = lit.int_value },
+            .freal => value_mod.Value{ .freal = lit.freal_value },
             .string => value_mod.Value{ .string = lit.raw },
             .bool_true => value_mod.Value{ .booling = true },
             .bool_false => value_mod.Value{ .booling = false },

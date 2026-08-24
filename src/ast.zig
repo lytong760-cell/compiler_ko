@@ -202,6 +202,8 @@ pub const Expr = union(enum) {
 
 pub const Literal = struct {
     kind: Kind,
+    int_value: i64,
+    freal_value: f64,
     raw: []const u8,
 
     pub const Kind = enum { int, freal, string, bool_true, bool_false, tuple, dict };
