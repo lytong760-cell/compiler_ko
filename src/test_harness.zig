@@ -3,22 +3,39 @@ const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 const vm = @import("vm.zig");
 
+fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
+    var lx = lexer.Lexer.init(source);
+    const tokens = try lx.tokenize(allocator);
+    defer allocator.free(tokens);
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+
+    var pr = parser.Parser.init(allocator, &arena, tokens);
+    const program = try pr.parse();
+
+    var virtual_machine = try vm.VM.init(allocator);
+    defer virtual_machine.deinit();
+
+    try virtual_machine.execute(program);
+}
+
 const TEST_PROGRAMS = [_][]const u8{
-    \\[ int(10)~x ],
-    \\[ string("hello")~s ],
-    \\[ int(1)~a int(2)~b int(a + b)~sum ],
-    \\[ <if>(1 == 1) [ <printf>^("ok") ] ],
-    \\[ <printf>^("test\n") ],
-    \\[ int(<len>^("hello"))~l ],
-    \\[ booling(\True\)~flag ],
-    \\[ byte(65)~b ],
-    \\[ bytes(16)~buf ],
-    \\[ int(10)~x <if>(x > 5) [ <printf>^("big") ] ],
-    \\[ <catch>(`Error`) [ <printf>^("caught") ] ],
-    \\[ int(100)~x int(50)~y int(x - y)~z ],
-    \\[ freal(3.14)~pi ],
-    \\[ int(0)~x int(0)~y int(x + y)~z ],
-    \\[ int(10)~x int(5)~y int(x % y)~rem ],
+    "[ int(10)~x ]",
+    "[ string(\"hello\")~s ]",
+    "[ int(1)~a int(2)~b int(a + b)~sum ]",
+    "[ <if>(1 == 1) [ <printf>^(\"ok\") ] ]",
+    "[ <printf>^(\"test\n\") ]",
+    "[ int(<len>^(\"hello\"))~l ]",
+    "[ booling(\\True\\)~flag ]",
+    "[ byte(65)~b ]",
+    "[ bytes(16)~buf ]",
+    "[ int(10)~x <if>(x > 5) [ <printf>^(\"big\") ] ]",
+    "[ <catch>(`Error`) [ <printf>^(\"caught\") ] ]",
+    "[ int(100)~x int(50)~y int(x - y)~z ]",
+    "[ freal(3.14)~pi ]",
+    "[ int(0)~x int(0)~y int(x + y)~z ]",
+    "[ int(10)~x int(5)~y int(x % y)~rem ]",
 };
 
 test "test_3600_iterations" {
@@ -26,6 +43,7 @@ test "test_3600_iterations" {
     var total_time: u64 = 0;
     var max_time: u64 = 0;
     var min_time: u64 = std.math.maxInt(u64);
+    var success_count: usize = 0;
     
     const iterations = 3600;
     const programs = TEST_PROGRAMS.len;
@@ -36,33 +54,8 @@ test "test_3600_iterations" {
         
         const start = std.time.nanoTimestamp();
         
-        var lx = lexer.Lexer.init(source);
-        const tokens = lx.tokenize(gpa) catch {
-            if (i == 0) std.debug.print("Iteration {}: tokenize failed\n", .{i});
-            continue;
-        };
-        defer gpa.free(tokens);
-        
-        var arena = std.heap.ArenaAllocator.init(gpa);
-        defer arena.deinit();
-        
-        var pr = parser.Parser.init(gpa, &arena, tokens);
-        const program = pr.parse() catch |err| {
-            if (i == 0) std.debug.print("Iteration {}: parse failed: {any} at pos {}\n", .{i, err, pr.pos});
-            continue;
-        };
-        defer {
-            for (program) |*stmt| stmt.deinit();
-        }
-        
-        var virtual_machine = vm.VM.init(gpa) catch {
-            if (i == 0) std.debug.print("Iteration {}: VM init failed\n", .{i});
-            continue;
-        };
-        defer virtual_machine.deinit();
-        
-        virtual_machine.execute(program) catch {
-            if (i == 0) std.debug.print("Iteration {}: execute failed\n", .{i});
+        runSource(gpa, source) catch {
+            if (i == 0) std.debug.print("Iteration {}: runSource failed\n", .{i});
             continue;
         };
         
@@ -72,13 +65,14 @@ test "test_3600_iterations" {
         total_time += elapsed;
         if (elapsed > max_time) max_time = elapsed;
         if (elapsed < min_time) min_time = elapsed;
+        success_count += 1;
         
         if (i < 3) std.debug.print("Iteration {}: elapsed={}ns\n", .{i, elapsed});
     }
     
-    const avg_time = total_time / iterations;
+    const avg_time = if (success_count > 0) total_time / success_count else 0;
     std.debug.print("\n=== 3600 Iteration Benchmark ===\n", .{});
-    std.debug.print("Total iterations: {d}\n", .{iterations});
+    std.debug.print("Successful iterations: {d}/{d}\n", .{success_count, iterations});
     std.debug.print("Average time: {d} ns\n", .{avg_time});
     std.debug.print("Min time: {d} ns\n", .{min_time});
     std.debug.print("Max time: {d} ns\n", .{max_time});
