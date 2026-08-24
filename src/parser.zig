@@ -114,11 +114,26 @@ pub const Parser = struct {
         }
 
         if (tok == .l_bracket) {
-            return try self.parseBlockStatement();
+             return try self.parseBlockStatement();
         }
 
         return error.UnexpectedToken;
     }
+
+    fn parseBlockStatement(self: *Parser) anyerror!ast.Statement {
+        _ = self.advance();
+        var body = std.ArrayList(ast.Statement).init(self.allocator);
+        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
+            const stmt = try self.parseStatement();
+            try body.append(stmt);
+        }
+        try self.expectRBracket();
+        _ = body.toOwnedSlice();
+        const e = try self.allocator.create(ast.Expr);
+        e.* = .{ .literal = ast.Literal{ .kind = .null, .raw = "" } };
+        return ast.Statement{ .expr = e };
+    }
+
 
     fn parseVarDecl(self: *Parser) anyerror!ast.Statement {
         const type_tok = self.advance();
