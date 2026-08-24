@@ -824,10 +824,10 @@ pub const Parser = struct {
                 if (self.current() == .identifier) {
                     target_name = self.current().identifier;
                     _ = self.advance();
-                } else if (self.current() == .keyword) {
-                    const type_tok = self.current();
-                    const type_name = lexer.Token.keywordText(type_tok.keyword);
-                    _ = self.advance();
+            } else if (self.current() == .keyword) {
+                const type_tok = self.current();
+                const _type_name = lexer.Token.keywordText(type_tok.keyword);
+                _ = self.advance();
                     try self.expectLParen();
                     _ = try self.parseExpression();
                     try self.expectRParen();
