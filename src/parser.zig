@@ -184,7 +184,8 @@ pub const Parser = struct {
             try self.expectLBracket();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
                 while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-                try body.append(try self.parseStatement() catch unreachable);
+                const stmt = try self.parseStatement() catch unreachable;
+                    try body.append(stmt);
             }
             try self.expectRBracket();
 
@@ -204,7 +205,8 @@ pub const Parser = struct {
             _ = self.advance();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
                 while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-                try body.append(try self.parseStatement() catch unreachable);
+                const stmt = try self.parseStatement() catch unreachable;
+                    try body.append(stmt);
             }
             try self.expectRBracket();
 
@@ -234,7 +236,8 @@ pub const Parser = struct {
         try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
         while (!self.current().isRBracket() and !self.isAtEnd()) {
-            try body.append(try self.parseStatement());
+            const stmt = try self.parseStatement();
+                    try body.append(stmt);
         }
         try self.expectRBracket();
 
@@ -261,7 +264,8 @@ pub const Parser = struct {
         try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
         while (!self.current().isRBracket() and !self.isAtEnd()) {
-            try body.append(try self.parseStatement());
+            const stmt = try self.parseStatement();
+                    try body.append(stmt);
         }
         try self.expectRBracket();
 
@@ -282,7 +286,8 @@ pub const Parser = struct {
         try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
         while (!self.current().isRBracket() and !self.isAtEnd()) {
-            try body.append(try self.parseStatement());
+            const stmt = try self.parseStatement();
+                    try body.append(stmt);
         }
         try self.expectRBracket();
 
@@ -317,7 +322,8 @@ pub const Parser = struct {
         try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
         while (!self.current().isRBracket() and !self.isAtEnd()) {
-            try body.append(try self.parseStatement());
+            const stmt = try self.parseStatement();
+                    try body.append(stmt);
         }
         try self.expectRBracket();
 
@@ -849,7 +855,8 @@ pub const Parser = struct {
             _ = self.advance();
             var items = std.ArrayList(ast.Expr).init(self.allocator);
                 while (!(self.current() == .r_brace) and !self.isAtEnd()) {
-                try items.append(try self.parseExpression());
+                const expr = try self.parseExpression();
+                try items.append(expr.*);
                 if (self.current() == .comma) _ = self.advance();
             }
             try self.expectRBBrace();
