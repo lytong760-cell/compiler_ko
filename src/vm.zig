@@ -97,8 +97,8 @@ pub const VM = struct {
                         _ = val;
                     },
                     .dete => {
-                        const val = try self.evaluateExpression(m.expr);
-                        @constCast(val).deinit(self.allocator);
+                        var val = try self.evaluateExpression(m.expr);
+                        val.deinit(self.allocator);
                     },
                 }
             },
