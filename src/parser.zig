@@ -713,6 +713,7 @@ pub const Parser = struct {
         }
         
         if (std.mem.eql(u8, tag, "now")) {
+            try self.expectGT();
             try self.expectLParen();
             _ = try self.parseExpression();
             try self.expectRParen();
@@ -726,6 +727,7 @@ pub const Parser = struct {
         }
         
         if (std.mem.eql(u8, tag, "memory")) {
+            try self.expectGT();
             if (self.current() == .caret) {
                 _ = self.advance();
                 const expr = try self.parseExpression();
