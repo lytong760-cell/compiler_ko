@@ -878,11 +878,20 @@ pub const Parser = struct {
     fn parseEqualityExpr(self: *Parser) anyerror!*ast.Expr {
         var left = try self.parseRelationalExpr();
         while (true) {
-            if (self.current() == .equals and self.peek(1) != .equals) {
+            if (self.current() == .equals and self.peek(1) == .equals) {
+                _ = self.advance();
                 _ = self.advance();
                 const right = try self.parseRelationalExpr();
                 const bin = try self.allocator.create(ast.BinaryExpr);
                 bin.* = ast.BinaryExpr{ .op = .eq, .left = left, .right = right };
+                left = try self.allocator.create(ast.Expr);
+                left.* = .{ .binary = bin };
+            } else if (self.current() == .bang and self.peek(1) == .equals) {
+                _ = self.advance();
+                _ = self.advance();
+                const right = try self.parseRelationalExpr();
+                const bin = try self.allocator.create(ast.BinaryExpr);
+                bin.* = ast.BinaryExpr{ .op = .neq, .left = left, .right = right };
                 left = try self.allocator.create(ast.Expr);
                 left.* = .{ .binary = bin };
             } else {
