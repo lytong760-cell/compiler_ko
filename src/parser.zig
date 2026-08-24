@@ -128,7 +128,7 @@ pub const Parser = struct {
             try body.append(stmt);
         }
         try self.expectRBracket();
-        _ = body.toOwnedSlice();
+        _ = body.toOwnedSlice() catch unreachable;
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .literal = ast.Literal{ .kind = .null, .raw = "" } };
         return ast.Statement{ .expr = e };
