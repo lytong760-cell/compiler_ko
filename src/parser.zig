@@ -109,8 +109,12 @@ pub const Parser = struct {
             return try self.parseSystemTagStmt();
         }
 
-        if (tok == .identifier or tok == .sigil or tok == .dollar or tok == .l_bracket) {
+        if (tok == .identifier or tok == .sigil or tok == .dollar) {
             return try self.parseExprStatement();
+        }
+
+        if (tok == .l_bracket) {
+            return try self.parseBlockStatement();
         }
 
         return error.UnexpectedToken;
