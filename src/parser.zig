@@ -1009,4 +1009,9 @@ pub const Parser = struct {
         if (self.current() != .caret) return error.UnexpectedToken;
         _ = self.advance();
     }
+
+    fn expectSigil(self: *Parser) !void {
+        if (self.current() != .sigil) return error.UnexpectedToken;
+        _ = self.advance();
+    }
 };
