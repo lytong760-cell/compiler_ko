@@ -207,7 +207,22 @@ pub const VM = struct {
         if (std.mem.eql(u8, call.callee, "printf")) {
             for (call.args) |arg| {
                 const val = try self.evaluateExpression(@constCast(&arg));
-                try self.stdout.print("{any}\n", .{val});
+                if (val == .string) {
+                    var out = std.ArrayList(u8).init(self.allocator);
+                    var i: usize = 0;
+                    while (i < val.string.len) {
+                        if (val.string[i] == '\\' and i + 1 < val.string.len and val.string[i + 1] == 'n') {
+                            try out.append('\n');
+                            i += 2;
+                        } else {
+                            try out.append(val.string[i]);
+                            i += 1;
+                        }
+                    }
+                    try self.stdout.print("{s}", .{out.items});
+                } else {
+                    try self.stdout.print("{any}\n", .{val});
+                }
             }
             return value_mod.Value{ .null = {} };
         }
