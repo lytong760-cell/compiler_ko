@@ -558,7 +558,7 @@ pub const Parser = struct {
         return ast.Statement{ .expr = expr };
     }
 
-    fn parseExpression(self: *Parser) !*ast.Expr {
+    fn parseExpression(self: *Parser) anyerror!*ast.Expr {
         return try self.parseOrExpr();
     }
 
