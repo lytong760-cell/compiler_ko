@@ -157,7 +157,7 @@ pub const Value = union(enum) {
         };
     }
 
-    pub fn add(self: Value, other: Value) !Value {
+    pub fn add(self: Value, other: Value, allocator: std.mem.Allocator) !Value {
         return switch (self) {
             .int => |a| switch (other) {
                 .int => |b| Value{ .int = a + b },
@@ -170,12 +170,12 @@ pub const Value = union(enum) {
                 else => error.TypeError,
             },
             .string => |a| switch (other) {
-                .string => |b| Value{ .string = try std.fmt.allocPrint(self.allocator, "{s}{s}", .{ a, b }) },
+                .string => |b| Value{ .string = try std.fmt.allocPrint(allocator, "{s}{s}", .{ a, b }) },
                 else => error.TypeError,
             },
             .tuple, .list => |a| switch (other) {
                 .tuple, .list => |b| {
-                    const result = try std.testing.allocator.alloc(Value, a.len + b.len);
+                    const result = try allocator.alloc(Value, a.len + b.len);
                     @memcpy(result[0..a.len], a);
                     @memcpy(result[a.len..], b);
                     return Value{ .list = result };
