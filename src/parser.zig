@@ -708,7 +708,7 @@ pub const Parser = struct {
         
         if (std.mem.eql(u8, tag, "now")) {
             try self.expectLParen();
-            const expr = try self.parseExpression();
+            _ = try self.parseExpression();
             try self.expectRParen();
             try self.expectGT();
             const target = try self.parseExpression();
