@@ -907,7 +907,7 @@ pub const Parser = struct {
                 .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
             };
             const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .call = call };;
+            e.* = .{ .call = call };
             return e;
         }
 
