@@ -115,8 +115,8 @@ pub const VM = struct {
                 const val = try self.evaluateExpression(rs.expr);
                 _ = val;
             },
-            .expr => |e| {
-                _ = try self.evaluateExpression(e);
+            .block => |b| {
+                for (b.body) |s| try self.executeStatement(&s);
             },
             .catch_stmt => |cs| {
                 for (cs.body) |s| try self.executeStatement(&s);
