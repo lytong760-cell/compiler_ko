@@ -829,7 +829,7 @@ pub const Parser = struct {
                     };
                     member.object.* = .{ .identifier = name };
                     const e = try self.allocator.create(ast.Expr);
-                    e.* = .{ .member_access = member.* };
+                    e.* = .{ .member_access = member };
                     return e;
                 }
             }
