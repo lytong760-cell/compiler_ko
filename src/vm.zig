@@ -46,11 +46,11 @@ pub const VM = struct {
         switch (stmt.*) {
             .var_decl => |*v| {
                 const val = try self.evaluateExpression(v.value_expr);
-                try self.current_scope.variables.put(self.allocator.dupe(u8, v.name) catch unreachable, val);
+                const name_copy = self.allocator.dupe(u8, v.name) catch unreachable;
+                try self.current_scope.variables.put(name_copy, val);
             },
             .assignment => |*a| {
                 const val = try self.evaluateExpression(a.value_expr);
-                // Simplified: update variable by re-evaluating target
                 _ = val;
             },
             .func_decl => |*f| {
@@ -62,7 +62,8 @@ pub const VM = struct {
                     .closure_scope = self.current_scope,
                     .allocator = self.allocator,
                 };
-                try self.current_scope.functions.put(self.allocator.dupe(u8, f.name) catch unreachable, func.*);
+                const name_copy = self.allocator.dupe(u8, f.name) catch unreachable;
+                try self.current_scope.functions.put(name_copy, func.*);
             },
             .class_decl => |*c| {
                 const class_def = try self.allocator.create(value_mod.ClassDef);
@@ -74,21 +75,20 @@ pub const VM = struct {
                     .public_methods = std.StringHashMap(value_mod.Function).init(self.allocator),
                     .allocator = self.allocator,
                 };
-                try self.current_scope.classes.put(self.allocator.dupe(u8, c.name) catch unreachable, class_def.*);
+                const name_copy = self.allocator.dupe(u8, c.name) catch unreachable;
+                try self.current_scope.classes.put(name_copy, class_def.*);
             },
             .control_flow => |*cf| {
                 switch (cf.kind) {
                     .if_stmt => {
                         const cond = try self.evaluateExpression(cf.condition);
-                        const cond_bool = try cond.toBool();
-                        if (cond_bool) {
+                        if (try cond.toBool()) {
                             for (cf.body) |*s| try self.executeStatement(s);
                         }
                     },
                     .elif_stmt => {
                         const cond = try self.evaluateExpression(cf.condition);
-                        const cond_bool = try cond.toBool();
-                        if (cond_bool) {
+                        if (try cond.toBool()) {
                             for (cf.body) |*s| try self.executeStatement(s);
                         }
                     },
@@ -96,11 +96,9 @@ pub const VM = struct {
                         for (cf.body) |*s| try self.executeStatement(s);
                     },
                     .for_loop => {
-                        // Simplified for loop
                         for (cf.body) |*s| try self.executeStatement(s);
                     },
                     .while_loop => {
-                        // Simplified while loop - just execute once for prototype
                         for (cf.body) |*s| try self.executeStatement(s);
                     },
                 }
@@ -177,9 +175,6 @@ pub const VM = struct {
         if (self.current_scope.functions.get(name)) |func| {
             return value_mod.Value{ .function = func };
         }
-        if (self.current_scope.classes.get(name)) |cls| {
-            return value_mod.Value{ .class_instance = try self.allocator.create(value_mod.ClassInstance) };
-        }
         return value_mod.Value{ .null = {} };
     }
 
@@ -217,6 +212,19 @@ pub const VM = struct {
     }
 
     fn evaluateCall(self: *VM, call: *ast.CallExpr) !value_mod.Value {
+        if (std.mem.eql(u8, call.callee, "Import")) {
+            for (call.args) |arg| {
+                _ = try self.evaluateExpression(&arg);
+            }
+            return value_mod.Value{ .null = {} };
+        }
+        if (std.mem.eql(u8, call.callee, "printf")) {
+            for (call.args) |arg| {
+                const val = try self.evaluateExpression(&arg);
+                try self.stdout.print("{any}\n", .{val});
+            }
+            return value_mod.Value{ .null = {} };
+        }
         _ = call;
         return value_mod.Value{ .null = {} };
     }
@@ -273,7 +281,8 @@ pub const VM = struct {
             const str = try self.allocator.dupe(u8, l);
             if (ie.target) |target| {
                 const name = target.identifier;
-                try self.current_scope.variables.put(self.allocator.dupe(u8, name) catch unreachable, value_mod.Value{ .string = str });
+                const name_copy = self.allocator.dupe(u8, name) catch unreachable;
+                try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = str });
             }
             return value_mod.Value{ .string = str };
         }
