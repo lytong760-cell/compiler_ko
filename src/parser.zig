@@ -253,7 +253,7 @@ pub const Parser = struct {
         return ast.Statement{ .control_flow = cf.* };
     }
 
-    fn parseElifStmt(self: *Parser) !ast.Statement {
+    fn parseElifStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLT();
         _ = self.advance();
@@ -281,7 +281,7 @@ pub const Parser = struct {
         return ast.Statement{ .control_flow = cf.* };
     }
 
-    fn parseElseStmt(self: *Parser) !ast.Statement {
+    fn parseElseStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
@@ -303,7 +303,7 @@ pub const Parser = struct {
         return ast.Statement{ .control_flow = cf.* };
     }
 
-    fn parseReturnStmt(self: *Parser) !ast.Statement {
+    fn parseReturnStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
         const expr = try self.parseExpression();
@@ -314,7 +314,7 @@ pub const Parser = struct {
         return ast.Statement{ .return_stmt = rs.* };
     }
 
-    fn parseCatchStmt(self: *Parser) !ast.Statement {
+    fn parseCatchStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
         const err_type = try self.parseErrorType();
@@ -346,7 +346,7 @@ pub const Parser = struct {
         return error.ExpectedIdentifier;
     }
 
-    fn parseClassDecl(self: *Parser) !ast.Statement {
+    fn parseClassDecl(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         const name_tok = self.current();
         if (name_tok != .identifier) return error.ExpectedIdentifier;
@@ -386,7 +386,7 @@ pub const Parser = struct {
         return ast.Statement{ .class_decl = cd.* };
     }
 
-    fn parseNowStmt(self: *Parser) !ast.Statement {
+    fn parseNowStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
         _ = try self.parseExpression();
@@ -401,7 +401,7 @@ pub const Parser = struct {
         return ast.Statement{ .expr = e };
     }
 
-    fn parseMemoryOpStmt(self: *Parser) !ast.Statement {
+    fn parseMemoryOpStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         if (self.current() == .identifier and std.mem.eql(u8, self.current().identifier, "dete")) {
             _ = self.advance();
@@ -432,7 +432,7 @@ pub const Parser = struct {
         return error.UnexpectedToken;
     }
 
-    fn parseEncodingOpStmt(self: *Parser) !ast.Statement {
+    fn parseEncodingOpStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLT();
         const tag = try self.parseSystemTagName();
@@ -450,7 +450,7 @@ pub const Parser = struct {
         return ast.Statement{ .encoding_op = eo.* };
     }
 
-    fn parseLenOpStmt(self: *Parser) !ast.Statement {
+    fn parseLenOpStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLT();
         _ = self.advance();
@@ -465,7 +465,7 @@ pub const Parser = struct {
         return ast.Statement{ .len_op = lo.* };
     }
 
-    fn parseInputStmt(self: *Parser) !ast.Statement {
+    fn parseInputStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
         _ = try self.parseExpression();
@@ -488,7 +488,7 @@ pub const Parser = struct {
         return ast.Statement{ .expr = e };
     }
 
-    fn parsePrintfStmt(self: *Parser) !ast.Statement {
+    fn parsePrintfStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectCaret();
         try self.expectLParen();
@@ -505,7 +505,7 @@ pub const Parser = struct {
         return ast.Statement{ .expr = e };
     }
 
-    fn parseSystemTagStmt(self: *Parser) !ast.Statement {
+    fn parseSystemTagStmt(self: *Parser) anyerror!ast.Statement {
         try self.expectLT();
         const tag = try self.parseSystemTagName();
         try self.expectGT();
@@ -559,7 +559,7 @@ pub const Parser = struct {
         return error.UnexpectedToken;
     }
 
-    fn parseExprStatement(self: *Parser) !ast.Statement {
+    fn parseExprStatement(self: *Parser) anyerror!ast.Statement {
         const expr = try self.parseExpression();
         return ast.Statement{ .expr = expr };
     }
