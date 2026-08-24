@@ -128,10 +128,12 @@ pub const Parser = struct {
             try body.append(stmt);
         }
         try self.expectRBracket();
-        _ = body.toOwnedSlice() catch unreachable;
-        const e = try self.allocator.create(ast.Expr);
-        e.* = .{ .literal = ast.Literal{ .kind = .int, .raw = "" } };
-        return ast.Statement{ .expr = e };
+        const block = try self.allocator.create(ast.BlockStmt);
+        block.* = ast.BlockStmt{
+            .body = body.toOwnedSlice(),
+            .allocator = self.allocator,
+        };
+        return ast.Statement{ .block = block.* };
     }
 
 
