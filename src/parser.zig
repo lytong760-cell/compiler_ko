@@ -175,13 +175,36 @@ pub const Parser = struct {
     fn parseImportStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
-        const expr = try self.parseExpression();
+        const module_expr = try self.parseExpression();
         try self.expectRParen();
+
+        if (self.current() == .at) {
+            _ = self.advance();
+            if (self.current() == .identifier) {
+                _ = self.advance();
+            }
+            try self.expectSigil();
+            if (self.current() == .identifier) {
+                _ = self.advance();
+            }
+            if (self.current() == .bang) {
+                _ = self.advance();
+                if (self.current() == .identifier) {
+                    _ = self.advance();
+                }
+            }
+            if (self.current() == .colon) {
+                _ = self.advance();
+                if (self.current() == .identifier) {
+                    _ = self.advance();
+                }
+            }
+        }
 
         const call = try self.allocator.create(ast.CallExpr);
         call.* = ast.CallExpr{
             .callee = "Import",
-            .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
+            .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{module_expr.*}),
         };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .call = call };
