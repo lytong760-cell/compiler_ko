@@ -240,7 +240,7 @@ pub const Parser = struct {
             if (self.current() == .keyword and self.current().keyword == .catch_kw) {
                 const cs_stmt = try self.parseCatchStmt();
                 switch (cs_stmt) {
-                    .catch_stmt => |cs| try catch_stmts.append(cs),
+                    .catch_stmt => |cs| try catch_stmts.append(cs.*),
                     else => unreachable,
                 }
             } else {
