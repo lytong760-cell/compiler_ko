@@ -462,7 +462,12 @@ pub const Parser = struct {
         const name = name_tok.identifier;
         _ = self.advance();
 
-        if (self.current() == .at) {
+        if (self.current() == .bang) {
+            _ = self.advance();
+            if (self.current() == .keyword and self.current().keyword == .class_kw) {
+                _ = self.advance();
+            }
+        } else if (self.current() == .at) {
             _ = self.advance();
             if (self.current() == .keyword and self.current().keyword == .class_kw) {
                 _ = self.advance();
