@@ -47,8 +47,8 @@ test "test_3600_iterations" {
         defer arena.deinit();
         
         var pr = parser.Parser.init(gpa, &arena, tokens);
-        const program = pr.parse() catch {
-            if (i == 0) std.debug.print("Iteration {}: parse failed\n", .{i});
+        const program = pr.parse() catch |err| {
+            if (i == 0) std.debug.print("Iteration {}: parse failed: {any} at pos {}\n", .{i, err, pr.pos});
             continue;
         };
         defer {
