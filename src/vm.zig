@@ -169,7 +169,7 @@ pub const VM = struct {
         const right = try self.evaluateExpression(bin.right);
 
         return switch (bin.op) {
-            .add => try left.add(right),
+            .add => try left.add(right, self.allocator),
             .sub => try left.sub(right),
             .mul => try left.mul(right),
             .div => try left.div(right),
