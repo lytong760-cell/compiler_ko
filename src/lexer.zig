@@ -264,12 +264,13 @@ pub const Lexer = struct {
             }
 
             if (c == '\\') {
-                if (self.pos < self.source.len and self.source[self.pos] == 'T') {
-                    self.pos += 1;
+                const start = self.pos - 1;
+                if (std.mem.startsWith(u8, self.source[start..], "\\True\\")) {
+                    self.pos = start + 6;
                     return Token.bool_true;
                 }
-                if (self.pos < self.source.len and self.source[self.pos] == 'F') {
-                    self.pos += 1;
+                if (std.mem.startsWith(u8, self.source[start..], "\\False\\")) {
+                    self.pos = start + 7;
                     return Token.bool_false;
                 }
             }
