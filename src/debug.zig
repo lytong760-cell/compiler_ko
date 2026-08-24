@@ -1,10 +1,9 @@
 const std = @import("std");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
-const ast = @import("ast.zig");
 
-test "debug" {
-    const source = "[ <catch>(`TestError`) [ <printf>^(\"caught\") ] ]";
+test "debug_encode" {
+    const source = "[ <encode(`UTF-8`)>^(\"hello\") ]";
     var lx = lexer.Lexer.init(source);
     const tokens = lx.tokenize(std.testing.allocator) catch |err| {
         std.debug.print("Lexer error: {any}\n", .{err});
@@ -12,10 +11,14 @@ test "debug" {
     };
     defer std.testing.allocator.free(tokens);
     
+    std.debug.print("Tokens:\n", .{});
+    for (tokens, 0..) |tok, i| {
+        std.debug.print("  {}: {any}\n", .{i, tok});
+    }
+    
     var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
     defer arena.deinit();
     var pr = parser.Parser.init(std.testing.allocator, &arena, tokens);
-    
     const result = pr.parse() catch |err| {
         std.debug.print("Parse error at pos {}: {any}\n", .{pr.pos, err});
         const tok = pr.current();
