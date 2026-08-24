@@ -368,6 +368,5 @@ pub const ClassDef = struct {
             entry.value_ptr.*.deinit();
         }
         self.public_methods.deinit();
-        self.allocator.free(self.name);
     }
 };
