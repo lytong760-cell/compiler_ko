@@ -55,7 +55,6 @@ test "test_3600_iterations" {
         const start = std.time.nanoTimestamp();
         
         runSource(gpa, source) catch {
-            if (i == 0) std.debug.print("Iteration {}: runSource failed\n", .{i});
             continue;
         };
         
@@ -66,8 +65,6 @@ test "test_3600_iterations" {
         if (elapsed > max_time) max_time = elapsed;
         if (elapsed < min_time) min_time = elapsed;
         success_count += 1;
-        
-        if (i < 3) std.debug.print("Iteration {}: elapsed={}ns\n", .{i, elapsed});
     }
     
     const avg_time = if (success_count > 0) total_time / success_count else 0;
