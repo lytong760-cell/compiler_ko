@@ -44,7 +44,8 @@ pub const VM = struct {
                 func.* = value_mod.Function{
                     .name = f.name,
                     .params = try self.allocator.dupe(value_mod.Param, f.params),
-                    .body = f.body,
+                    .body_ptr = @ptrCast(f.body.ptr),
+                    .body_len = f.body.len,
                     .closure_scope = self.current_scope,
                     .allocator = self.allocator,
                 };
