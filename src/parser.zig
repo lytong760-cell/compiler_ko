@@ -608,14 +608,175 @@ pub const Parser = struct {
     fn parseSystemTagStmt(self: *Parser) anyerror!ast.Statement {
         try self.expectLT();
         const tag = try self.parseSystemTagName();
-        try self.expectGT();
-
-        if (self.current() == .caret) {
-            _ = self.advance();
+        
+        if (std.mem.eql(u8, tag, "if")) {
+            try self.expectGT();
+            try self.expectLParen();
+            const cond = try self.parseExpression();
+            try self.expectRParen();
+            try self.expectLBracket();
+            var body = std.ArrayList(ast.Statement).init(self.allocator);
+            while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
+                const stmt = try self.parseStatement();
+                try body.append(stmt);
+            }
+            try self.expectRBracket();
+            const cf = try self.allocator.create(ast.ControlFlow);
+            cf.* = ast.ControlFlow{
+                .kind = .if_stmt,
+                .condition = cond,
+                .body = try body.toOwnedSlice(),
+                .elifs = &[_]ast.Elif{},
+                .else_body = &[_]ast.Statement{},
+                .allocator = self.allocator,
+            };
+            return ast.Statement{ .control_flow = cf };
+        }
+        
+        if (std.mem.eql(u8, tag, "elif")) {
+            try self.expectGT();
+            try self.expectLParen();
+            const cond = try self.parseExpression();
+            try self.expectRParen();
+            try self.expectLBracket();
+            var body = std.ArrayList(ast.Statement).init(self.allocator);
+            while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
+                const stmt = try self.parseStatement();
+                try body.append(stmt);
+            }
+            try self.expectRBracket();
+            const cf = try self.allocator.create(ast.ControlFlow);
+            cf.* = ast.ControlFlow{
+                .kind = .elif_stmt,
+                .condition = cond,
+                .body = try body.toOwnedSlice(),
+                .elifs = &[_]ast.Elif{},
+                .else_body = &[_]ast.Statement{},
+                .allocator = self.allocator,
+            };
+            return ast.Statement{ .control_flow = cf };
+        }
+        
+        if (std.mem.eql(u8, tag, "else")) {
+            try self.expectGT();
+            try self.expectLBracket();
+            var body = std.ArrayList(ast.Statement).init(self.allocator);
+            while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
+                const stmt = try self.parseStatement();
+                try body.append(stmt);
+            }
+            try self.expectRBracket();
+            const cf = try self.allocator.create(ast.ControlFlow);
+            cf.* = ast.ControlFlow{
+                .kind = .else_stmt,
+                .condition = try self.allocator.create(ast.Expr),
+                .body = try body.toOwnedSlice(),
+                .elifs = &[_]ast.Elif{},
+                .else_body = &[_]ast.Statement{},
+                .allocator = self.allocator,
+            };
+            return ast.Statement{ .control_flow = cf };
+        }
+        
+        if (std.mem.eql(u8, tag, "catch")) {
+            try self.expectGT();
+            try self.expectLParen();
+            const err_type = try self.parseErrorType();
+            try self.expectRParen();
+            try self.expectLBracket();
+            var body = std.ArrayList(ast.Statement).init(self.allocator);
+            while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
+                const stmt = try self.parseStatement();
+                try body.append(stmt);
+            }
+            try self.expectRBracket();
+            const cs = try self.allocator.create(ast.CatchStmt);
+            cs.* = ast.CatchStmt{
+                .error_type = err_type,
+                .body = try body.toOwnedSlice(),
+                .allocator = self.allocator,
+            };
+            return ast.Statement{ .catch_stmt = cs };
+        }
+        
+        if (std.mem.eql(u8, tag, "now")) {
             try self.expectLParen();
             const expr = try self.parseExpression();
             try self.expectRParen();
+            try self.expectGT();
+            const target = try self.parseExpression();
+            const ne = try self.allocator.create(ast.NowExpr);
+            ne.* = ast.NowExpr{ .expr = target };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .now_expr = ne };
+            return ast.Statement{ .expr = e };
+        }
+        
+        if (std.mem.eql(u8, tag, "memory")) {
+            if (self.current() == .caret) {
+                _ = self.advance();
+                const expr = try self.parseExpression();
+                const mo = try self.allocator.create(ast.MemoryOp);
+                mo.* = ast.MemoryOp{
+                    .kind = .address,
+                    .expr = expr,
+                };
+                return ast.Statement{ .memory_op = mo };
+            }
+            if (self.current() == .identifier and std.mem.eql(u8, self.current().identifier, "dete")) {
+                _ = self.advance();
+                try self.expectLParen();
+                const expr = try self.parseExpression();
+                try self.expectRParen();
+                const mo = try self.allocator.create(ast.MemoryOp);
+                mo.* = ast.MemoryOp{
+                    .kind = .dete,
+                    .expr = expr,
+                };
+                return ast.Statement{ .memory_op = mo };
+            }
+            return error.UnexpectedToken;
+        }
+        
+        if (std.mem.eql(u8, tag, "encode")) {
+            var encoding_type = "";
+            if (self.current() == .l_paren) {
+                _ = self.advance();
+                const enc_expr = try self.parseExpression();
+                if (enc_expr.* == .literal and enc_expr.literal.kind == .string) {
+                    encoding_type = enc_expr.literal.raw;
+                }
+                try self.expectRParen();
+            }
+            try self.expectGT();
+            try self.expectCaret();
+            try self.expectLParen();
+            const expr = try self.parseExpression();
+            try self.expectRParen();
+            const eo = try self.allocator.create(ast.EncodingOp);
+            eo.* = ast.EncodingOp{
+                .encoding_type = encoding_type,
+                .expr = expr,
+            };
+            return ast.Statement{ .encoding_op = eo };
+        }
 
+        if (self.current() == .caret) {
+            _ = self.advance();
+            if (self.current() == .l_paren) {
+                _ = self.advance();
+                const expr = try self.parseExpression();
+                try self.expectRParen();
+                const ste = try self.allocator.create(ast.SystemTagExpr);
+                ste.* = ast.SystemTagExpr{
+                    .tag = tag,
+                    .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
+                };
+                const e = try self.allocator.create(ast.Expr);
+                e.* = .{ .system_tag = ste };
+                return ast.Statement{ .expr = e };
+            }
+            const expr = try self.parseExpression();
             const ste = try self.allocator.create(ast.SystemTagExpr);
             ste.* = ast.SystemTagExpr{
                 .tag = tag,
@@ -630,7 +791,6 @@ pub const Parser = struct {
             _ = self.advance();
             const expr = try self.parseExpression();
             try self.expectRParen();
-
             const call = try self.allocator.create(ast.CallExpr);
             call.* = ast.CallExpr{
                 .callee = tag,
