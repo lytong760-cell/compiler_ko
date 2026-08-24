@@ -944,8 +944,7 @@ pub const Parser = struct {
         _ = self.advance();
     }
 
-    fn expectCaret(self: *Parser) !void {
-        if (self.current() != .caret) return error.UnexpectedToken;
+    fn expectRBBrace(self: *Parser) !void {
+        if (self.current() != .r_brace) return error.UnexpectedToken;
         _ = self.advance();
     }
-};
