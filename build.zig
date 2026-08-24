@@ -6,13 +6,13 @@ pub fn build(b: *std.Build) !void {
 
     const exe = b.addExecutable(.{
         .name = "ko",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = .{ .src_path = .{ .path = "src/main.zig" } },
         .target = target,
         .optimize = optimize,
     });
 
     exe.addModule("ko", b.createModule(.{
-        .source_file = .{ .path = "src/ko.zig" },
+        .source_file = .{ .src_path = .{ .path = "src/ko.zig" } },
     }));
 
     b.installArtifact(exe);
