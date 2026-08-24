@@ -4,14 +4,11 @@
     int(20)~y
     int(x + y)~sum
 
-    <printf>^("Sum: {sum}\n")
+    <printf>^("Sum: ")
+    <printf>^(sum)
 
     <if>(sum > 25) [
         <printf>^("Sum is greater than 25\n")
-    ]
-
-    <catch>(`TestError`) [
-        <printf>^("Caught error\n")
     ]
 
 ]
