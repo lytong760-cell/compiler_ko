@@ -288,29 +288,3 @@ pub const Lexer = struct {
         return tokens.toOwnedSlice();
     }
 };
-
-fn processEscapes(allocator: std.mem.Allocator, raw: []const u8) ![]u8 {
-    var result = std.ArrayList(u8).init(allocator);
-    var i: usize = 0;
-    while (i < raw.len) {
-        if (raw[i] == '\\' and i + 1 < raw.len) {
-            const next = raw[i + 1];
-            switch (next) {
-                'n' => try result.append('\n'),
-                't' => try result.append('\t'),
-                '\\' => try result.append('\\'),
-                '"' => try result.append('"'),
-                '\'' => try result.append('\''),
-                else => {
-                    try result.append('\\');
-                    try result.append(next);
-                },
-            }
-            i += 2;
-        } else {
-            try result.append(raw[i]);
-            i += 1;
-        }
-    }
-    return result.toOwnedSlice();
-}
