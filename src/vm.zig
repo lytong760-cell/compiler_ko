@@ -41,15 +41,15 @@ pub const VM = struct {
             },
             .func_decl => |f| {
                 const func = try self.allocator.create(value_mod.Function);
+                const name_copy = try self.allocator.dupe(u8, f.name);
                 func.* = value_mod.Function{
-                    .name = f.name,
+                    .name = name_copy,
                     .params = try self.allocator.dupe(value_mod.Param, f.params),
                     .body_ptr = @ptrCast(f.body.ptr),
                     .body_len = f.body.len,
                     .closure_scope = self.current_scope,
                     .allocator = self.allocator,
                 };
-                const name_copy = self.allocator.dupe(u8, f.name) catch unreachable;
                 try self.current_scope.functions.put(name_copy, func);
             },
             .class_decl => |c| {
