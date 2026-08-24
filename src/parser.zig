@@ -609,14 +609,37 @@ pub const Parser = struct {
             _ = self.advance();
             const target = try self.parseExpression();
             const ie = try self.allocator.create(ast.InputExpr);
-            ie.* = ast.InputExpr{ .target = target };
+            ie.* = ast.InputExpr{ .target = target, .target_name = "" };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .input_expr = ie };
+            return ast.Statement{ .expr = e };
+        }
+        if (self.current() == .amp_equals) {
+            _ = self.advance();
+            var target_name: []const u8 = "";
+            if (self.current() == .identifier) {
+                target_name = self.current().identifier;
+                _ = self.advance();
+            } else if (self.current() == .keyword) {
+                _ = self.advance();
+                try self.expectLParen();
+                _ = try self.parseExpression();
+                try self.expectRParen();
+                try self.expectSigil();
+                if (self.current() == .identifier) {
+                    target_name = self.current().identifier;
+                    _ = self.advance();
+                }
+            }
+            const ie = try self.allocator.create(ast.InputExpr);
+            ie.* = ast.InputExpr{ .target = null, .target_name = target_name };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .input_expr = ie };
             return ast.Statement{ .expr = e };
         }
 
         const ie = try self.allocator.create(ast.InputExpr);
-        ie.* = ast.InputExpr{ .target = null };
+        ie.* = ast.InputExpr{ .target = null, .target_name = "" };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .input_expr = ie };
         return ast.Statement{ .expr = e };
