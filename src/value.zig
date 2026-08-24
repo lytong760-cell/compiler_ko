@@ -36,7 +36,6 @@ pub const Value = union(enum) {
             },
             .error_obj => {
                 allocator.free(self.error_obj.code);
-                allocator.free(self.error_obj);
             },
             else => {},
         }
