@@ -1,59 +1,91 @@
 const std = @import("std");
 const ast = @import("ast.zig");
+const lexer = @import("lexer.zig");
+
+pub const ParseError = error{
+    UnexpectedToken,
+    ExpectedIdentifier,
+    ExpectedLParen,
+    ExpectedRParen,
+    ExpectedLBracket,
+    ExpectedRBracket,
+    ExpectedEquals,
+    ExpectedSigil,
+    ExpectedCaret,
+    ExpectedColon,
+    ExpectedComma,
+    ExpectedAt,
+    ExpectedBang,
+    ExpectedClass,
+    ExpectedPrivate,
+    ExpectedKeyword,
+    InvalidType,
+    InvalidOperator,
+    EmptyProgram,
+} || anyerror;
 
 pub const Parser = struct {
-    tokens: []Token,
+    tokens: []lexer.Token,
     pos: usize,
+    arena: *std.heap.ArenaAllocator,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, tokens: []Token) Parser {
+    pub fn init(allocator: std.mem.Allocator, arena: *std.heap.ArenaAllocator, tokens: []lexer.Token) Parser {
         return .{
             .tokens = tokens,
             .pos = 0,
-            .allocator = allocator,
+            .arena = arena,
+            .allocator = arena.allocator(),
         };
     }
 
-    pub fn current(self: *Parser) Token {
+    pub fn current(self: *Parser) lexer.Token {
         if (self.pos < self.tokens.len) return self.tokens[self.pos];
-        return Token.eof;
+        return lexer.Token.eof;
     }
 
-    pub fn advance(self: *Parser) Token {
+    pub fn advance(self: *Parser) lexer.Token {
         const tok = self.current();
         self.pos += 1;
         return tok;
     }
 
-    pub fn expect(self: *Parser, expected: Token) !void {
-        const tok = self.current();
-        if (!tokensEqual(tok, expected)) {
-            return error.UnexpectedToken;
-        }
-        self.pos += 1;
+    pub fn peek(self: *Parser, offset: usize) lexer.Token {
+        const idx = self.pos + offset;
+        if (idx < self.tokens.len) return self.tokens[idx];
+        return lexer.Token.eof;
     }
 
-    pub fn match(self: *Parser, comptime expected: Token) bool {
-        const tok = self.current();
-        return tokensEqual(tok, expected);
+    pub fn expect(self: *Parser, expected: []const u8) !void {
+        _ = expected;
+        // Simplified: just advance
+        _ = self.advance();
     }
 
-    pub fn parse(self: *Parser) ![]ast.Statement {
+    pub fn match(self: *Parser, comptime T: type, expected: T) bool {
+        const tok = self.current();
+        _ = T;
+        _ = expected;
+        _ = tok;
+        return false;
+    }
+
+    pub fn parse(self: *Parser) !*ast.Program {
+        const program = try self.allocator.create(ast.Program);
+        program.* = ast.Program.init(self.allocator);
         var stmts = std.ArrayList(ast.Statement).init(self.allocator);
-        defer stmts.deinit();
 
-        while (!self.match(Token.eof)) {
+        while (!self.isAtEnd()) {
             const stmt = try self.parseStatement();
             try stmts.append(stmt);
         }
 
-        return stmts.toOwnedSlice();
+        program.stmts = try self.allocator.dupe(ast.Statement, stmts.items);
+        return program;
     }
 
-    fn tokensEqual(a: Token, b: Token) bool {
-        _ = a;
-        _ = b;
-        return false;
+    fn isAtEnd(self: *Parser) bool {
+        return self.current() == lexer.Token.eof;
     }
 
     fn parseStatement(self: *Parser) !ast.Statement {
@@ -65,47 +97,46 @@ pub const Parser = struct {
                     return try self.parseVarDecl();
                 },
                 .import_kw => {
-                    _ = self.advance();
-                    return try self.parseImport();
+                    return try self.parseImportStmt();
                 },
                 .loop_kw => {
-                    return try self.parseLoop();
+                    return try self.parseLoopStmt();
                 },
                 .if_kw => {
-                    return try self.parseIf();
+                    return try self.parseIfStmt();
                 },
                 .elif_kw => {
-                    return try self.parseElif();
+                    return try self.parseElifStmt();
                 },
                 .else_kw => {
-                    return try self.parseElse();
+                    return try self.parseElseStmt();
                 },
                 .return_kw => {
-                    return try self.parseReturn();
+                    return try self.parseReturnStmt();
                 },
                 .catch_kw => {
-                    return try self.parseCatch();
+                    return try self.parseCatchStmt();
                 },
                 .class_kw => {
                     return try self.parseClassDecl();
                 },
                 .now_kw => {
-                    return try self.parseNow();
+                    return try self.parseNowStmt();
                 },
                 .memory_kw => {
-                    return try self.parseMemoryOp();
+                    return try self.parseMemoryOpStmt();
                 },
                 .encode_kw => {
-                    return try self.parseEncodingOp();
+                    return try self.parseEncodingOpStmt();
                 },
                 .len_kw => {
-                    return try self.parseLenOp();
+                    return try self.parseLenOpStmt();
                 },
                 .input_kw => {
-                    return try self.parseInput();
+                    return try self.parseInputStmt();
                 },
                 .printf_kw => {
-                    return try self.parsePrintf();
+                    return try self.parsePrintfStmt();
                 },
                 else => {},
             }
@@ -115,390 +146,429 @@ pub const Parser = struct {
             return try self.parseSystemTagStmt();
         }
 
-        if (tok == .at) {
-            return try self.parseAtStatement();
-        }
-
-        if (tok == .identifier or tok == .sigil or tok == .dollar) {
+        if (tok == .identifier or tok == .sigil or tok == .dollar or tok == .l_bracket) {
             return try self.parseExprStatement();
         }
 
-        if (tok == .l_bracket) {
-            return try self.parseBlockStatement();
-        }
-
-        return error.UnexpectedToken;
+        return ParseError.UnexpectedToken;
     }
 
     fn parseVarDecl(self: *Parser) !ast.Statement {
         const type_tok = self.advance();
-        const type_name = switch (type_tok.keyword) {
-            .int_kw => "int",
-            .freal_kw => "freal",
-            .string_kw => "string",
-            .booling_kw => "booling",
-            .byte_kw => "byte",
-            .bytes_kw => "bytes",
-            else => unreachable,
-        };
+        const type_name = type_tok.keywordText();
 
-        try self.expect(Token.l_paren);
+        try self.expectLParen();
         const value_expr = try self.parseExpression();
-        try self.expect(Token.r_paren);
+        try self.expectRParen();
 
-        const sigil_tok = self.current();
-        if (sigil_tok != .sigil) return error.ExpectedSigil;
+        if (self.current() != .sigil) return ParseError.ExpectedSigil;
         _ = self.advance();
 
         const name_tok = self.current();
-        if (name_tok != .identifier) return error.ExpectedIdentifier;
+        if (name_tok != .identifier) return ParseError.ExpectedIdentifier;
         const name = name_tok.identifier;
         _ = self.advance();
 
-        return ast.Statement{ .var_decl = ast.VarDecl{
-            .type_name = name,
+        const vd = try self.allocator.create(ast.VarDecl);
+        vd.* = ast.VarDecl{
+            .type_name = type_name,
             .value_expr = value_expr,
-            .sigil = true,
             .name = name,
-        } };
+        };
+        return ast.Statement{ .var_decl = vd.* };
     }
 
-    fn parseImport(self: *Parser) !ast.Statement {
+    fn parseImportStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        try self.expect(Token.l_paren);
+        try self.expectLParen();
         const expr = try self.parseExpression();
-        try self.expect(Token.r_paren);
-        return ast.Statement{ .expr = ast.Expr{ .call = ast.CallExpr{
+        try self.expectRParen();
+
+        const call = try self.allocator.create(ast.CallExpr);
+        call.* = ast.CallExpr{
             .callee = "Import",
             .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
-        } } };
+        };
+        const e = try self.allocator.create(ast.Expr);
+        e.* = .{ .call = call.* };
+        return ast.Statement{ .expr = e };
     }
 
-    fn parseLoop(self: *Parser) !ast.Statement {
+    fn parseLoopStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
 
-        if (self.match(Token.lt)) {
+        if (self.current() == .lt) {
             _ = self.advance();
-            const tag = try self.parseSystemTag();
-            try self.expect(Token.gt);
+            const tag = try self.parseSystemTagName();
+            try self.expectGT();
 
-            if (self.match(Token.caret)) {
+            if (self.current() == .caret) {
                 _ = self.advance();
-                try self.expect(Token.l_paren);
+                try self.expectLParen();
                 const expr = try self.parseExpression();
-                try self.expect(Token.r_paren);
-                return ast.Statement{ .expr = ast.Expr{ .system_tag = ast.SystemTagExpr{
+                try self.expectRParen();
+
+                const ste = try self.allocator.create(ast.SystemTagExpr);
+                ste.* = ast.SystemTagExpr{
                     .tag = tag,
                     .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
-                } } };
+                };
+                const e = try self.allocator.create(ast.Expr);
+                e.* = .{ .system_tag = ste.* };
+                return ast.Statement{ .expr = e };
             }
 
-            try self.expect(Token.l_bracket);
+            try self.expectLBracket();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
-            while (!self.match(Token.r_bracket) and !self.match(Token.eof)) {
+            while (!self.current().isRBracket() and !self.isAtEnd()) {
                 try body.append(try self.parseStatement());
             }
-            try self.expect(Token.r_bracket);
+            try self.expectRBracket();
 
-            return ast.Statement{ .control_flow = ast.ControlFlow{
-                .kind = .loop_for,
+            const cf = try self.allocator.create(ast.ControlFlow);
+            cf.* = ast.ControlFlow{
+                .kind = .for_loop,
                 .condition = try self.allocator.create(ast.Expr),
                 .body = body.toOwnedSlice(),
                 .elifs = &[_]ast.Elif{},
                 .else_body = &[_]ast.Statement{},
-            } };
+            };
+            return ast.Statement{ .control_flow = cf.* };
         }
 
-        if (self.match(Token.l_bracket)) {
+        if (self.current() == .l_bracket) {
             _ = self.advance();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
-            while (!self.match(Token.r_bracket) and !self.match(Token.eof)) {
+            while (!self.current().isRBracket() and !self.isAtEnd()) {
                 try body.append(try self.parseStatement());
             }
-            try self.expect(Token.r_bracket);
-            return ast.Statement{ .control_flow = ast.ControlFlow{
+            try self.expectRBracket();
+
+            const cf = try self.allocator.create(ast.ControlFlow);
+            cf.* = ast.ControlFlow{
                 .kind = .while_loop,
                 .condition = try self.allocator.create(ast.Expr),
                 .body = body.toOwnedSlice(),
                 .elifs = &[_]ast.Elif{},
                 .else_body = &[_]ast.Statement{},
-            } };
+            };
+            return ast.Statement{ .control_flow = cf.* };
         }
 
-        return error.UnexpectedToken;
+        return ParseError.UnexpectedToken;
     }
 
-    fn parseIf(self: *Parser) !ast.Statement {
+    fn parseIfStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        try self.expect(Token.lt);
+        try self.expectLT();
         _ = self.advance();
-        try self.expect(Token.gt);
-        try self.expect(Token.l_paren);
+        try self.expectGT();
+        try self.expectLParen();
         const cond = try self.parseExpression();
-        try self.expect(Token.r_paren);
-        try self.expect(Token.l_bracket);
+        try self.expectRParen();
+        try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!self.match(Token.r_bracket) and !self.match(Token.eof)) {
+        while (!self.current().isRBracket() and !self.isAtEnd()) {
             try body.append(try self.parseStatement());
         }
-        try self.expect(Token.r_bracket);
+        try self.expectRBracket();
 
-        return ast.Statement{ .control_flow = ast.ControlFlow{
+        const cf = try self.allocator.create(ast.ControlFlow);
+        cf.* = ast.ControlFlow{
             .kind = .if_stmt,
             .condition = cond,
             .body = body.toOwnedSlice(),
             .elifs = &[_]ast.Elif{},
             .else_body = &[_]ast.Statement{},
-        } };
+        };
+        return ast.Statement{ .control_flow = cf.* };
     }
 
-    fn parseElif(self: *Parser) !ast.Statement {
+    fn parseElifStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        try self.expect(Token.lt);
+        try self.expectLT();
         _ = self.advance();
-        try self.expect(Token.gt);
-        try self.expect(Token.l_paren);
+        try self.expectGT();
+        try self.expectLParen();
         const cond = try self.parseExpression();
-        try self.expect(Token.r_paren);
-        try self.expect(Token.l_bracket);
+        try self.expectRParen();
+        try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!self.match(Token.r_bracket) and !self.match(Token.eof)) {
+        while (!self.current().isRBracket() and !self.isAtEnd()) {
             try body.append(try self.parseStatement());
         }
-        try self.expect(Token.r_bracket);
+        try self.expectRBracket();
 
-        return ast.Statement{ .control_flow = ast.ControlFlow{
+        const cf = try self.allocator.create(ast.ControlFlow);
+        cf.* = ast.ControlFlow{
             .kind = .elif_stmt,
             .condition = cond,
             .body = body.toOwnedSlice(),
             .elifs = &[_]ast.Elif{},
             .else_body = &[_]ast.Statement{},
-        } };
+        };
+        return ast.Statement{ .control_flow = cf.* };
     }
 
-    fn parseElse(self: *Parser) !ast.Statement {
+    fn parseElseStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        try self.expect(Token.l_bracket);
+        try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!self.match(Token.r_bracket) and !self.match(Token.eof)) {
+        while (!self.current().isRBracket() and !self.isAtEnd()) {
             try body.append(try self.parseStatement());
         }
-        try self.expect(Token.r_bracket);
+        try self.expectRBracket();
 
-        return ast.Statement{ .control_flow = ast.ControlFlow{
+        const cf = try self.allocator.create(ast.ControlFlow);
+        cf.* = ast.ControlFlow{
             .kind = .else_stmt,
             .condition = try self.allocator.create(ast.Expr),
             .body = body.toOwnedSlice(),
             .elifs = &[_]ast.Elif{},
             .else_body = &[_]ast.Statement{},
-        } };
+        };
+        return ast.Statement{ .control_flow = cf.* };
     }
 
-    fn parseReturn(self: *Parser) !ast.Statement {
+    fn parseReturnStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        try self.expect(Token.l_paren);
+        try self.expectLParen();
         const expr = try self.parseExpression();
-        try self.expect(Token.r_paren);
-        return ast.Statement{ .return_stmt = ast.ReturnStmt{ .expr = expr } };
+        try self.expectRParen();
+
+        const rs = try self.allocator.create(ast.ReturnStmt);
+        rs.* = ast.ReturnStmt{ .expr = expr };
+        return ast.Statement{ .return_stmt = rs.* };
     }
 
-    fn parseCatch(self: *Parser) !ast.Statement {
+    fn parseCatchStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        try self.expect(Token.l_paren);
+        try self.expectLParen();
         const err_type = try self.parseErrorType();
-        try self.expect(Token.r_paren);
-        try self.expect(Token.l_bracket);
+        try self.expectRParen();
+        try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!self.match(Token.r_bracket) and !self.match(Token.eof)) {
+        while (!self.current().isRBracket() and !self.isAtEnd()) {
             try body.append(try self.parseStatement());
         }
-        try self.expect(Token.r_bracket);
+        try self.expectRBracket();
 
-        return ast.Statement{ .catch_stmt = ast.CatchStmt{
+        const cs = try self.allocator.create(ast.CatchStmt);
+        cs.* = ast.CatchStmt{
             .error_type = err_type,
             .body = body.toOwnedSlice(),
-        } };
+        };
+        return ast.Statement{ .catch_stmt = cs.* };
     }
 
     fn parseErrorType(self: *Parser) ![]const u8 {
         const tok = self.current();
-        if (tok == .backtick or tok == .identifier) {
+        if (tok == .identifier) {
             const name = tok.identifier;
             _ = self.advance();
             return name;
         }
-        return error.UnexpectedToken;
+        return ParseError.ExpectedIdentifier;
     }
 
     fn parseClassDecl(self: *Parser) !ast.Statement {
         _ = self.advance();
         const name_tok = self.current();
-        if (name_tok != .identifier) return error.ExpectedIdentifier;
+        if (name_tok != .identifier) return ParseError.ExpectedIdentifier;
         const name = name_tok.identifier;
         _ = self.advance();
 
-        try self.expect(Token.l_bracket);
+        try self.expectLBracket();
         var private_body = std.ArrayList(ast.Statement).init(self.allocator);
         var public_body = std.ArrayList(ast.Statement).init(self.allocator);
-        var current_private = true;
+        var in_private = false;
 
-        while (!self.match(Token.r_bracket) and !self.match(Token.eof)) {
-            if (self.match(Token.at) and self.peekKeyword(.private_kw)) {
+        while (!self.current().isRBracket() and !self.isAtEnd()) {
+            if (self.current() == .at and self.peek(1) == .keyword and self.peek(1).keyword == .private_kw) {
                 _ = self.advance();
                 _ = self.advance();
-                try self.expect(Token.l_bracket);
-                current_private = true;
+                try self.expectLBracket();
+                in_private = true;
                 continue;
             }
-            if (self.match(Token.r_bracket)) break;
+            if (self.current().isRBracket()) break;
             const stmt = try self.parseStatement();
-            if (current_private) {
+            if (in_private) {
                 try private_body.append(stmt);
             } else {
                 try public_body.append(stmt);
             }
         }
-        try self.expect(Token.r_bracket);
+        try self.expectRBracket();
 
-        return ast.Statement{ .class_decl = ast.ClassDecl{
+        const cd = try self.allocator.create(ast.ClassDecl);
+        cd.* = ast.ClassDecl{
             .name = name,
             .private_body = private_body.toOwnedSlice(),
             .public_body = public_body.toOwnedSlice(),
-        } };
+        };
+        return ast.Statement{ .class_decl = cd.* };
     }
 
-    fn peekKeyword(self: *Parser, kw: Token.Keyword) bool {
-        if (self.pos + 1 >= self.tokens.len) return false;
-        const next = self.tokens[self.pos + 1];
-        return next == .keyword and next.keyword == kw;
-    }
-
-    fn parseNow(self: *Parser) !ast.Statement {
+    fn parseNowStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        try self.expect(Token.l_paren);
+        try self.expectLParen();
         const expr = try self.parseExpression();
-        try self.expect(Token.r_paren);
-        try self.expect(Token.gt);
+        try self.expectRParen();
+        try self.expectGT();
         const target = try self.parseExpression();
-        return ast.Statement{ .expr = ast.Expr{ .now_expr = ast.NowExpr{ .expr = expr } } };
+
+        const ne = try self.allocator.create(ast.NowExpr);
+        ne.* = ast.NowExpr{ .expr = expr };
+        const e = try self.allocator.create(ast.Expr);
+        e.* = .{ .now_expr = ne.* };
+        return ast.Statement{ .expr = e };
     }
 
-    fn parseMemoryOp(self: *Parser) !ast.Statement {
+    fn parseMemoryOpStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        if (self.match(Token.identifier) and std.mem.eql(u8, self.current().identifier, "dete")) {
+        if (self.current() == .identifier and std.mem.eql(u8, self.current().identifier, "dete")) {
             _ = self.advance();
-            try self.expect(Token.l_paren);
+            try self.expectLParen();
             const expr = try self.parseExpression();
-            try self.expect(Token.r_paren);
-            return ast.Statement{ .memory_op = ast.MemoryOp{
+            try self.expectRParen();
+
+            const mo = try self.allocator.create(ast.MemoryOp);
+            mo.* = ast.MemoryOp{
                 .kind = .dete,
                 .expr = expr,
-            } };
+            };
+            return ast.Statement{ .memory_op = mo.* };
         }
-        if (self.match(Token.caret)) {
+        if (self.current() == .caret) {
             _ = self.advance();
-            try self.expect(Token.l_paren);
+            try self.expectLParen();
             const expr = try self.parseExpression();
-            try self.expect(Token.r_paren);
-            return ast.Statement{ .memory_op = ast.MemoryOp{
+            try self.expectRParen();
+
+            const mo = try self.allocator.create(ast.MemoryOp);
+            mo.* = ast.MemoryOp{
                 .kind = .address,
                 .expr = expr,
-            } };
+            };
+            return ast.Statement{ .memory_op = mo.* };
         }
-        return error.UnexpectedToken;
+        return ParseError.UnexpectedToken;
     }
 
-    fn parseEncodingOp(self: *Parser) !ast.Statement {
+    fn parseEncodingOpStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        try self.expect(Token.lt);
-        const tag = try self.parseSystemTag();
-        try self.expect(Token.gt);
-        try self.expect(Token.caret);
-        try self.expect(Token.l_paren);
+        try self.expectLT();
+        const tag = try self.parseSystemTagName();
+        try self.expectGT();
+        try self.expectCaret();
+        try self.expectLParen();
         const expr = try self.parseExpression();
-        try self.expect(Token.r_paren);
-        return ast.Statement{ .encoding_op = ast.EncodingOp{
+        try self.expectRParen();
+
+        const eo = try self.allocator.create(ast.EncodingOp);
+        eo.* = ast.EncodingOp{
             .encoding_type = tag,
             .expr = expr,
-        } };
+        };
+        return ast.Statement{ .encoding_op = eo.* };
     }
 
-    fn parseLenOp(self: *Parser) !ast.Statement {
+    fn parseLenOpStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        try self.expect(Token.lt);
+        try self.expectLT();
         _ = self.advance();
-        try self.expect(Token.gt);
-        try self.expect(Token.caret);
-        try self.expect(Token.l_paren);
+        try self.expectGT();
+        try self.expectCaret();
+        try self.expectLParen();
         const expr = try self.parseExpression();
-        try self.expect(Token.r_paren);
-        return ast.Statement{ .len_op = ast.LenOp{ .expr = expr } };
+        try self.expectRParen();
+
+        const lo = try self.allocator.create(ast.LenOp);
+        lo.* = ast.LenOp{ .expr = expr };
+        return ast.Statement{ .len_op = lo.* };
     }
 
-    fn parseInput(self: *Parser) !ast.Statement {
+    fn parseInputStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        try self.expect(Token.l_paren);
+        try self.expectLParen();
         const expr = try self.parseExpression();
-        try self.expect(Token.r_paren);
-        if (self.match(Token.equals)) {
+        try self.expectRParen();
+
+        if (self.current() == .equals) {
             _ = self.advance();
             const target = try self.parseExpression();
-            return ast.Statement{ .expr = ast.Expr{ .input_expr = ast.InputExpr{ .target = target } } };
+            const ie = try self.allocator.create(ast.InputExpr);
+            ie.* = ast.InputExpr{ .target = target };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .input_expr = ie.* };
+            return ast.Statement{ .expr = e };
         }
-        return ast.Statement{ .expr = ast.Expr{ .input_expr = ast.InputExpr{ .target = null } } };
+
+        const ie = try self.allocator.create(ast.InputExpr);
+        ie.* = ast.InputExpr{ .target = null };
+        const e = try self.allocator.create(ast.Expr);
+        e.* = .{ .input_expr = ie.* };
+        return ast.Statement{ .expr = e };
     }
 
-    fn parsePrintf(self: *Parser) !ast.Statement {
+    fn parsePrintfStmt(self: *Parser) !ast.Statement {
         _ = self.advance();
-        try self.expect(Token.caret);
-        try self.expect(Token.l_paren);
+        try self.expectCaret();
+        try self.expectLParen();
         const expr = try self.parseExpression();
-        try self.expect(Token.r_paren);
-        return ast.Statement{ .expr = ast.Expr{ .call = ast.CallExpr{
+        try self.expectRParen();
+
+        const call = try self.allocator.create(ast.CallExpr);
+        call.* = ast.CallExpr{
             .callee = "printf",
             .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
-        } } };
+        };
+        const e = try self.allocator.create(ast.Expr);
+        e.* = .{ .call = call.* };
+        return ast.Statement{ .expr = e };
     }
 
     fn parseSystemTagStmt(self: *Parser) !ast.Statement {
-        try self.expect(Token.lt);
-        const tag = try self.parseSystemTag();
-        try self.expect(Token.gt);
+        try self.expectLT();
+        const tag = try self.parseSystemTagName();
+        try self.expectGT();
 
-        if (self.match(Token.caret)) {
+        if (self.current() == .caret) {
             _ = self.advance();
-            try self.expect(Token.l_paren);
+            try self.expectLParen();
             const expr = try self.parseExpression();
-            try self.expect(Token.r_paren);
-            return ast.Statement{ .expr = ast.Expr{ .system_tag = ast.SystemTagExpr{
+            try self.expectRParen();
+
+            const ste = try self.allocator.create(ast.SystemTagExpr);
+            ste.* = ast.SystemTagExpr{
                 .tag = tag,
                 .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
-            } } };
+            };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .system_tag = ste.* };
+            return ast.Statement{ .expr = e };
         }
 
-        if (self.match(Token.l_paren)) {
+        if (self.current() == .l_paren) {
             _ = self.advance();
             const expr = try self.parseExpression();
-            try self.expect(Token.r_paren);
-            return ast.Statement{ .expr = ast.Expr{ .call = ast.CallExpr{
+            try self.expectRParen();
+
+            const call = try self.allocator.create(ast.CallExpr);
+            call.* = ast.CallExpr{
                 .callee = tag,
                 .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
-            } } };
+            };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .call = call.* };
+            return ast.Statement{ .expr = e };
         }
 
-        return error.UnexpectedToken;
+        return ParseError.UnexpectedToken;
     }
 
-    fn parseAtStatement(self: *Parser) !ast.Statement {
-        _ = self.advance();
-        const keyword = self.current().keyword;
-        if (keyword == .loop_kw) {
-            return try self.parseLoop();
-        }
-        return error.UnexpectedToken;
-    }
-
-    fn parseSystemTag(self: *Parser) ![]const u8 {
+    fn parseSystemTagName(self: *Parser) ![]const u8 {
         const tok = self.current();
         if (tok == .keyword) {
             const name = tok.keywordText();
@@ -510,36 +580,25 @@ pub const Parser = struct {
             _ = self.advance();
             return name;
         }
-        return error.UnexpectedToken;
-    }
-
-    fn parseBlockStatement(self: *Parser) !ast.Statement {
-        _ = self.advance();
-        var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!self.match(Token.r_bracket) and !self.match(Token.eof)) {
-            try body.append(try self.parseStatement());
-        }
-        try self.expect(Token.r_bracket);
-        return ast.Statement{ .expr = ast.Expr{ .literal = ast.Literal{ .kind = .null, .value = "" } } };
+        return ParseError.UnexpectedToken;
     }
 
     fn parseExprStatement(self: *Parser) !ast.Statement {
         const expr = try self.parseExpression();
-        return ast.Statement{ .expr = expr.* };
+        return ast.Statement{ .expr = expr };
     }
 
     fn parseExpression(self: *Parser) !*ast.Expr {
-        const expr = try self.parseOrExpr();
-        return expr;
+        return try self.parseOrExpr();
     }
 
     fn parseOrExpr(self: *Parser) !*ast.Expr {
         var left = try self.parseAndExpr();
-        while (self.match(Token.pipe_pipe)) {
+        while (self.current() == .pipe_pipe) {
             _ = self.advance();
             const right = try self.parseAndExpr();
             const bin = try self.allocator.create(ast.BinaryExpr);
-            bin.* = .{
+            bin.* = ast.BinaryExpr{
                 .op = .or,
                 .left = left,
                 .right = right,
@@ -552,11 +611,11 @@ pub const Parser = struct {
 
     fn parseAndExpr(self: *Parser) !*ast.Expr {
         var left = try self.parseEqualityExpr();
-        while (self.match(Token.amp_amp)) {
+        while (self.current() == .amp_amp) {
             _ = self.advance();
             const right = try self.parseEqualityExpr();
             const bin = try self.allocator.create(ast.BinaryExpr);
-            bin.* = .{
+            bin.* = ast.BinaryExpr{
                 .op = .and,
                 .left = left,
                 .right = right,
@@ -570,18 +629,11 @@ pub const Parser = struct {
     fn parseEqualityExpr(self: *Parser) !*ast.Expr {
         var left = try self.parseRelationalExpr();
         while (true) {
-            if (self.match(Token.equals)) {
+            if (self.current() == .equals and self.peek(1) != .equals) {
                 _ = self.advance();
                 const right = try self.parseRelationalExpr();
                 const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = .{ .op = .eq, .left = left, .right = right };
-                left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin.* };
-            } else if (self.match(Token.neq)) {
-                _ = self.advance();
-                const right = try self.parseRelationalExpr();
-                const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = .{ .op = .neq, .left = left, .right = right };
+                bin.* = ast.BinaryExpr{ .op = .eq, .left = left, .right = right };
                 left = try self.allocator.create(ast.Expr);
                 left.* = .{ .binary = bin.* };
             } else {
@@ -594,32 +646,18 @@ pub const Parser = struct {
     fn parseRelationalExpr(self: *Parser) !*ast.Expr {
         var left = try self.parseAdditiveExpr();
         while (true) {
-            if (self.match(Token.lt)) {
+            if (self.current() == .lt and self.peek(1) != .equals) {
                 _ = self.advance();
                 const right = try self.parseAdditiveExpr();
                 const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = .{ .op = .lt, .left = left, .right = right };
+                bin.* = ast.BinaryExpr{ .op = .lt, .left = left, .right = right };
                 left = try self.allocator.create(ast.Expr);
                 left.* = .{ .binary = bin.* };
-            } else if (self.match(Token.gt)) {
+            } else if (self.current() == .gt and self.peek(1) != .equals) {
                 _ = self.advance();
                 const right = try self.parseAdditiveExpr();
                 const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = .{ .op = .gt, .left = left, .right = right };
-                left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin.* };
-            } else if (self.match(Token.lte)) {
-                _ = self.advance();
-                const right = try self.parseAdditiveExpr();
-                const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = .{ .op = .lte, .left = left, .right = right };
-                left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin.* };
-            } else if (self.match(Token.gte)) {
-                _ = self.advance();
-                const right = try self.parseAdditiveExpr();
-                const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = .{ .op = .gte, .left = left, .right = right };
+                bin.* = ast.BinaryExpr{ .op = .gt, .left = left, .right = right };
                 left = try self.allocator.create(ast.Expr);
                 left.* = .{ .binary = bin.* };
             } else {
@@ -631,11 +669,11 @@ pub const Parser = struct {
 
     fn parseAdditiveExpr(self: *Parser) !*ast.Expr {
         var left = try self.parseMultiplicativeExpr();
-        while (self.match(Token.plus) or self.match(Token.minus)) {
+        while (self.current() == .plus or self.current() == .minus) {
             const op_tok = self.advance();
             const right = try self.parseMultiplicativeExpr();
             const bin = try self.allocator.create(ast.BinaryExpr);
-            bin.* = .{
+            bin.* = ast.BinaryExpr{
                 .op = switch (op_tok) {
                     .plus => .add,
                     .minus => .sub,
@@ -652,11 +690,11 @@ pub const Parser = struct {
 
     fn parseMultiplicativeExpr(self: *Parser) !*ast.Expr {
         var left = try self.parseUnaryExpr();
-        while (self.match(Token.star) or self.match(Token.slash) or self.match(Token.percent)) {
+        while (self.current() == .star or self.current() == .slash or self.current() == .percent) {
             const op_tok = self.advance();
             const right = try self.parseUnaryExpr();
             const bin = try self.allocator.create(ast.BinaryExpr);
-            bin.* = .{
+            bin.* = ast.BinaryExpr{
                 .op = switch (op_tok) {
                     .star => .mul,
                     .slash => .div,
@@ -673,11 +711,11 @@ pub const Parser = struct {
     }
 
     fn parseUnaryExpr(self: *Parser) !*ast.Expr {
-        if (self.match(Token.minus)) {
+        if (self.current() == .minus) {
             _ = self.advance();
             const expr = try self.parseUnaryExpr();
             const unary = try self.allocator.create(ast.UnaryExpr);
-            unary.* = .{ .op = .neg, .expr = expr };
+            unary.* = ast.UnaryExpr{ .op = .neg, .expr = expr };
             return try self.allocator.create(ast.Expr);
         }
         return try self.parsePrimaryExpr();
@@ -687,189 +725,264 @@ pub const Parser = struct {
         const tok = self.current();
 
         if (tok == .int_lit) {
+            const val = tok.int_lit;
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = .{ .kind = .int, .value = "" };
-            return try self.allocator.create(ast.Expr);
+            lit.* = ast.Literal{ .kind = .int, .raw = "" };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .literal = lit.* };
+            return e;
         }
 
         if (tok == .freal_lit) {
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = .{ .kind = .freal, .value = "" };
-            return try self.allocator.create(ast.Expr);
+            lit.* = ast.Literal{ .kind = .freal, .raw = "" };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .literal = lit.* };
+            return e;
         }
 
         if (tok == .string_lit) {
+            const str = tok.string_lit;
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = .{ .kind = .string, .value = tok.string_lit };
-            return try self.allocator.create(ast.Expr);
+            lit.* = ast.Literal{ .kind = .string, .raw = str };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .literal = lit.* };
+            return e;
         }
 
         if (tok == .bool_true) {
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = .{ .kind = .bool_true, .value = "" };
-            return try self.allocator.create(ast.Expr);
+            lit.* = ast.Literal{ .kind = .bool_true, .raw = "" };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .literal = lit.* };
+            return e;
         }
 
         if (tok == .bool_false) {
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = .{ .kind = .bool_false, .value = "" };
-            return try self.allocator.create(ast.Expr);
+            lit.* = ast.Literal{ .kind = .bool_false, .raw = "" };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .literal = lit.* };
+            return e;
         }
 
         if (tok == .identifier) {
             const name = tok.identifier;
             _ = self.advance();
-            if (self.match(Token.l_paren)) {
+            if (self.current() == .l_paren) {
                 _ = self.advance();
                 var args = std.ArrayList(ast.Expr).init(self.allocator);
-                while (!self.match(Token.r_paren) and !self.match(Token.eof)) {
+                while (!self.current().isRParen() and !self.isAtEnd()) {
                     try args.append(try self.parseExpression());
-                    if (self.match(Token.comma)) _ = self.advance();
+                    if (self.current() == .comma) _ = self.advance();
                 }
-                try self.expect(Token.r_paren);
+                try self.expectRParen();
+
                 const call = try self.allocator.create(ast.CallExpr);
-                call.* = .{
+                call.* = ast.CallExpr{
                     .callee = name,
                     .args = args.toOwnedSlice(),
                 };
-                return try self.allocator.create(ast.Expr);
+                const e = try self.allocator.create(ast.Expr);
+                e.* = .{ .call = call.* };
+                return e;
             }
-            const ident = try self.allocator.create(ast.Identifier);
-            ident.* = .{ .name = name };
-            return try self.allocator.create(ast.Expr);
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .identifier = name };
+            return e;
         }
 
         if (tok == .sigil) {
             _ = self.advance();
             const name_tok = self.current();
-            if (name_tok != .identifier) return error.ExpectedIdentifier;
+            if (name_tok != .identifier) return ParseError.ExpectedIdentifier;
             const name = name_tok.identifier;
             _ = self.advance();
-            if (self.match(Token.l_paren)) {
+            if (self.current() == .l_paren) {
                 _ = self.advance();
                 var args = std.ArrayList(ast.Expr).init(self.allocator);
-                while (!self.match(Token.r_paren) and !self.match(Token.eof)) {
+                while (!self.current().isRParen() and !self.isAtEnd()) {
                     try args.append(try self.parseExpression());
-                    if (self.match(Token.comma)) _ = self.advance();
+                    if (self.current() == .comma) _ = self.advance();
                 }
-                try self.expect(Token.r_paren);
+                try self.expectRParen();
+
                 const call = try self.allocator.create(ast.CallExpr);
-                call.* = .{
+                call.* = ast.CallExpr{
                     .callee = name,
                     .args = args.toOwnedSlice(),
                 };
-                return try self.allocator.create(ast.Expr);
+                const e = try self.allocator.create(ast.Expr);
+                e.* = .{ .call = call.* };
+                return e;
             }
-            const ident = try self.allocator.create(ast.Identifier);
-            ident.* = .{ .name = name };
-            return try self.allocator.create(ast.Expr);
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .identifier = name };
+            return e;
         }
 
         if (tok == .dollar) {
             _ = self.advance();
             const name_tok = self.current();
-            if (name_tok != .identifier) return error.ExpectedIdentifier;
+            if (name_tok != .identifier) return ParseError.ExpectedIdentifier;
             const name = name_tok.identifier;
             _ = self.advance();
-            if (self.match(Token.sigil)) {
+            if (self.current() == .sigil) {
                 _ = self.advance();
                 const method = self.current().identifier;
                 _ = self.advance();
-                if (self.match(Token.l_paren)) {
+                if (self.current() == .l_paren) {
                     _ = self.advance();
                     var args = std.ArrayList(ast.Expr).init(self.allocator);
-                    while (!self.match(Token.r_paren) and !self.match(Token.eof)) {
+                    while (!self.current().isRParen() and !self.isAtEnd()) {
                         try args.append(try self.parseExpression());
-                        if (self.match(Token.comma)) _ = self.advance();
+                        if (self.current() == .comma) _ = self.advance();
                     }
-                    try self.expect(Token.r_paren);
+                    try self.expectRParen();
+
                     const call = try self.allocator.create(ast.CallExpr);
-                    call.* = .{
+                    call.* = ast.CallExpr{
                         .callee = method,
-                        .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{}),
+                        .args = args.toOwnedSlice(),
                     };
                     const member = try self.allocator.create(ast.MemberAccess);
-                    member.* = .{
+                    member.* = ast.MemberAccess{
                         .object = try self.allocator.create(ast.Expr),
                         .member = method,
                     };
-                    member.object.* = .{ .identifier = ast.Identifier{ .name = name } };
-                    return try self.allocator.create(ast.Expr);
+                    member.object.* = .{ .identifier = name };
+                    const e = try self.allocator.create(ast.Expr);
+                    e.* = .{ .member_access = member.* };
+                    return e;
                 }
             }
-            const ident = try self.allocator.create(ast.Identifier);
-            ident.* = .{ .name = name };
-            return try self.allocator.create(ast.Expr);
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .identifier = name };
+            return e;
         }
 
         if (tok == .l_paren) {
             _ = self.advance();
-            var items = std.ArrayList(ast.Expr).init(self.allocator);
-            while (!self.match(Token.r_paren) and !self.match(Token.eof)) {
-                try items.append(try self.parseExpression());
-                if (self.match(Token.comma)) _ = self.advance();
-            }
-            try self.expect(Token.r_paren);
-            const tuple = try self.allocator.create(ast.Literal);
-            tuple.* = .{ .kind = .tuple, .value = "" };
-            return try self.allocator.create(ast.Expr);
+            const expr = try self.parseExpression();
+            try self.expectRParen();
+            return expr;
         }
 
         if (tok == .l_brace) {
             _ = self.advance();
-            var dict = std.ArrayList(ast.Expr).init(self.allocator);
-            while (!self.match(Token.r_brace) and !self.match(Token.eof)) {
-                try dict.append(try self.parseExpression());
-                if (self.match(Token.comma)) _ = self.advance();
+            var items = std.ArrayList(ast.Expr).init(self.allocator);
+            while (!self.current().isRBBrace() and !self.isAtEnd()) {
+                try items.append(try self.parseExpression());
+                if (self.current() == .comma) _ = self.advance();
             }
-            try self.expect(Token.r_brace);
-            const d = try self.allocator.create(ast.Literal);
-            d.* = .{ .kind = .bytes_lit, .value = "" };
-            return try self.allocator.create(ast.Expr);
+            try self.expectRBBrace();
+
+            const lit = try self.allocator.create(ast.Literal);
+            lit.* = ast.Literal{ .kind = .dict, .raw = "" };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .literal = lit.* };
+            return e;
         }
 
         if (tok == .lt) {
             return try self.parseSystemTagExpr();
         }
 
-        return error.UnexpectedToken;
+        return ParseError.UnexpectedToken;
     }
 
     fn parseSystemTagExpr(self: *Parser) !*ast.Expr {
         _ = self.advance();
-        const tag = try self.parseSystemTag();
-        try self.expect(Token.gt);
+        const tag = try self.parseSystemTagName();
+        try self.expectGT();
 
-        if (self.match(Token.caret)) {
+        if (self.current() == .caret) {
             _ = self.advance();
-            try self.expect(Token.l_paren);
+            try self.expectLParen();
             const expr = try self.parseExpression();
-            try self.expect(Token.r_paren);
+            try self.expectRParen();
+
             const ste = try self.allocator.create(ast.SystemTagExpr);
-            ste.* = .{
+            ste.* = ast.SystemTagExpr{
                 .tag = tag,
                 .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
             };
-            return try self.allocator.create(ast.Expr);
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .system_tag = ste.* };
+            return e;
         }
 
-        if (self.match(Token.l_paren)) {
+        if (self.current() == .l_paren) {
             _ = self.advance();
             const expr = try self.parseExpression();
-            try self.expect(Token.r_paren);
+            try self.expectRParen();
+
             const call = try self.allocator.create(ast.CallExpr);
-            call.* = .{
+            call.* = ast.CallExpr{
                 .callee = tag,
                 .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
             };
-            return try self.allocator.create(ast.Expr);
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .call = call.* };
+            return e;
         }
 
-        return error.UnexpectedToken;
+        return ParseError.UnexpectedToken;
+    }
+
+    fn expectLParen(self: *Parser) !void {
+        if (self.current() != .l_paren) return ParseError.ExpectedLParen;
+        _ = self.advance();
+    }
+
+    fn expectRParen(self: *Parser) !void {
+        if (self.current() != .r_paren) return ParseError.ExpectedRParen;
+        _ = self.advance();
+    }
+
+    fn expectLBracket(self: *Parser) !void {
+        if (self.current() != .l_bracket) return ParseError.ExpectedLBracket;
+        _ = self.advance();
+    }
+
+    fn expectRBracket(self: *Parser) !void {
+        if (self.current() != .r_bracket) return ParseError.ExpectedRBracket;
+        _ = self.advance();
+    }
+
+    fn expectGT(self: *Parser) !void {
+        if (self.current() != .gt) return ParseError.UnexpectedToken;
+        _ = self.advance();
+    }
+
+    fn expectLT(self: *Parser) !void {
+        if (self.current() != .lt) return ParseError.UnexpectedToken;
+        _ = self.advance();
+    }
+
+    fn expectCaret(self: *Parser) !void {
+        if (self.current() != .caret) return ParseError.UnexpectedToken;
+        _ = self.advance();
     }
 };
+
+pub fn Token.isLBracket(self: lexer.Token) bool {
+    return self == .l_bracket;
+}
+
+pub fn Token.isRBracket(self: lexer.Token) bool {
+    return self == .r_bracket;
+}
+
+pub fn Token.isRParen(self: lexer.Token) bool {
+    return self == .r_paren;
+}
+
+pub fn Token.isRBBrace(self: lexer.Token) bool {
+    return self == .r_brace;
+}
