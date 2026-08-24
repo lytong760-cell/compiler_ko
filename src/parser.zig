@@ -779,7 +779,7 @@ pub const Parser = struct {
         
         if (std.mem.eql(u8, tag, "input")) {
             try self.expectLParen();
-            const prompt_expr = try self.parseExpression();
+            const _prompt_expr = try self.parseExpression();
             try self.expectRParen();
             if (self.current() == .amp_equals) {
                 _ = self.advance();
