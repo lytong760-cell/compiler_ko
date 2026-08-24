@@ -296,9 +296,8 @@ pub const VM = struct {
         const line = try stdin.readUntilDelimiterOrEof(buf[0..], '\n');
         if (line) |l| {
             const str = try self.allocator.dupe(u8, l);
-            if (ie.target) |target| {
-                const name = target.identifier;
-                const name_copy = self.allocator.dupe(u8, name) catch unreachable;
+            if (ie.target_name.len > 0) {
+                const name_copy = self.allocator.dupe(u8, ie.target_name) catch unreachable;
                 try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = str });
             }
             return value_mod.Value{ .string = str };
