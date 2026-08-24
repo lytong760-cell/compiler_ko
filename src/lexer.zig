@@ -1,5 +1,4 @@
 const std = @import("std");
-const ast = @import("ast.zig");
 
 pub const Token = union(enum) {
     eof,
@@ -11,40 +10,31 @@ pub const Token = union(enum) {
     bool_false,
     byte_lit: u8,
     bytes_lit: []const u8,
-    l_bracket: void, // [
-    r_bracket: void, // ]
-    l_paren: void,   // (
-    r_paren: void,   // )
-    l_brace: void,   // {
-    r_brace: void,   // }
-    sigil: void,     // ~
-    dollar: void,    // $
-    lt: void,        // <
-    gt: void,        // >
-    caret: void,     // ^
-    ampersand: void, // &
-    pipe: void,      // |
-    at: void,        // @
-    bang: void,      // !
-    colon: void,     // :
-    comma: void,     // ,
-    dot: void,       // .
-    plus: void,      // +
-    minus: void,     // -
-    star: void,      // *
-    slash: void,     // /
-    percent: void,   // %
-    equals: void,    // =
-    amp_amp: void,   // &&
-    pipe_pipe: void, // %%
-    neq: void,       // !=
-    lte: void,       // <=
-    gte: void,       // >=
-    and_and: void,   // &&
-    or_or: void,     // %%
-    newline_escape: void, // "\n"
+    l_bracket: void,
+    r_bracket: void,
+    l_paren: void,
+    r_paren: void,
+    l_brace: void,
+    r_brace: void,
+    sigil: void,
+    dollar: void,
+    lt: void,
+    gt: void,
+    caret: void,
+    amp_amp: void,
+    pipe_pipe: void,
+    at: void,
+    bang: void,
+    colon: void,
+    comma: void,
+    dot: void,
+    plus: void,
+    minus: void,
+    star: void,
+    slash: void,
+    percent: void,
+    equals: void,
     keyword: Keyword,
-    system_tag: []const u8,
 
     pub const Keyword = enum {
         import_kw,
@@ -112,15 +102,13 @@ pub const Lexer = struct {
     pos: usize,
     line: usize,
     col: usize,
-    allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, source: []const u8) Lexer {
+    pub fn init(source: []const u8) Lexer {
         return .{
             .source = source,
             .pos = 0,
             .line = 1,
             .col = 1,
-            .allocator = allocator,
         };
     }
 
@@ -139,14 +127,8 @@ pub const Lexer = struct {
             if (std.ascii.isWhitespace(c)) continue;
 
             if (c == '|') {
-                var end = self.pos;
-                while (end < self.source.len and self.source[end] != '|') : (end += 1) {}
-                if (end < self.source.len) {
-                    self.pos = end + 1;
-                    self.col = end + 1;
-                } else {
-                    self.pos = self.source.len;
-                }
+                while (self.pos < self.source.len and self.source[self.pos] != '|') : (self.pos += 1) {}
+                if (self.pos < self.source.len) self.pos += 1;
                 continue;
             }
 
@@ -176,9 +158,9 @@ pub const Lexer = struct {
                 self.col = end + 1;
                 if (std.mem.eql(u8, str, "True")) return Token.bool_true;
                 if (std.mem.eql(u8, str, "False")) return Token.bool_false;
-                if (std.mem.eql(u8, str, "ASCII")) return Token{ .system_tag = "ASCII" };
-                if (std.mem.eql(u8, str, "UTF-8")) return Token{ .system_tag = "UTF-8" };
-                if (std.mem.eql(u8, str, "UTF-16")) return Token{ .system_tag = "UTF-16" };
+                if (std.mem.eql(u8, str, "ASCII")) return Token{ .keyword = .encode_kw };
+                if (std.mem.eql(u8, str, "UTF-8")) return Token{ .keyword = .encode_kw };
+                if (std.mem.eql(u8, str, "UTF-16")) return Token{ .keyword = .encode_kw };
                 return Token{ .identifier = str };
             }
 
@@ -199,7 +181,7 @@ pub const Lexer = struct {
                     self.col += 1;
                     return Token.amp_amp;
                 }
-                return Token.ampersand;
+                continue;
             }
             if (c == '%') {
                 if (self.pos < self.source.len and self.source[self.pos] == '%') {
@@ -207,7 +189,7 @@ pub const Lexer = struct {
                     self.col += 1;
                     return Token.pipe_pipe;
                 }
-                return Token.percent;
+                continue;
             }
             if (c == '|') return Token.pipe;
             if (c == '@') return Token.at;
@@ -265,7 +247,7 @@ pub const Lexer = struct {
                 if (std.mem.eql(u8, word, "string")) return Token{ .keyword = .string_kw };
                 if (std.mem.eql(u8, word, "booling")) return Token{ .keyword = .booling_kw };
                 if (std.mem.eql(u8, word, "byte")) return Token{ .keyword = .byte_kw };
-                if (std.mem.eql(u8, word, "bytes")) return Token{ .keyword = .bytes_kw };
+                if (std.mem.equal(u8, word, "bytes")) return Token{ .keyword = .bytes_kw };
                 if (std.mem.eql(u8, word, "catch")) return Token{ .keyword = .catch_kw };
                 if (std.mem.eql(u8, word, "now")) return Token{ .keyword = .now_kw };
                 if (std.mem.eql(u8, word, "input")) return Token{ .keyword = .input_kw };
@@ -289,7 +271,7 @@ pub const Lexer = struct {
                 }
             }
 
-            return Token.eof;
+            continue;
         }
         return Token.eof;
     }
