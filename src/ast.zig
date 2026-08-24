@@ -1,5 +1,23 @@
 const std = @import("std");
-const value = @import("value.zig");
+const lexer = @import("lexer.zig");
+
+pub const Program = struct {
+    stmts: []Statement,
+    arena: std.heap.ArenaAllocator.State,
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator) Program {
+        return .{
+            .stmts = &[_]Statement{},
+            .arena = std.heap.ArenaAllocator.State{},
+            .allocator = allocator,
+        };
+    }
+
+    pub fn deinit(self: *Program) void {
+        _ = self.arena.pojointe(self.allocator);
+    }
+};
 
 pub const Statement = union(enum) {
     var_decl: VarDecl,
@@ -11,7 +29,7 @@ pub const Statement = union(enum) {
     encoding_op: EncodingOp,
     len_op: LenOp,
     return_stmt: ReturnStmt,
-    expr: Expr,
+    expr: *Expr,
     catch_stmt: CatchStmt,
 
     pub fn deinit(self: *Statement) void {
@@ -34,7 +52,6 @@ pub const Statement = union(enum) {
 pub const VarDecl = struct {
     type_name: []const u8,
     value_expr: *Expr,
-    sigil: bool,
     name: []const u8,
 
     pub fn deinit(self: *VarDecl) void {
@@ -54,7 +71,7 @@ pub const Assignment = struct {
 
 pub const FuncDecl = struct {
     name: []const u8,
-    params: []const Param,
+    params: []Param,
     body: []Statement,
     catch_stmts: []CatchStmt,
 
@@ -87,7 +104,7 @@ pub const ControlFlow = struct {
     elifs: []Elif,
     else_body: []Statement,
 
-    pub const Kind = enum { if_stmt, elif_stmt, else_stmt, for_loop, while_loop, loop_for };
+    pub const Kind = enum { if_stmt, elif_stmt, else_stmt, for_loop, while_loop };
 
     pub fn deinit(self: *ControlFlow) void {
         self.condition.deinit();
@@ -154,7 +171,7 @@ pub const CatchStmt = struct {
 
 pub const Expr = union(enum) {
     literal: Literal,
-    identifier: Identifier,
+    identifier: []const u8,
     binary: BinaryExpr,
     unary: UnaryExpr,
     call: CallExpr,
@@ -166,8 +183,8 @@ pub const Expr = union(enum) {
 
     pub fn deinit(self: *Expr) void {
         switch (self.*) {
-            .literal => |*l| l.deinit(),
-            .identifier => |*i| i.deinit(),
+            .literal => {},
+            .identifier => {},
             .binary => |*b| b.deinit(),
             .unary => |*u| u.deinit(),
             .call => |*c| c.deinit(),
@@ -182,17 +199,11 @@ pub const Expr = union(enum) {
 
 pub const Literal = struct {
     kind: Kind,
-    value: []const u8,
+    raw: []const u8,
 
-    pub const Kind = enum { int, freal, string, bool_true, bool_false, byte_lit, bytes_lit };
+    pub const Kind = enum { int, freal, string, bool_true, bool_false, tuple, dict };
 
     pub fn deinit(self: *Literal) void {}
-};
-
-pub const Identifier = struct {
-    name: []const u8,
-
-    pub fn deinit(self: *Identifier) void {}
 };
 
 pub const BinaryExpr = struct {
@@ -200,21 +211,7 @@ pub const BinaryExpr = struct {
     left: *Expr,
     right: *Expr,
 
-    pub const Op = enum {
-        add,
-        sub,
-        mul,
-        div,
-        rem,
-        and,
-        or,
-        eq,
-        neq,
-        lt,
-        gt,
-        lte,
-        gte,
-    };
+    pub const Op = enum { add, sub, mul, div, rem, and, or, eq, neq, lt, gt, lte, gte };
 
     pub fn deinit(self: *BinaryExpr) void {
         self.left.deinit();
