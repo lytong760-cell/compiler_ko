@@ -12,6 +12,13 @@ test "lexer basic" {
     defer gpa.free(tokens);
 
     for (tokens) |tok| {
-        std.debug.print("{any}\n", .{tok});
+        switch (tok) {
+            .identifier => |name| {
+                std.debug.print("identifier: '{s}' len={d}\n", .{name, name.len});
+            },
+            else => {
+                std.debug.print("{any}\n", .{tok});
+            },
+        }
     }
 }
