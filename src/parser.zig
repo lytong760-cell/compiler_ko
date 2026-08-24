@@ -9,6 +9,7 @@ pub const Parser = struct {
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator, arena: *std.heap.ArenaAllocator, tokens: []lexer.Token) Parser {
+        _ = allocator;
         return .{
             .tokens = tokens,
             .pos = 0,
