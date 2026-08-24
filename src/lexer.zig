@@ -290,3 +290,29 @@ pub const Lexer = struct {
         return tokens.toOwnedSlice();
     }
 };
+
+fn processEscapes(raw: []const u8) []const u8 {
+    var result = std.ArrayList(u8).init(std.testing.allocator);
+    var i: usize = 0;
+    while (i < raw.len) {
+        if (raw[i] == '\\' and i + 1 < raw.len) {
+            const next = raw[i + 1];
+            switch (next) {
+                'n' => result.append('\n') catch unreachable,
+                't' => result.append('\t') catch unreachable,
+                '\\' => result.append('\\') catch unreachable,
+                '"' => result.append('"') catch unreachable,
+                '\'' => result.append('\'') catch unreachable,
+                else => {
+                    result.append('\\') catch unreachable;
+                    result.append(next) catch unreachable;
+                },
+            }
+            i += 2;
+        } else {
+            result.append(raw[i]) catch unreachable;
+            i += 1;
+        }
+    }
+    return result.toOwnedSlice() catch &[_]u8{};
+}
