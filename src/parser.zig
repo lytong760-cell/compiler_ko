@@ -235,7 +235,7 @@ pub const Parser = struct {
         try self.expectRParen();
         try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!self.current() == .r_bracket and !self.isAtEnd()) {
+        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
             const stmt = try self.parseStatement();
                     try body.append(stmt);
         }
@@ -263,7 +263,7 @@ pub const Parser = struct {
         try self.expectRParen();
         try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!self.current() == .r_bracket and !self.isAtEnd()) {
+        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
             const stmt = try self.parseStatement();
                     try body.append(stmt);
         }
@@ -285,7 +285,7 @@ pub const Parser = struct {
         _ = self.advance();
         try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!self.current() == .r_bracket and !self.isAtEnd()) {
+        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
             const stmt = try self.parseStatement();
                     try body.append(stmt);
         }
@@ -321,7 +321,7 @@ pub const Parser = struct {
         try self.expectRParen();
         try self.expectLBracket();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!self.current() == .r_bracket and !self.isAtEnd()) {
+        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
             const stmt = try self.parseStatement();
                     try body.append(stmt);
         }
@@ -358,7 +358,7 @@ pub const Parser = struct {
         var public_body = std.ArrayList(ast.Statement).init(self.allocator);
         var in_private = false;
 
-        while (!self.current() == .r_bracket and !self.isAtEnd()) {
+        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
             if (self.current() == .at and self.peek(1) == .keyword and self.peek(1).keyword == .private_kw) {
                 _ = self.advance();
                 _ = self.advance();
@@ -537,7 +537,7 @@ pub const Parser = struct {
                 .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
             };
             const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .call = call.* };
+            e.* = .{ .call = call };;
             return ast.Statement{ .expr = e };
         }
 
@@ -907,7 +907,7 @@ pub const Parser = struct {
                 .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
             };
             const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .call = call.* };
+            e.* = .{ .call = call };;
             return e;
         }
 
