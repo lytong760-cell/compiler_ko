@@ -183,7 +183,7 @@ pub const Parser = struct {
 
             try self.expectLBracket();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
-            while (!self.current().isRBracket() and !self.isAtEnd()) {
+                while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
                 try body.append(try self.parseStatement());
             }
             try self.expectRBracket();
@@ -203,7 +203,7 @@ pub const Parser = struct {
         if (self.current() == .l_bracket) {
             _ = self.advance();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
-            while (!self.current().isRBracket() and !self.isAtEnd()) {
+                while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
                 try body.append(try self.parseStatement());
             }
             try self.expectRBracket();
