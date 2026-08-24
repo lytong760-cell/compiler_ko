@@ -220,6 +220,7 @@ pub const VM = struct {
                         }
                     }
                     try self.stdout.print("{s}", .{out.items});
+                    out.deinit();
                 } else {
                     try self.stdout.print("{any}\n", .{val});
                 }
