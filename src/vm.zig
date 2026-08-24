@@ -179,10 +179,10 @@ pub const VM = struct {
             .logical_or => value_mod.Value{ .booling = (try left.toBool()) or (try right.toBool()) },
             .eq => value_mod.Value{ .booling = try left.equals(right) },
             .neq => value_mod.Value{ .booling = !(try left.equals(right)) },
-            .lt => value_mod.Value{ .booling = (try left.toBool()) < (try right.toBool()) },
-            .gt => value_mod.Value{ .booling = (try left.toBool()) > (try right.toBool()) },
-            .lte => value_mod.Value{ .booling = (try left.toBool()) <= (try right.toBool()) },
-            .gte => value_mod.Value{ .booling = (try left.toBool()) >= (try right.toBool()) },
+            .lt => value_mod.Value{ .booling = @as(u8, @intFromBool(try left.toBool())) < @as(u8, @intFromBool(try right.toBool())) },
+            .gt => value_mod.Value{ .booling = @as(u8, @intFromBool(try left.toBool())) > @as(u8, @intFromBool(try right.toBool())) },
+            .lte => value_mod.Value{ .booling = @as(u8, @intFromBool(try left.toBool())) <= @as(u8, @intFromBool(try right.toBool())) },
+            .gte => value_mod.Value{ .booling = @as(u8, @intFromBool(try left.toBool())) >= @as(u8, @intFromBool(try right.toBool())) },
         };
     }
 
