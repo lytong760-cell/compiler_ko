@@ -333,7 +333,7 @@ pub const Parser = struct {
             .body = try body.toOwnedSlice(),
             .allocator = self.allocator,
         };
-        return ast.Statement{ .catch_stmt = cs.* };
+        return ast.Statement{ .catch_stmt = cs };
     }
 
     fn parseErrorType(self: *Parser) ![]const u8 {
@@ -383,7 +383,7 @@ pub const Parser = struct {
                 .public_body = try public_body.toOwnedSlice(),
             .allocator = self.allocator,
         };
-        return ast.Statement{ .class_decl = cd.* };
+        return ast.Statement{ .class_decl = cd };
     }
 
     fn parseNowStmt(self: *Parser) anyerror!ast.Statement {
