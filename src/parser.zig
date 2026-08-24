@@ -187,6 +187,9 @@ pub const Parser = struct {
             if (self.current() == .identifier) {
                 _ = self.advance();
             }
+            if (self.current() == .percent) {
+                _ = self.advance();
+            }
             try self.expectSigil();
             if (self.current() == .identifier) {
                 _ = self.advance();
