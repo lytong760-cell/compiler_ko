@@ -28,7 +28,7 @@ pub const Statement = union(enum) {
             .return_stmt => |r| r.deinit(),
             .expr => |e| e.deinit(),
             .catch_stmt => |c| c.deinit(),
-            .block => |b| b.deinit(),
+            .block => |*b| b.deinit(),
         }
     }
 };
