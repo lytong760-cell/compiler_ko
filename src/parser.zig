@@ -57,6 +57,9 @@ pub const Parser = struct {
 
         if (tok == .keyword) {
             switch (tok.keyword) {
+                .int_kw, .freal_kw, .string_kw, .booling_kw, .byte_kw, .bytes_kw => {
+                    return try self.parseVarDecl();
+                },
                 .import_kw => {
                     return try self.parseImportStmt();
                 },
