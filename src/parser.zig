@@ -817,11 +817,11 @@ pub const Parser = struct {
                     }
                     try self.expectRParen();
 
-                    const call = try self.allocator.create(ast.CallExpr);
-                    call.* = ast.CallExpr{
-                        .callee = method,
-                        .args = args.toOwnedSlice(),
-                    };
+                     const call = try self.allocator.create(ast.CallExpr);
+                     call.* = ast.CallExpr{
+                         .callee = method,
+                         .args = try args.toOwnedSlice(),
+                     };
                     const member = try self.allocator.create(ast.MemberAccess);
                     member.* = ast.MemberAccess{
                         .object = try self.allocator.create(ast.Expr),
