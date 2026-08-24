@@ -1,5 +1,5 @@
 const std = @import("std");
-const lexer = @import("lexer.zig");
+const lexer = @import("../src/lexer.zig");
 
 pub fn main() !void {
     const source = "[ int(10)~x <printf>^(\"Hello World\\n\") ]";
