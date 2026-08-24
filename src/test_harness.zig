@@ -38,6 +38,7 @@ test "test_3600_iterations" {
         
         var lx = lexer.Lexer.init(source);
         const tokens = lx.tokenize(gpa) catch {
+            if (i == 0) std.debug.print("Iteration {}: tokenize failed\n", .{i});
             continue;
         };
         defer gpa.free(tokens);
@@ -47,6 +48,7 @@ test "test_3600_iterations" {
         
         var pr = parser.Parser.init(gpa, &arena, tokens);
         const program = pr.parse() catch {
+            if (i == 0) std.debug.print("Iteration {}: parse failed\n", .{i});
             continue;
         };
         defer {
@@ -54,11 +56,15 @@ test "test_3600_iterations" {
         }
         
         var virtual_machine = vm.VM.init(gpa) catch {
+            if (i == 0) std.debug.print("Iteration {}: VM init failed\n", .{i});
             continue;
         };
         defer virtual_machine.deinit();
         
-        virtual_machine.execute(program) catch {};
+        virtual_machine.execute(program) catch {
+            if (i == 0) std.debug.print("Iteration {}: execute failed\n", .{i});
+            continue;
+        };
         
         const end = std.time.nanoTimestamp();
         const elapsed_i128 = end - start;
@@ -66,6 +72,8 @@ test "test_3600_iterations" {
         total_time += elapsed;
         if (elapsed > max_time) max_time = elapsed;
         if (elapsed < min_time) min_time = elapsed;
+        
+        if (i < 3) std.debug.print("Iteration {}: elapsed={}ns\n", .{i, elapsed});
     }
     
     const avg_time = total_time / iterations;
