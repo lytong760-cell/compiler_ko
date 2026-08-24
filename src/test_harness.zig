@@ -1,5 +1,7 @@
 const std = @import("std");
-const ko = @import("main.zig");
+const lexer = @import("lexer.zig");
+const parser = @import("parser.zig");
+const vm = @import("vm.zig");
 
 const TEST_PROGRAMS = [_][]const u8{
     \\[ int(10)~x ],
@@ -34,7 +36,7 @@ test "test_3600_iterations" {
         
         const start = std.time.nanoTimestamp();
         
-        var lx = ko.lexer.Lexer.init(source);
+        var lx = lexer.Lexer.init(source);
         const tokens = lx.tokenize(gpa) catch {
             continue;
         };
@@ -43,17 +45,20 @@ test "test_3600_iterations" {
         var arena = std.heap.ArenaAllocator.init(gpa);
         defer arena.deinit();
         
-        var pr = ko.parser.Parser.init(gpa, &arena, tokens);
+        var pr = parser.Parser.init(gpa, &arena, tokens);
         const program = pr.parse() catch {
             continue;
         };
+        defer {
+            for (program) |*stmt| stmt.deinit();
+        }
         
-        var vm = ko.vm.VM.init(gpa) catch {
+        var virtual_machine = vm.VM.init(gpa) catch {
             continue;
         };
-        defer vm.deinit();
+        defer virtual_machine.deinit();
         
-        vm.execute(program) catch {};
+        virtual_machine.execute(program) catch {};
         
         const end = std.time.nanoTimestamp();
         const elapsed = @intCast(u64, end - start);
