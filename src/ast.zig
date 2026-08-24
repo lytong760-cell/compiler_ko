@@ -200,7 +200,7 @@ pub const BinaryExpr = struct {
     left: *Expr,
     right: *Expr,
 
-    pub const Op = enum { add, sub, mul, div, rem, and, or, eq, neq, lt, gt, lte, gte };
+    pub const Op = enum { add, sub, mul, div, rem, logical_and, logical_or, eq, neq, lt, gt, lte, gte };
 
     pub fn deinit(self: *BinaryExpr) void {
         self.left.deinit();
