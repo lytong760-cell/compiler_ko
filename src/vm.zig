@@ -6,16 +6,7 @@ pub const VM = struct {
     allocator: std.mem.Allocator,
     global_scope: *value_mod.Scope,
     current_scope: *value_mod.Scope,
-    call_stack: std.ArrayList(CallFrame),
-    return_value: ?value_mod.Value,
-    error_info: ?value_mod.ErrorObj,
     stdout: std.fs.File.Writer,
-
-    pub const CallFrame = struct {
-        function: *value_mod.Function,
-        scope: *value_mod.Scope,
-        pc: usize,
-    };
 
     pub fn init(allocator: std.mem.Allocator) !VM {
         const global_scope = try allocator.create(value_mod.Scope);
@@ -24,9 +15,6 @@ pub const VM = struct {
             .allocator = allocator,
             .global_scope = global_scope,
             .current_scope = global_scope,
-            .call_stack = std.ArrayList(CallFrame).init(allocator),
-            .return_value = null,
-            .error_info = null,
             .stdout = std.io.getStdOut().writer(),
         };
     }
@@ -36,8 +24,8 @@ pub const VM = struct {
         self.allocator.destroy(self.global_scope);
     }
 
-    pub fn execute(self: *VM, program: *ast.Program) !void {
-        for (program.stmts) |stmt| {
+    pub fn execute(self: *VM, program: []ast.Statement) !void {
+        for (program) |stmt| {
             try self.executeStatement(&stmt);
         }
     }
@@ -53,57 +41,57 @@ pub const VM = struct {
                 const val = try self.evaluateExpression(a.value_expr);
                 _ = val;
             },
-            .func_decl => |*f| {
+            .func_decl => |f| {
                 const func = try self.allocator.create(value_mod.Function);
                 func.* = value_mod.Function{
                     .name = f.name,
                     .params = try self.allocator.dupe(value_mod.Param, f.params),
-                    .body = try self.allocator.dupe(ast.Statement, f.body),
+                    .body = try self.allocator.dupe(*ast.Statement, f.body.ptr),
                     .closure_scope = self.current_scope,
                     .allocator = self.allocator,
                 };
                 const name_copy = self.allocator.dupe(u8, f.name) catch unreachable;
-                try self.current_scope.functions.put(name_copy, func.*);
+                try self.current_scope.functions.put(name_copy, func);
             },
-            .class_decl => |*c| {
+            .class_decl => |c| {
                 const class_def = try self.allocator.create(value_mod.ClassDef);
                 class_def.* = value_mod.ClassDef{
                     .name = c.name,
                     .private_fields = std.StringHashMap(value_mod.Value).init(self.allocator),
-                    .private_methods = std.StringHashMap(value_mod.Function).init(self.allocator),
+                    .private_methods = std.StringHashMap(*value_mod.Function).init(self.allocator),
                     .public_fields = std.StringHashMap(value_mod.Value).init(self.allocator),
-                    .public_methods = std.StringHashMap(value_mod.Function).init(self.allocator),
+                    .public_methods = std.StringHashMap(*value_mod.Function).init(self.allocator),
                     .allocator = self.allocator,
                 };
                 const name_copy = self.allocator.dupe(u8, c.name) catch unreachable;
-                try self.current_scope.classes.put(name_copy, class_def.*);
+                try self.current_scope.classes.put(name_copy, class_def);
             },
-            .control_flow => |*cf| {
+            .control_flow => |cf| {
                 switch (cf.kind) {
                     .if_stmt => {
                         const cond = try self.evaluateExpression(cf.condition);
                         if (try cond.toBool()) {
-                            for (cf.body) |*s| try self.executeStatement(s);
+                            for (cf.body) |s| try self.executeStatement(&s);
                         }
                     },
                     .elif_stmt => {
                         const cond = try self.evaluateExpression(cf.condition);
                         if (try cond.toBool()) {
-                            for (cf.body) |*s| try self.executeStatement(s);
+                            for (cf.body) |s| try self.executeStatement(&s);
                         }
                     },
                     .else_stmt => {
-                        for (cf.body) |*s| try self.executeStatement(s);
+                        for (cf.body) |s| try self.executeStatement(&s);
                     },
                     .for_loop => {
-                        for (cf.body) |*s| try self.executeStatement(s);
+                        for (cf.body) |s| try self.executeStatement(&s);
                     },
                     .while_loop => {
-                        for (cf.body) |*s| try self.executeStatement(s);
+                        for (cf.body) |s| try self.executeStatement(&s);
                     },
                 }
             },
-            .memory_op => |*m| {
+            .memory_op => |m| {
                 switch (m.kind) {
                     .address => {
                         const val = try self.evaluateExpression(m.expr);
@@ -115,26 +103,26 @@ pub const VM = struct {
                     },
                 }
             },
-            .encoding_op => |*eo| {
+            .encoding_op => |eo| {
                 const val = try self.evaluateExpression(eo.expr);
                 _ = val;
                 _ = eo.encoding_type;
             },
-            .len_op => |*lo| {
+            .len_op => |lo| {
                 const val = try self.evaluateExpression(lo.expr);
                 _ = val;
             },
-            .return_stmt => |*rs| {
+            .return_stmt => |rs| {
                 const val = try self.evaluateExpression(rs.expr);
-                self.return_value = val;
+                _ = val;
             },
-            .expr => |*e| {
+            .expr => |e| {
                 _ = try self.evaluateExpression(e);
             },
-            .catch_stmt => |*cs| {
+            .catch_stmt => |cs| {
                 if (self.error_info) |err| {
                     if (std.mem.eql(u8, err.type, cs.error_type)) {
-                        for (cs.body) |*s| try self.executeStatement(s);
+                        for (cs.body) |s| try self.executeStatement(&s);
                     }
                 }
             },
