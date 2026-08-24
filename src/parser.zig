@@ -756,10 +756,10 @@ pub const Parser = struct {
                 const call = try self.allocator.create(ast.CallExpr);
                 call.* = ast.CallExpr{
                     .callee = name,
-                    .args = args.toOwnedSlice(),
+                    .args = try args.toOwnedSlice(),
                 };
                 const e = try self.allocator.create(ast.Expr);
-                e.* = .{ .call = call.* };
+                e.* = .{ .call = call };
                 return e;
             }
             const e = try self.allocator.create(ast.Expr);
@@ -786,10 +786,10 @@ pub const Parser = struct {
                 const call = try self.allocator.create(ast.CallExpr);
                 call.* = ast.CallExpr{
                     .callee = name,
-                    .args = args.toOwnedSlice(),
+                    .args = try args.toOwnedSlice(),
                 };
                 const e = try self.allocator.create(ast.Expr);
-                e.* = .{ .call = call.* };
+                e.* = .{ .call = call };
                 return e;
             }
             const e = try self.allocator.create(ast.Expr);
