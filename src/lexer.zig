@@ -158,9 +158,6 @@ pub const Lexer = struct {
                 self.col = end + 1;
                 if (std.mem.eql(u8, str, "True")) return Token.bool_true;
                 if (std.mem.eql(u8, str, "False")) return Token.bool_false;
-                if (std.mem.eql(u8, str, "ASCII")) return Token{ .keyword = .encode_kw };
-                if (std.mem.eql(u8, str, "UTF-8")) return Token{ .keyword = .encode_kw };
-                if (std.mem.eql(u8, str, "UTF-16")) return Token{ .keyword = .encode_kw };
                 return Token{ .identifier = str };
             }
 
