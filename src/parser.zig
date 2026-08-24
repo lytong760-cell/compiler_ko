@@ -2,28 +2,6 @@ const std = @import("std");
 const ast = @import("ast.zig");
 const lexer = @import("lexer.zig");
 
-pub const ParseError = error{
-    UnexpectedToken,
-    ExpectedIdentifier,
-    ExpectedLParen,
-    ExpectedRParen,
-    ExpectedLBracket,
-    ExpectedRBracket,
-    ExpectedEquals,
-    ExpectedSigil,
-    ExpectedCaret,
-    ExpectedColon,
-    ExpectedComma,
-    ExpectedAt,
-    ExpectedBang,
-    ExpectedClass,
-    ExpectedPrivate,
-    ExpectedKeyword,
-    InvalidType,
-    InvalidOperator,
-    EmptyProgram,
-} || anyerror;
-
 pub const Parser = struct {
     tokens: []lexer.Token,
     pos: usize,
@@ -56,36 +34,20 @@ pub const Parser = struct {
         return lexer.Token.eof;
     }
 
-    pub fn expect(self: *Parser, expected: []const u8) !void {
-        _ = expected;
-        // Simplified: just advance
-        _ = self.advance();
+    pub fn isAtEnd(self: *Parser) bool {
+        return self.current() == lexer.Token.eof;
     }
 
-    pub fn match(self: *Parser, comptime T: type, expected: T) bool {
-        const tok = self.current();
-        _ = T;
-        _ = expected;
-        _ = tok;
-        return false;
-    }
-
-    pub fn parse(self: *Parser) !*ast.Program {
-        const program = try self.allocator.create(ast.Program);
-        program.* = ast.Program.init(self.allocator);
+    pub fn parse(self: *Parser) ![]ast.Statement {
         var stmts = std.ArrayList(ast.Statement).init(self.allocator);
+        defer stmts.deinit();
 
         while (!self.isAtEnd()) {
             const stmt = try self.parseStatement();
-            try stmts.append(stmt);
+            stmts.append(stmt) catch unreachable;
         }
 
-        program.stmts = try self.allocator.dupe(ast.Statement, stmts.items);
-        return program;
-    }
-
-    fn isAtEnd(self: *Parser) bool {
-        return self.current() == lexer.Token.eof;
+        return stmts.toOwnedSlice();
     }
 
     fn parseStatement(self: *Parser) !ast.Statement {
@@ -150,7 +112,7 @@ pub const Parser = struct {
             return try self.parseExprStatement();
         }
 
-        return ParseError.UnexpectedToken;
+        return error.UnexpectedToken;
     }
 
     fn parseVarDecl(self: *Parser) !ast.Statement {
@@ -161,11 +123,11 @@ pub const Parser = struct {
         const value_expr = try self.parseExpression();
         try self.expectRParen();
 
-        if (self.current() != .sigil) return ParseError.ExpectedSigil;
+        if (self.current() != .sigil) return error.ExpectedSigil;
         _ = self.advance();
 
         const name_tok = self.current();
-        if (name_tok != .identifier) return ParseError.ExpectedIdentifier;
+        if (name_tok != .identifier) return error.ExpectedIdentifier;
         const name = name_tok.identifier;
         _ = self.advance();
 
@@ -232,6 +194,7 @@ pub const Parser = struct {
                 .body = body.toOwnedSlice(),
                 .elifs = &[_]ast.Elif{},
                 .else_body = &[_]ast.Statement{},
+                .allocator = self.allocator,
             };
             return ast.Statement{ .control_flow = cf.* };
         }
@@ -251,11 +214,12 @@ pub const Parser = struct {
                 .body = body.toOwnedSlice(),
                 .elifs = &[_]ast.Elif{},
                 .else_body = &[_]ast.Statement{},
+                .allocator = self.allocator,
             };
             return ast.Statement{ .control_flow = cf.* };
         }
 
-        return ParseError.UnexpectedToken;
+        return error.UnexpectedToken;
     }
 
     fn parseIfStmt(self: *Parser) !ast.Statement {
@@ -280,6 +244,7 @@ pub const Parser = struct {
             .body = body.toOwnedSlice(),
             .elifs = &[_]ast.Elif{},
             .else_body = &[_]ast.Statement{},
+            .allocator = self.allocator,
         };
         return ast.Statement{ .control_flow = cf.* };
     }
@@ -306,6 +271,7 @@ pub const Parser = struct {
             .body = body.toOwnedSlice(),
             .elifs = &[_]ast.Elif{},
             .else_body = &[_]ast.Statement{},
+            .allocator = self.allocator,
         };
         return ast.Statement{ .control_flow = cf.* };
     }
@@ -326,6 +292,7 @@ pub const Parser = struct {
             .body = body.toOwnedSlice(),
             .elifs = &[_]ast.Elif{},
             .else_body = &[_]ast.Statement{},
+            .allocator = self.allocator,
         };
         return ast.Statement{ .control_flow = cf.* };
     }
@@ -357,6 +324,7 @@ pub const Parser = struct {
         cs.* = ast.CatchStmt{
             .error_type = err_type,
             .body = body.toOwnedSlice(),
+            .allocator = self.allocator,
         };
         return ast.Statement{ .catch_stmt = cs.* };
     }
@@ -368,13 +336,13 @@ pub const Parser = struct {
             _ = self.advance();
             return name;
         }
-        return ParseError.ExpectedIdentifier;
+        return error.ExpectedIdentifier;
     }
 
     fn parseClassDecl(self: *Parser) !ast.Statement {
         _ = self.advance();
         const name_tok = self.current();
-        if (name_tok != .identifier) return ParseError.ExpectedIdentifier;
+        if (name_tok != .identifier) return error.ExpectedIdentifier;
         const name = name_tok.identifier;
         _ = self.advance();
 
@@ -406,6 +374,7 @@ pub const Parser = struct {
             .name = name,
             .private_body = private_body.toOwnedSlice(),
             .public_body = public_body.toOwnedSlice(),
+            .allocator = self.allocator,
         };
         return ast.Statement{ .class_decl = cd.* };
     }
@@ -453,7 +422,7 @@ pub const Parser = struct {
             };
             return ast.Statement{ .memory_op = mo.* };
         }
-        return ParseError.UnexpectedToken;
+        return error.UnexpectedToken;
     }
 
     fn parseEncodingOpStmt(self: *Parser) !ast.Statement {
@@ -565,7 +534,7 @@ pub const Parser = struct {
             return ast.Statement{ .expr = e };
         }
 
-        return ParseError.UnexpectedToken;
+        return error.UnexpectedToken;
     }
 
     fn parseSystemTagName(self: *Parser) ![]const u8 {
@@ -580,7 +549,7 @@ pub const Parser = struct {
             _ = self.advance();
             return name;
         }
-        return ParseError.UnexpectedToken;
+        return error.UnexpectedToken;
     }
 
     fn parseExprStatement(self: *Parser) !ast.Statement {
@@ -725,7 +694,6 @@ pub const Parser = struct {
         const tok = self.current();
 
         if (tok == .int_lit) {
-            const val = tok.int_lit;
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
             lit.* = ast.Literal{ .kind = .int, .raw = "" };
@@ -800,7 +768,7 @@ pub const Parser = struct {
         if (tok == .sigil) {
             _ = self.advance();
             const name_tok = self.current();
-            if (name_tok != .identifier) return ParseError.ExpectedIdentifier;
+            if (name_tok != .identifier) return error.ExpectedIdentifier;
             const name = name_tok.identifier;
             _ = self.advance();
             if (self.current() == .l_paren) {
@@ -829,7 +797,7 @@ pub const Parser = struct {
         if (tok == .dollar) {
             _ = self.advance();
             const name_tok = self.current();
-            if (name_tok != .identifier) return ParseError.ExpectedIdentifier;
+            if (name_tok != .identifier) return error.ExpectedIdentifier;
             const name = name_tok.identifier;
             _ = self.advance();
             if (self.current() == .sigil) {
@@ -893,7 +861,7 @@ pub const Parser = struct {
             return try self.parseSystemTagExpr();
         }
 
-        return ParseError.UnexpectedToken;
+        return error.UnexpectedToken;
     }
 
     fn parseSystemTagExpr(self: *Parser) !*ast.Expr {
@@ -932,57 +900,41 @@ pub const Parser = struct {
             return e;
         }
 
-        return ParseError.UnexpectedToken;
+        return error.UnexpectedToken;
     }
 
     fn expectLParen(self: *Parser) !void {
-        if (self.current() != .l_paren) return ParseError.ExpectedLParen;
+        if (self.current() != .l_paren) return error.ExpectedLParen;
         _ = self.advance();
     }
 
     fn expectRParen(self: *Parser) !void {
-        if (self.current() != .r_paren) return ParseError.ExpectedRParen;
+        if (self.current() != .r_paren) return error.ExpectedRParen;
         _ = self.advance();
     }
 
     fn expectLBracket(self: *Parser) !void {
-        if (self.current() != .l_bracket) return ParseError.ExpectedLBracket;
+        if (self.current() != .l_bracket) return error.ExpectedLBracket;
         _ = self.advance();
     }
 
     fn expectRBracket(self: *Parser) !void {
-        if (self.current() != .r_bracket) return ParseError.ExpectedRBracket;
+        if (self.current() != .r_bracket) return error.ExpectedRBracket;
         _ = self.advance();
     }
 
     fn expectGT(self: *Parser) !void {
-        if (self.current() != .gt) return ParseError.UnexpectedToken;
+        if (self.current() != .gt) return error.UnexpectedToken;
         _ = self.advance();
     }
 
     fn expectLT(self: *Parser) !void {
-        if (self.current() != .lt) return ParseError.UnexpectedToken;
+        if (self.current() != .lt) return error.UnexpectedToken;
         _ = self.advance();
     }
 
     fn expectCaret(self: *Parser) !void {
-        if (self.current() != .caret) return ParseError.UnexpectedToken;
+        if (self.current() != .caret) return error.UnexpectedToken;
         _ = self.advance();
     }
 };
-
-pub fn Token.isLBracket(self: lexer.Token) bool {
-    return self == .l_bracket;
-}
-
-pub fn Token.isRBracket(self: lexer.Token) bool {
-    return self == .r_bracket;
-}
-
-pub fn Token.isRParen(self: lexer.Token) bool {
-    return self == .r_paren;
-}
-
-pub fn Token.isRBBrace(self: lexer.Token) bool {
-    return self == .r_brace;
-}
