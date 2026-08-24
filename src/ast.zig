@@ -272,6 +272,7 @@ pub const SystemTagExpr = struct {
 
 pub const InputExpr = struct {
     target: ?*Expr,
+    target_name: []const u8,
 
     pub fn deinit(self: *InputExpr) void {
         if (self.target) |t| t.deinit();
