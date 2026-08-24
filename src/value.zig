@@ -223,7 +223,7 @@ pub const Value = union(enum) {
             .int => |a| switch (other) {
                 .int => |b| blk: {
                     if (b == 0) break :blk error.DivideByZero;
-                    break :blk Value{ .int = a / b };
+                    break :blk Value{ .int = @divTrunc(a, b) };
                 },
                 .freal => |b| Value{ .freal = @as(f64, @floatFromInt(a)) / b },
                 else => error.TypeError,
