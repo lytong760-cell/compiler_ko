@@ -242,7 +242,7 @@ pub const Value = union(enum) {
             .int => |a| switch (other) {
                 .int => |b| blk: {
                     if (b == 0) break :blk error.DivideByZero;
-                    break :blk Value{ .int = a % b };
+                    break :blk Value{ .int = @rem(a, b) };
                 },
                 else => error.TypeError,
             },
