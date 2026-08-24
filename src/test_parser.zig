@@ -1,10 +1,9 @@
 const std = @import("std");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
-const ast = @import("ast.zig");
 
-test "parser basic" {
-    const source = "[ int(10)~x ]";
+test "parser printf" {
+    const source = "[ <printf>^(sum) ]";
     var lx = lexer.Lexer.init(source);
     var gpa = std.testing.allocator;
     const tokens = lx.tokenize(gpa) catch |err| {
@@ -12,6 +11,11 @@ test "parser basic" {
         return;
     };
     defer gpa.free(tokens);
+
+    std.debug.print("Tokens:\n", .{});
+    for (tokens, 0..) |tok, i| {
+        std.debug.print("  {}: {any}\n", .{i, tok});
+    }
 
     var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
@@ -24,7 +28,4 @@ test "parser basic" {
     };
 
     std.debug.print("Parsed {} statements\n", .{program.len});
-    for (program) |stmt| {
-        std.debug.print("Statement: {any}\n", .{stmt});
-    }
 }
