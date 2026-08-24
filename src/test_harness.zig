@@ -61,9 +61,7 @@ test "test_3600_iterations" {
         virtual_machine.execute(program) catch {};
         
         const end = std.time.nanoTimestamp();
-        const elapsed_ns = end - start;
-        const elapsed = @as(u64, @divTrunc(elapsed_ns, @as(i64, 1)));
-        _ = elapsed;
+        const elapsed = @as(u64, end - start);
         total_time += elapsed;
         if (elapsed > max_time) max_time = elapsed;
         if (elapsed < min_time) min_time = elapsed;
