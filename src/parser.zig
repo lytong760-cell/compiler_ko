@@ -568,7 +568,7 @@ pub const Parser = struct {
         return try self.parseOrExpr();
     }
 
-    fn parseOrExpr(self: *Parser) !*ast.Expr {
+    fn parseOrExpr(self: *Parser) anyerror!*ast.Expr {
         var left = try self.parseAndExpr();
         while (self.current() == .pipe_pipe) {
             _ = self.advance();
@@ -585,7 +585,7 @@ pub const Parser = struct {
         return left;
     }
 
-    fn parseAndExpr(self: *Parser) !*ast.Expr {
+    fn parseAndExpr(self: *Parser) anyerror!*ast.Expr {
         var left = try self.parseEqualityExpr();
         while (self.current() == .amp_amp) {
             _ = self.advance();
@@ -602,7 +602,7 @@ pub const Parser = struct {
         return left;
     }
 
-    fn parseEqualityExpr(self: *Parser) !*ast.Expr {
+    fn parseEqualityExpr(self: *Parser) anyerror!*ast.Expr {
         var left = try self.parseRelationalExpr();
         while (true) {
             if (self.current() == .equals and self.peek(1) != .equals) {
@@ -619,7 +619,7 @@ pub const Parser = struct {
         return left;
     }
 
-    fn parseRelationalExpr(self: *Parser) !*ast.Expr {
+    fn parseRelationalExpr(self: *Parser) anyerror!*ast.Expr {
         var left = try self.parseAdditiveExpr();
         while (true) {
             if (self.current() == .lt and self.peek(1) != .equals) {
@@ -643,7 +643,7 @@ pub const Parser = struct {
         return left;
     }
 
-    fn parseAdditiveExpr(self: *Parser) !*ast.Expr {
+    fn parseAdditiveExpr(self: *Parser) anyerror!*ast.Expr {
         var left = try self.parseMultiplicativeExpr();
         while (self.current() == .plus or self.current() == .minus) {
             const op_tok = self.advance();
