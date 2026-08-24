@@ -568,7 +568,7 @@ pub const Parser = struct {
             const right = try self.parseAndExpr();
             const bin = try self.allocator.create(ast.BinaryExpr);
             bin.* = ast.BinaryExpr{
-                .op = .or,
+                .op = .logical_or,
                 .left = left,
                 .right = right,
             };
