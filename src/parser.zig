@@ -746,7 +746,7 @@ pub const Parser = struct {
         }
         
         if (std.mem.eql(u8, tag, "encode")) {
-            var encoding_type = "";
+            var encoding_type: []const u8 = "";
             if (self.current() == .l_paren) {
                 _ = self.advance();
                 const enc_expr = try self.parseExpression();
