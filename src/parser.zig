@@ -51,7 +51,7 @@ pub const Parser = struct {
         return try stmts.toOwnedSlice();
     }
 
-    fn parseStatement(self: *Parser) !ast.Statement {
+    fn parseStatement(self: *Parser) anyerror!ast.Statement {
         const tok = self.current();
 
         if (tok == .keyword) {
@@ -116,7 +116,7 @@ pub const Parser = struct {
         return error.UnexpectedToken;
     }
 
-    fn parseVarDecl(self: *Parser) !ast.Statement {
+    fn parseVarDecl(self: *Parser) anyerror!ast.Statement {
         const type_tok = self.advance();
         const type_name = type_tok.keywordText();
 
@@ -141,7 +141,7 @@ pub const Parser = struct {
         return ast.Statement{ .var_decl = vd.* };
     }
 
-    fn parseImportStmt(self: *Parser) !ast.Statement {
+    fn parseImportStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
         const expr = try self.parseExpression();
@@ -157,7 +157,7 @@ pub const Parser = struct {
         return ast.Statement{ .expr = e };
     }
 
-    fn parseLoopStmt(self: *Parser) !ast.Statement {
+    fn parseLoopStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
 
         if (self.current() == .lt) {
@@ -225,7 +225,7 @@ pub const Parser = struct {
         return error.UnexpectedToken;
     }
 
-    fn parseIfStmt(self: *Parser) !ast.Statement {
+    fn parseIfStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLT();
         _ = self.advance();
