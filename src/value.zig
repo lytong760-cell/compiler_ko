@@ -240,7 +240,10 @@ pub const Value = union(enum) {
     pub fn rem(self: Value, other: Value) !Value {
         return switch (self) {
             .int => |a| switch (other) {
-                .int => |b| if (b == 0) return error.DivideByZero; Value{ .int = a % b },
+                .int => |b| blk: {
+                    if (b == 0) break :blk error.DivideByZero;
+                    break :blk Value{ .int = a % b };
+                },
                 else => error.TypeError,
             },
             else => error.TypeError,
