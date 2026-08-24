@@ -170,7 +170,7 @@ pub const Value = union(enum) {
                 else => error.TypeError,
             },
             .string => |a| switch (other) {
-                .string => |b| Value{ .string = try std.fmt.allocPrint(std.testing.allocator, "{s}{s}", .{ a, b }) },
+                .string => |b| Value{ .string = try std.fmt.allocPrint(allocator, "{s}{s}", .{ a, b }) },
                 else => error.TypeError,
             },
             .tuple, .list => |a| switch (other) {
