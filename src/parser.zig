@@ -48,7 +48,7 @@ pub const Parser = struct {
             stmts.append(stmt) catch unreachable;
         }
 
-        return stmts.toOwnedSlice();
+        return try stmts.toOwnedSlice();
     }
 
     fn parseStatement(self: *Parser) !ast.Statement {
