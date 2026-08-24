@@ -39,7 +39,7 @@ pub const Parser = struct {
         return self.current() == lexer.Token.eof;
     }
 
-    pub fn parse(self: *Parser) ![]ast.Statement {
+    pub fn parse(self: *Parser) anyerror![]ast.Statement {
         var stmts = std.ArrayList(ast.Statement).init(self.allocator);
         defer stmts.deinit();
 
@@ -664,7 +664,7 @@ pub const Parser = struct {
         return left;
     }
 
-    fn parseMultiplicativeExpr(self: *Parser) !*ast.Expr {
+    fn parseMultiplicativeExpr(self: *Parser) anyerror!*ast.Expr {
         var left = try self.parseUnaryExpr();
         while (self.current() == .star or self.current() == .slash or self.current() == .percent) {
             const op_tok = self.advance();
@@ -686,7 +686,7 @@ pub const Parser = struct {
         return left;
     }
 
-    fn parseUnaryExpr(self: *Parser) !*ast.Expr {
+    fn parseUnaryExpr(self: *Parser) anyerror!*ast.Expr {
         if (self.current() == .minus) {
             _ = self.advance();
             const expr = try self.parseUnaryExpr();
@@ -697,7 +697,7 @@ pub const Parser = struct {
         return try self.parsePrimaryExpr();
     }
 
-    fn parsePrimaryExpr(self: *Parser) !*ast.Expr {
+    fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
         const tok = self.current();
 
         if (tok == .int_lit) {
@@ -875,7 +875,7 @@ pub const Parser = struct {
         return error.UnexpectedToken;
     }
 
-    fn parseSystemTagExpr(self: *Parser) !*ast.Expr {
+    fn parseSystemTagExpr(self: *Parser) anyerror!*ast.Expr {
         _ = self.advance();
         const tag = try self.parseSystemTagName();
         try self.expectGT();
