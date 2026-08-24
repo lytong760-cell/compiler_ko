@@ -32,7 +32,7 @@ pub const Value = union(enum) {
             },
             .function => {},
             .class_instance => {
-                self.class_instance.deinit(allocator);
+                self.class_instance.deinit();
             },
             .error_obj => {
                 allocator.free(self.error_obj.code);
