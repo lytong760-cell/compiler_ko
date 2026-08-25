@@ -28,6 +28,18 @@ pub const VM = struct {
     }
 
     pub fn deinit(self: *VM) void {
+        var fiter = self.global_scope.functions.iterator();
+        while (fiter.next()) |entry| {
+            entry.value_ptr.*.deinit();
+            self.allocator.destroy(entry.value_ptr.*);
+        }
+        self.global_scope.functions.deinit();
+        var citer = self.global_scope.classes.iterator();
+        while (citer.next()) |entry| {
+            entry.value_ptr.*.deinit();
+            self.allocator.destroy(entry.value_ptr.*);
+        }
+        self.global_scope.classes.deinit();
         self.global_scope.deinit();
         self.allocator.destroy(self.global_scope);
     }
