@@ -1,9 +1,7 @@
 const std = @import("std");
-const builtin = @import("builtin");
 
 const FIRESTORE_BASE = "https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents";
 const API_KEY = "AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE";
-const MODULE_STORE = "https://ko-studio.ai.studio/mobule-store";
 
 pub const Installer = struct {
     allocator: std.mem.Allocator,
@@ -95,7 +93,7 @@ pub const Installer = struct {
         defer dir.close();
 
         var iter = dir.iterate();
-        while (try iter.next()) |entry| |entry| {
+        while (try iter.next()) |entry| {
             if (entry.kind == .file and std.mem.endsWith(u8, entry.name, ".zip")) {
                 const extract_dir = try std.fmt.allocPrint(self.allocator, "{s}/extracted", .{self.temp_dir});
                 defer self.allocator.free(extract_dir);
@@ -144,12 +142,12 @@ pub const Installer = struct {
         try std.fs.cwd().writeFile(.{ .path = scope_file, .data = lib_name });
     }
 
-    fn runCommand(self: *Installer, comptime cmd: []const u8, args: []const []const u8) ![]const u8 {
-        var child = std.process.Child.init(&.{"curl"}, self.allocator);
+    fn runCommand(self: *Installer, cmd: []const u8, args: []const []const u8) ![]const u8 {
+        var child = std.process.Child.init(args, self.allocator);
         child.cwd = self.temp_dir;
         child.stdin_behavior = .Close;
         child.stdout_behavior = .Pipe;
-        child.stderr_behavior .Pipe;
+        child.stderr_behavior = .Pipe;
 
         const result = try child.spawnAndWait();
         if (result.Exited != 0) {
