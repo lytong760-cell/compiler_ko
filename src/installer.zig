@@ -208,11 +208,9 @@ pub const Installer = struct {
         while (iter.next()) |part| {
             if (found_field) {
                 if (std.mem.eql(u8, part, "stringValue")) {
+                    _ = iter.next() orelse "";
                     const val = iter.next() orelse "";
-                    const colon = std.mem.indexOf(u8, val, ":").?;
-                    const after = std.mem.trimLeft(u8, val[colon + 1 ..], " \n\t");
-                    const end = std.mem.indexOfAny(u8, after, "},").?;
-                    return std.mem.trimRight(u8, after[0..end], " \n\t");
+                    return val;
                 }
             }
             if (std.mem.eql(u8, part, field)) {
