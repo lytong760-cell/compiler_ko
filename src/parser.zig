@@ -291,6 +291,9 @@ pub const Parser = struct {
                 return ast.Statement{ .expr = e };
             }
 
+            try self.expectLParen();
+            const cond = try self.parseExpression();
+            try self.expectRParen();
             try self.expectLBracket();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
                 while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
@@ -299,10 +302,11 @@ pub const Parser = struct {
             }
             try self.expectRBracket();
 
+            const kind: ast.ControlFlow.Kind = if (std.mem.eql(u8, tag, "for")) .for_loop else .while_loop;
             const cf = try self.allocator.create(ast.ControlFlow);
             cf.* = ast.ControlFlow{
-                .kind = .for_loop,
-                .condition = try self.allocator.create(ast.Expr),
+                .kind = kind,
+                .condition = cond,
                 .body = try body.toOwnedSlice(),
                 .elifs = &[_]ast.Elif{},
                 .else_body = &[_]ast.Statement{},
