@@ -33,14 +33,12 @@ pub const VM = struct {
             entry.value_ptr.*.deinit();
             self.allocator.destroy(entry.value_ptr.*);
         }
-        self.global_scope.functions.deinit();
         var citer = self.global_scope.classes.iterator();
         while (citer.next()) |entry| {
             entry.value_ptr.*.deinit();
             self.allocator.destroy(entry.value_ptr.*);
         }
-        self.global_scope.classes.deinit();
-        self.global_scope.variables.deinit();
+        self.global_scope.deinit();
         self.allocator.destroy(self.global_scope);
     }
 
