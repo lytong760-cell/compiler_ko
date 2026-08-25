@@ -179,7 +179,7 @@ pub const Installer = struct {
     }
 
     fn runCommand(self: *Installer, args: []const []const u8) !void {
-        const result = std.process.Child.run(.{
+        const result = try std.process.Child.run(.{
             .allocator = self.allocator,
             .argv = args,
         });
