@@ -670,19 +670,7 @@ pub const VM = struct {
             const arg = try self.evaluateExpression(&st.args[0]);
             if (std.mem.eql(u8, st.tag, "printf")) {
                 if (arg == .string) {
-                    var out = std.ArrayList(u8).init(self.allocator);
-                    var i: usize = 0;
-                    while (i < arg.string.len) {
-                        if (arg.string[i] == '\\' and i + 1 < arg.string.len and arg.string[i + 1] == 'n') {
-                            try out.append('\n');
-                            i += 2;
-                        } else {
-                            try out.append(arg.string[i]);
-                            i += 1;
-                        }
-                    }
-                    try self.stdout.print("{s}", .{out.items});
-                    out.deinit();
+                    try self.printInterpolated(arg.string);
                 } else {
                     try self.stdout.print("{any}\n", .{arg});
                 }
