@@ -222,11 +222,11 @@ pub const VM = struct {
     fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
         switch (target.*) {
             .identifier => |name| {
-                if (self.current_scope.variables.get(name)) |old_val| {
+                if (self.current_scope.variables.get(name)) |_| {
                     const gop = try self.current_scope.variables.getOrPut(name);
                     gop.value_ptr.*.deinit(self.allocator);
                     gop.value_ptr.* = val;
-                } else if (self.global_scope.variables.get(name)) |old_val| {
+                } else if (self.global_scope.variables.get(name)) |_| {
                     const gop = try self.global_scope.variables.getOrPut(name);
                     gop.value_ptr.*.deinit(self.allocator);
                     gop.value_ptr.* = val;
