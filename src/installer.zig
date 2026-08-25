@@ -155,6 +155,8 @@ pub const Installer = struct {
         }
         return result.stdout;
     }
+        return result.stdout;
+    }
 
     pub fn cleanup(self: *Installer) !void {
         if (std.fs.cwd().access(self.temp_dir, .{})) {
