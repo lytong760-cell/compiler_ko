@@ -190,7 +190,7 @@ pub const VM = struct {
         }
     }
 
-    fn executeStatementInScope(self: *VM, stmt: *const ast.Statement, scope: *value_mod.Scope) !void {
+    fn executeStatementInScope(self: *VM, stmt: *const ast.Statement, scope: *value_mod.Scope) anyerror!void {
         const prev_scope = self.current_scope;
         self.current_scope = scope;
         defer self.current_scope = prev_scope;
