@@ -192,10 +192,15 @@ Catch blocks execute when an error of the specified type is raised.
 - [x] Return statement
 - [x] String interpolation in printf
 - [x] Bytes buffer allocation
+- [x] External package management (`ko -install`)
+- [x] Firestore REST API integration
+- [x] Git clone and zip inspection
+- [x] Multi-language compile/link pipeline
+- [x] Scope registration
 
 ### Not Yet Implemented
 
-- [ ] Real module loading (Import.java integration)
+- [ ] Real module loading (Import.java integration at runtime)
 - [ ] Standard library
 - [ ] Loop optimization subsystem (Loop.cpp integration)
 
