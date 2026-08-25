@@ -216,4 +216,31 @@ pub const Installer = struct {
         }
         return "";
     }
+
+    fn queryLibraryMetadata(self: *Installer, lib_name: []const u8) ![]const u8 {
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/libraries/{s}?key={s}", .{
+            FIRESTORE_BASE,
+            lib_name,
+            API_KEY,
+        });
+        defer self.allocator.free(url);
+
+        const result = std.process.Child.run(.{
+            .allocator = self.allocator,
+            .argv = &.{"curl", "-s", url},
+        }) catch |err| {
+            std.debug.print("curl failed: {any}\n", .{err});
+            return error.CommandFailed;
+        };
+        defer self.allocator.free(result.stdout);
+
+        var github_url = try self.extractStringField(result.stdout, "githubLink");
+        if (github_url.len == 0) {
+            github_url = try self.extractStringField(result.stdout, "githubUrl");
+        }
+        if (github_url.len == 0) {
+            return error.LibraryNotFound;
+        }
+        return github_url;
+    }
 };
