@@ -189,6 +189,7 @@ pub const Installer = struct {
             .argv = args,
         });
         defer self.allocator.free(result.stdout);
+        defer self.allocator.free(result.stderr);
         switch (result.term) {
             .Exited => |code| {
                 if (code != 0) return error.CommandFailed;
