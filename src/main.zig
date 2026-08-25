@@ -3,6 +3,7 @@ const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 const vm = @import("vm.zig");
 const ast = @import("ast.zig");
+const installer = @import("installer.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -14,6 +15,25 @@ pub fn main() !void {
 
     if (args.len < 2) {
         try std.io.getStdOut().writer().print("Usage: ko <file.ko>\n", .{});
+        try std.io.getStdOut().writer().print("       ko -install <library>\n", .{});
+        return;
+    }
+
+    if (std.mem.eql(u8, args[1], "-install")) {
+        if (args.len < 3) {
+            try std.io.getStdErr().writer().print("Error: Please specify a library name\n", .{});
+            return;
+        }
+        var inst = installer.Installer.init(allocator) catch |err| {
+            try std.io.getStdErr().writer().print("Error initializing installer: {any}\n", .{err});
+            return;
+        };
+        defer inst.deinit();
+
+        inst.installLibrary(args[2]) catch |err| {
+            try std.io.getStdErr().writer().print("Installation failed: {any}\n", .{err});
+            try std.io.getStdErr().writer().print("Auto-purging failed installation...\n", .{});
+        };
         return;
     }
 
