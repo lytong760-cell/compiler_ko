@@ -58,7 +58,7 @@ pub const Installer = struct {
 
     fn cloneRepo(self: *Installer, repo_url: []const u8) !void {
         std.debug.print("Cloning repository: {s}\n", .{repo_url});
-        try self.runCommand(&.{"git", "clone", repo_url, self.temp_dir});
+        _ = try self.runCommand(&.{"git", "clone", repo_url, self.temp_dir});
     }
 
     fn inspectAndFilterZip(self: *Installer) !void {
