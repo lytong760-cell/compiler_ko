@@ -35,6 +35,22 @@ zig build
 ./zig-out/bin/ko <file.ko>
 ```
 
+## Installing Libraries
+
+```bash
+./zig-out/bin/ko -install <library>
+```
+
+The `-install` command:
+1. Queries the .ko Module Store (Firestore) for library metadata
+2. Clones the library's GitHub repository
+3. Inspects for a `.zip` package (purging if missing)
+4. Auto-detects the implementation language
+5. Compiles and links the library
+6. Registers the library scope
+
+On failure, the system automatically purges all downloaded files to avoid conflicts.
+
 ## Language Features
 
 ### Data Types
