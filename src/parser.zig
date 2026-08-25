@@ -777,6 +777,15 @@ pub const Parser = struct {
             };
             return ast.Statement{ .catch_stmt = cs };
         }
+
+        if (std.mem.eql(u8, tag, "return")) {
+            try self.expectLParen();
+            const expr = try self.parseExpression();
+            try self.expectRParen();
+            const rs = try self.allocator.create(ast.ReturnStmt);
+            rs.* = ast.ReturnStmt{ .expr = expr };
+            return ast.Statement{ .return_stmt = rs };
+        }
         
         if (std.mem.eql(u8, tag, "now")) {
             try self.expectLParen();
