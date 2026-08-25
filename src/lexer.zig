@@ -288,7 +288,7 @@ pub const Lexer = struct {
         defer tokens.deinit();
 
         while (true) {
-            const tok = self.next() orelse Token.eof;
+            const tok = (try self.next()) orelse Token.eof;
             if (tok == Token.eof) break;
             try tokens.append(tok);
         }
