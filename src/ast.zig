@@ -281,8 +281,10 @@ pub const InputExpr = struct {
 
 pub const NowExpr = struct {
     expr: *Expr,
+    target: *Expr,
 
     pub fn deinit(self: *NowExpr) void {
         self.expr.deinit();
+        self.target.deinit();
     }
 };

@@ -527,13 +527,13 @@ pub const Parser = struct {
     fn parseNowStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
-        _ = try self.parseExpression();
+        const expr = try self.parseExpression();
         try self.expectRParen();
         try self.expectGT();
         const target = try self.parseExpression();
 
         const ne = try self.allocator.create(ast.NowExpr);
-        ne.* = ast.NowExpr{ .expr = target };
+        ne.* = ast.NowExpr{ .expr = expr, .target = target };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .now_expr = ne };
         return ast.Statement{ .expr = e };
