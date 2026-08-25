@@ -47,9 +47,9 @@ pub const Installer = struct {
         defer self.allocator.free(url);
 
         const result = try self.runCommand(&.{"curl", "-s", url});
-        defer self.allocator.free(result);
+        defer self.allocator.free(result.stdout);
 
-        const github_url = try self.extractStringField(result, "githubUrl");
+        const github_url = try self.extractStringField(result.stdout, "githubUrl");
         if (github_url.len == 0) {
             return error.LibraryNotFound;
         }
@@ -124,13 +124,13 @@ pub const Installer = struct {
     fn compileAndLink(self: *Installer, lang: []const u8) !void {
         std.debug.print("Compiling {s} code...\n", .{lang});
         if (std.mem.eql(u8, lang, "java")) {
-            _ = try self.runCommand(&.{"javac", "-d", self.temp_dir, self.temp_dir ++ "/*.java"});
+            _ = try self.runCommand(&.{"javac", "-d", self.temp_dir});
         } else if (std.mem.eql(u8, lang, "c")) {
-            _ = try self.runCommand(&.{"gcc", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so", self.temp_dir ++ "/*.c"});
+            _ = try self.runCommand(&.{"gcc", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so"});
         } else if (std.mem.eql(u8, lang, "cpp")) {
-            _ = try self.runCommand(&.{"g++", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so", self.temp_dir ++ "/*.cpp"});
+            _ = try self.runCommand(&.{"g++", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so"});
         } else if (std.mem.eql(u8, lang, "zig")) {
-            _ = try self.runCommand(&.{"zig", "build-lib", "-fPIC", "-O", "ReleaseFast", self.temp_dir ++ "/lib", self.temp_dir ++ "/*.zig"});
+            _ = try self.runCommand(&.{"zig", "build-lib", "-fPIC", "-O", "ReleaseFast", self.temp_dir ++ "/lib"});
         }
     }
 
@@ -142,19 +142,11 @@ pub const Installer = struct {
         try std.fs.cwd().writeFile(.{ .path = scope_file, .data = lib_name });
     }
 
-    fn runCommand(self: *Installer, args: []const []const u8) ![]const u8 {
-        const result = try std.process.Child.run(.{
+    fn runCommand(self: *Installer, args: []const []const u8) !std.process.Child.RunResult {
+        return std.process.Child.run(.{
             .allocator = self.allocator,
             .argv = args,
         });
-        defer self.allocator.free(result.stdout);
-        switch (result.term) {
-            .Exited => |code| {
-                if (code != 0) return error.CommandFailed;
-            },
-            else => return error.CommandFailed,
-        }
-        return result.stdout;
     }
 
     pub fn cleanup(self: *Installer) !void {
