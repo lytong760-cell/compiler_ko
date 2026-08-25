@@ -75,6 +75,14 @@ string("Hello")~name
 ]
 ```
 
+### Loops
+
+```ko
+Loop <for>(~i=1(2)&=5) [
+    <printf>^("Turn {i}\n")
+]
+```
+
 ### Output
 
 ```ko
@@ -138,6 +146,13 @@ Hero !class [
 ]
 ```
 
+### Immediate Mutation
+
+```ko
+<int(10)~x>
+<now>(20)>x  | x is now 20
+```
+
 ## Examples
 
 See the `examples/` directory for sample .ko programs.
@@ -145,6 +160,8 @@ See the `examples/` directory for sample .ko programs.
 ## Testing
 
 ```bash
-zig test src/test_lexer.zig
-zig test src/test_parser.zig
+zig test src/test_3600.zig
+zig test src/test_harness.zig
+zig test src/test_lexer_extended.zig
+zig test src/test_parser_extended.zig
 ```
