@@ -98,7 +98,7 @@ pub const Installer = struct {
                 const extract_dir = try std.fmt.allocPrint(self.allocator, "{s}/extracted", .{self.temp_dir});
                 defer self.allocator.free(extract_dir);
                 try std.fs.cwd().makePath(extract_dir);
-                try self.runCommand(&.{"unzip", "-q", entry.name, "-d", extract_dir});
+                _ = try self.runCommand(&.{"unzip", "-q", entry.name, "-d", extract_dir});
 
                 var ext_dir = try std.fs.cwd().openDir(extract_dir, .{ .iterate = true });
                 defer ext_dir.close();
@@ -124,13 +124,13 @@ pub const Installer = struct {
     fn compileAndLink(self: *Installer, lang: []const u8) !void {
         std.debug.print("Compiling {s} code...\n", .{lang});
         if (std.mem.eql(u8, lang, "java")) {
-            try self.runCommand(&.{"javac", "-d", self.temp_dir, self.temp_dir ++ "/*.java"});
+            _ = try self.runCommand(&.{"javac", "-d", self.temp_dir, self.temp_dir ++ "/*.java"});
         } else if (std.mem.eql(u8, lang, "c")) {
-            try self.runCommand(&.{"gcc", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so", self.temp_dir ++ "/*.c"});
+            _ = try self.runCommand(&.{"gcc", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so", self.temp_dir ++ "/*.c"});
         } else if (std.mem.eql(u8, lang, "cpp")) {
-            try self.runCommand(&.{"g++", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so", self.temp_dir ++ "/*.cpp"});
+            _ = try self.runCommand(&.{"g++", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so", self.temp_dir ++ "/*.cpp"});
         } else if (std.mem.eql(u8, lang, "zig")) {
-            try self.runCommand(&.{"zig", "build-lib", "-fPIC", "-O", "ReleaseFast", self.temp_dir ++ "/lib", self.temp_dir ++ "/*.zig"});
+            _ = try self.runCommand(&.{"zig", "build-lib", "-fPIC", "-O", "ReleaseFast", self.temp_dir ++ "/lib", self.temp_dir ++ "/*.zig"});
         }
     }
 
