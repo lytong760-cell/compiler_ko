@@ -437,7 +437,43 @@ pub const VM = struct {
         };
     }
 
-    fn evaluateUnary(self: *VM, unary: *ast.UnaryExpr) !value_mod.Value {
+    fn printInterpolated(self: *VM, s: []const u8) !void {
+        var out = std.ArrayList(u8).init(self.allocator);
+        defer out.deinit();
+
+        var i: usize = 0;
+        while (i < s.len) {
+            if (s[i] == '\\' and i + 1 < s.len and s[i + 1] == 'n') {
+                try out.append('\n');
+                i += 2;
+            } else if (s[i] == '{') {
+                if (i + 1 < s.len) {
+                    var j = i + 1;
+                    while (j < s.len and s[j] != '}') : (j += 1) {}
+                    if (j < s.len and s[j] == '}') {
+                        const var_name = s[i + 1 .. j];
+                        if (self.current_scope.variables.get(var_name)) |var_val| {
+                            try var_val.print(out.writer());
+                        } else if (self.global_scope.variables.get(var_name)) |var_val| {
+                            try var_val.print(out.writer());
+                        } else {
+                            try out.appendSlice("{");
+                            try out.appendSlice(var_name);
+                            try out.append('}');
+                        }
+                        i = j + 1;
+                        continue;
+                    }
+                }
+                try out.append(s[i]);
+                i += 1;
+            } else {
+                try out.append(s[i]);
+                i += 1;
+            }
+        }
+        try self.stdout.print("{s}", .{out.items});
+    }
         const val = try self.evaluateExpression(unary.expr);
         return switch (unary.op) {
             .neg => switch (val) {
@@ -460,19 +496,7 @@ pub const VM = struct {
             for (call.args) |arg| {
                 const val = try self.evaluateExpression(@constCast(&arg));
                 if (val == .string) {
-                    var out = std.ArrayList(u8).init(self.allocator);
-                    var i: usize = 0;
-                    while (i < val.string.len) {
-                        if (val.string[i] == '\\' and i + 1 < val.string.len and val.string[i + 1] == 'n') {
-                            try out.append('\n');
-                            i += 2;
-                        } else {
-                            try out.append(val.string[i]);
-                            i += 1;
-                        }
-                    }
-                    try self.stdout.print("{s}", .{out.items});
-                    out.deinit();
+                    try self.printInterpolated(val.string);
                 } else {
                     try self.stdout.print("{any}\n", .{val});
                 }
