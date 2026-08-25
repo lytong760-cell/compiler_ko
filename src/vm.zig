@@ -566,7 +566,8 @@ pub const VM = struct {
 
         switch (obj) {
             .tuple, .list => |arr| {
-                if (idx == .int) |i| {
+                if (idx == .int) {
+                    const i = idx.int;
                     const idx_usize: usize = @intCast(i);
                     if (idx_usize < arr.len) {
                         return arr[idx_usize];
@@ -578,7 +579,8 @@ pub const VM = struct {
                 return error.RuntimeError;
             },
             .dict => |d| {
-                if (idx == .string) |key| {
+                if (idx == .string) {
+                    const key = idx.string;
                     if (d.get(key)) |val| {
                         return val;
                     }
@@ -589,7 +591,8 @@ pub const VM = struct {
                 return error.RuntimeError;
             },
             .string => |s| {
-                if (idx == .int) |i| {
+                if (idx == .int) {
+                    const i = idx.int;
                     const idx_usize: usize = @intCast(i);
                     if (idx_usize < s.len) {
                         const ch = s[idx_usize..idx_usize + 1];
