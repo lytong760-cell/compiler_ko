@@ -497,30 +497,38 @@ pub const VM = struct {
 
                 return ret;
             },
-            .class_instance => |class_def| {
-                const instance = try self.allocator.create(value_mod.ClassInstance);
-                instance.* = value_mod.ClassInstance{
-                    .class_name = try self.allocator.dupe(u8, class_def.name),
-                    .fields = std.StringHashMap(value_mod.Value).init(self.allocator),
-                    .methods = std.StringHashMap(*value_mod.Function).init(self.allocator),
-                    .allocator = self.allocator,
-                };
-
-                var piter = class_def.public_fields.iterator();
-                while (piter.next()) |entry| {
-                    const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
-                    try instance.fields.put(key_copy, entry.value_ptr.*);
-                }
-                var miter = class_def.public_methods.iterator();
-                while (miter.next()) |entry| {
-                    const method_copy = entry.value_ptr.*;
-                    const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
-                    try instance.methods.put(key_copy, method_copy);
-                }
-
-                return value_mod.Value{ .class_instance = instance };
-            },
             else => {
+                var class_def: ?*value_mod.ClassDef = null;
+                if (self.current_scope.classes.get(call.callee)) |cd| {
+                    class_def = cd;
+                } else if (self.global_scope.classes.get(call.callee)) |cd| {
+                    class_def = cd;
+                }
+
+                if (class_def) |cd| {
+                    const instance = try self.allocator.create(value_mod.ClassInstance);
+                    instance.* = value_mod.ClassInstance{
+                        .class_name = try self.allocator.dupe(u8, cd.name),
+                        .fields = std.StringHashMap(value_mod.Value).init(self.allocator),
+                        .methods = std.StringHashMap(*value_mod.Function).init(self.allocator),
+                        .allocator = self.allocator,
+                    };
+
+                    var piter = cd.public_fields.iterator();
+                    while (piter.next()) |entry| {
+                        const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
+                        try instance.fields.put(key_copy, entry.value_ptr.*);
+                    }
+                    var miter = cd.public_methods.iterator();
+                    while (miter.next()) |entry| {
+                        const method_copy = entry.value_ptr.*;
+                        const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
+                        try instance.methods.put(key_copy, method_copy);
+                    }
+
+                    return value_mod.Value{ .class_instance = instance };
+                }
+
                 self.raiseError("CallError", "Cannot call non-function");
                 return error.RuntimeError;
             },
