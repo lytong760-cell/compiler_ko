@@ -46,8 +46,21 @@ pub const Installer = struct {
         });
         defer self.allocator.free(url);
 
-        const result = try self.runCommand(&.{"curl", "-s", url});
+        var stdout_buf: [65536]u8 = undefined;
+        var stdout_list = std.ArrayList(u8).init(self.allocator);
+        defer stdout_list.deinit();
+
+        const result = std.process.Child.run(.{
+            .allocator = self.allocator,
+            .argv = &.{"curl", "-s", url},
+        });
         defer self.allocator.free(result.stdout);
+        switch (result.term) {
+            .Exited => |code| {
+                if (code != 0) return error.CommandFailed;
+            },
+            else => return error.CommandFailed,
+        }
 
         const github_url = try self.extractStringField(result.stdout, "githubUrl");
         if (github_url.len == 0) {
