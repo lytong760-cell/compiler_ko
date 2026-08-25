@@ -124,13 +124,43 @@ pub const Installer = struct {
     fn compileAndLink(self: *Installer, lang: []const u8) !void {
         std.debug.print("Compiling {s} code...\n", .{lang});
         if (std.mem.eql(u8, lang, "java")) {
-            _ = try self.runCommand(&.{"javac", "-d", self.temp_dir});
+            var args = std.ArrayList([]const u8).init(self.allocator);
+            defer args.deinit();
+            try args.append("javac");
+            try args.append("-d");
+            try args.append(self.temp_dir);
+            _ = try self.runCommand(args.items);
         } else if (std.mem.eql(u8, lang, "c")) {
-            _ = try self.runCommand(&.{"gcc", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so"});
+            var args = std.ArrayList([]const u8).init(self.allocator);
+            defer args.deinit();
+            try args.append("gcc");
+            try args.append("-shared");
+            try args.append("-fPIC");
+            try args.append("-o");
+            try args.append(try std.fmt.allocPrint(self.allocator, "{s}/lib.so", .{self.temp_dir}));
+            try args.append(try std.fmt.allocPrint(self.allocator, "{s}/*.c", .{self.temp_dir}));
+            _ = try self.runCommand(args.items);
         } else if (std.mem.eql(u8, lang, "cpp")) {
-            _ = try self.runCommand(&.{"g++", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so"});
+            var args = std.ArrayList([]const u8).init(self.allocator);
+            defer args.deinit();
+            try args.append("g++");
+            try args.append("-shared");
+            try args.append("-fPIC");
+            try args.append("-o");
+            try args.append(try std.fmt.allocPrint(self.allocator, "{s}/lib.so", .{self.temp_dir}));
+            try args.append(try std.fmt.allocPrint(self.allocator, "{s}/*.cpp", .{self.temp_dir}));
+            _ = try self.runCommand(args.items);
         } else if (std.mem.eql(u8, lang, "zig")) {
-            _ = try self.runCommand(&.{"zig", "build-lib", "-fPIC", "-O", "ReleaseFast", self.temp_dir ++ "/lib"});
+            var args = std.ArrayList([]const u8).init(self.allocator);
+            defer args.deinit();
+            try args.append("zig");
+            try args.append("build-lib");
+            try args.append("-fPIC");
+            try args.append("-O");
+            try args.append("ReleaseFast");
+            try args.append(try std.fmt.allocPrint(self.allocator, "{s}/lib", .{self.temp_dir}));
+            try args.append(try std.fmt.allocPrint(self.allocator, "{s}/*.zig", .{self.temp_dir}));
+            _ = try self.runCommand(args.items);
         }
     }
 
