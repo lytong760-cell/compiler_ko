@@ -670,7 +670,6 @@ pub const VM = struct {
                 try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = str });
             }
             if (ie.target) |target_expr| {
-                const target_val = try self.evaluateExpression(target_expr);
                 try self.assignValue(target_expr, value_mod.Value{ .string = str });
             }
             return value_mod.Value{ .string = str };
