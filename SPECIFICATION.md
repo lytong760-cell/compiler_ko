@@ -190,6 +190,8 @@ Catch blocks execute when an error of the specified type is raised.
 - [x] Method invocation on class instances
 - [x] Index access operator
 - [x] Return statement
+- [x] String interpolation in printf
+- [x] Bytes buffer allocation
 
 ### Not Yet Implemented
 
