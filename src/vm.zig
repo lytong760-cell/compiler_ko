@@ -247,7 +247,7 @@ pub const VM = struct {
                         if (idx == .string) {
                             const key = idx.string;
                             const key_copy = self.allocator.dupe(u8, key) catch unreachable;
-                            try (&d).put(key_copy, val);
+                            try d.put(key_copy, val);
                         } else {
                             self.raiseError("TypeError", "Dict key must be string");
                         }
