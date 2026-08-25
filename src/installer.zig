@@ -155,10 +155,8 @@ pub const Installer = struct {
     }
 
     pub fn cleanup(self: *Installer) !void {
-        _ = std.fs.cwd().access(self.temp_dir, .{});
-        if (true) {
-            try std.fs.cwd().deleteTree(self.temp_dir);
-        }
+        _ = std.fs.cwd().access(self.temp_dir, .{}) catch {};
+        try std.fs.cwd().deleteTree(self.temp_dir);
     }
 
     fn extractStringField(self: *Installer, json: []const u8, field: []const u8) ![]const u8 {
