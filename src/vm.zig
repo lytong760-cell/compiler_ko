@@ -224,12 +224,10 @@ pub const VM = struct {
             .identifier => |name| {
                 if (self.current_scope.variables.get(name)) |old_val| {
                     const gop = try self.current_scope.variables.getOrPut(name);
-                    gop.key_ptr.* = name;
                     gop.value_ptr.*.deinit(self.allocator);
                     gop.value_ptr.* = val;
                 } else if (self.global_scope.variables.get(name)) |old_val| {
                     const gop = try self.global_scope.variables.getOrPut(name);
-                    gop.key_ptr.* = name;
                     gop.value_ptr.*.deinit(self.allocator);
                     gop.value_ptr.* = val;
                 } else {
