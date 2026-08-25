@@ -164,7 +164,7 @@ pub const Installer = struct {
 
     fn extractStringField(self: *Installer, json: []const u8, field: []const u8) ![]const u8 {
         _ = self;
-        var iter = std.mem.split(u8, json, "\"");
+        var iter = std.mem.splitSequence(u8, json, "\"");
         var found_field = false;
         while (iter.next()) |part| {
             if (found_field) {
