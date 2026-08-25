@@ -780,12 +780,12 @@ pub const Parser = struct {
         
         if (std.mem.eql(u8, tag, "now")) {
             try self.expectLParen();
-            _ = try self.parseExpression();
+            const expr = try self.parseExpression();
             try self.expectRParen();
             try self.expectGT();
             const target = try self.parseExpression();
             const ne = try self.allocator.create(ast.NowExpr);
-            ne.* = ast.NowExpr{ .expr = target };
+            ne.* = ast.NowExpr{ .expr = expr, .target = target };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .now_expr = ne };
             return ast.Statement{ .expr = e };
