@@ -680,7 +680,7 @@ pub const VM = struct {
 
     fn evaluateNow(self: *VM, ne: *ast.NowExpr) !value_mod.Value {
         const val = try self.evaluateExpression(ne.expr);
-        try self.assignValue(ne.expr, val);
+        try self.assignValue(ne.target, val);
         return val;
     }
 };
