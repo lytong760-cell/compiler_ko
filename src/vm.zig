@@ -227,7 +227,7 @@ pub const VM = struct {
                 }
             },
             .index_access => |ia| {
-                var obj = try self.evaluateExpression(ia.object);
+                const obj = try self.evaluateExpression(ia.object);
                 const idx = try self.evaluateExpression(ia.index);
                 switch (obj) {
                     .tuple, .list => |arr| {
@@ -248,7 +248,7 @@ pub const VM = struct {
                         if (idx == .string) {
                             const key = idx.string;
                             const key_copy = self.allocator.dupe(u8, key) catch unreachable;
-                            try d.put(key_copy, val);
+                            try @constCast(&d).put(key_copy, val);
                         } else {
                             self.raiseError("TypeError", "Dict key must be string");
                         }
