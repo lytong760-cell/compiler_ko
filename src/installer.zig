@@ -25,6 +25,7 @@ pub const Installer = struct {
         std.debug.print("Installing library: {s}...\n", .{lib_name});
 
         const github_url = try self.queryLibraryMetadata(lib_name);
+        defer self.allocator.free(github_url);
         std.debug.print("GitHub URL: {s}\n", .{github_url});
 
         try self.cloneRepo(github_url);
