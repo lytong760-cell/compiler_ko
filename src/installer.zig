@@ -143,18 +143,14 @@ pub const Installer = struct {
     }
 
     fn runCommand(self: *Installer, cmd: []const u8, args: []const []const u8) ![]const u8 {
-        var child = std.process.Child.init(args, self.allocator);
-        child.cwd = self.temp_dir;
-        child.stdin_behavior = .Close;
-        child.stdout_behavior = .Pipe;
-        child.stderr_behavior = .Pipe;
-
-        const result = try child.spawnAndWait();
+        const result = try std.process.Child.run(.{
+            .allocator = self.allocator,
+            .argv = args,
+        });
+        defer self.allocator.free(result.stdout);
         if (result.Exited != 0) {
             return error.CommandFailed;
         }
-        return result.stdout;
-    }
         return result.stdout;
     }
 
