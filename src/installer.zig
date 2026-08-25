@@ -170,7 +170,7 @@ pub const Installer = struct {
             if (found_field) {
                 const value_part = iter.next() orelse "";
                 if (std.mem.startsWith(u8, std.mem.trim(u8, value_part, " \n\t:"), "stringValue")) {
-                    const val_start = std.mem.indexOf(u8, value_part, ":") orelse "";
+                    const val_start = std.mem.indexOf(u8, value_part, ":") orelse 0;
                     const val = std.mem.trim(u8, value_part[val_start + 1 ..], " \n\t\"{}");
                     return val;
                 }
