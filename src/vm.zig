@@ -222,14 +222,19 @@ pub const VM = struct {
     fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
         switch (target.*) {
             .identifier => |name| {
-                if (self.current_scope.variables.get(name)) |_| {
+                if (self.current_scope.variables.get(name)) |old_val| {
+                    const gop = try self.current_scope.variables.getOrPut(name);
+                    gop.key_ptr.* = name;
+                    gop.value_ptr.*.deinit(self.allocator);
+                    gop.value_ptr.* = val;
+                } else if (self.global_scope.variables.get(name)) |old_val| {
+                    const gop = try self.global_scope.variables.getOrPut(name);
+                    gop.key_ptr.* = name;
+                    gop.value_ptr.*.deinit(self.allocator);
+                    gop.value_ptr.* = val;
+                } else {
                     const name_copy = self.allocator.dupe(u8, name) catch unreachable;
                     try self.current_scope.variables.put(name_copy, val);
-                } else if (self.global_scope.variables.get(name)) |_| {
-                    const name_copy = self.allocator.dupe(u8, name) catch unreachable;
-                    try self.global_scope.variables.put(name_copy, val);
-                } else {
-                    self.raiseError("AssignmentError", "Undefined variable");
                 }
             },
             .member_access => |ma| {
