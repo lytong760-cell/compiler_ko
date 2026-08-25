@@ -8,7 +8,7 @@ pub const Installer = struct {
     temp_dir: []const u8,
 
     pub fn init(allocator: std.mem.Allocator) !Installer {
-        const temp_dir = try std.fmt.allocPrint(allocator, "{s}/.ko_temp_{d}", .{ std.fs.cwd().path.?, std.time.milliTimestamp() });
+        const temp_dir = try std.fmt.allocPrint(allocator, "/tmp/.ko_temp_{d}", .{std.time.milliTimestamp()});
         try std.fs.cwd().makePath(temp_dir);
         return .{
             .allocator = allocator,
@@ -46,7 +46,7 @@ pub const Installer = struct {
         });
         defer self.allocator.free(url);
 
-        const result = try self.runCommand("curl", &.{ "-s", url });
+        const result = try self.runCommand(&.{"curl", "-s", url});
         defer self.allocator.free(result);
 
         const github_url = try self.extractStringField(result, "githubUrl");
@@ -58,7 +58,7 @@ pub const Installer = struct {
 
     fn cloneRepo(self: *Installer, repo_url: []const u8) !void {
         std.debug.print("Cloning repository: {s}\n", .{repo_url});
-        try self.runCommand("git", &.{ "clone", repo_url, self.temp_dir });
+        try self.runCommand(&.{"git", "clone", repo_url, self.temp_dir});
     }
 
     fn inspectAndFilterZip(self: *Installer) !void {
@@ -98,7 +98,7 @@ pub const Installer = struct {
                 const extract_dir = try std.fmt.allocPrint(self.allocator, "{s}/extracted", .{self.temp_dir});
                 defer self.allocator.free(extract_dir);
                 try std.fs.cwd().makePath(extract_dir);
-                try self.runCommand("unzip", &.{ "-q", entry.name, "-d", extract_dir });
+                try self.runCommand(&.{"unzip", "-q", entry.name, "-d", extract_dir});
 
                 var ext_dir = try std.fs.cwd().openDir(extract_dir, .{ .iterate = true });
                 defer ext_dir.close();
@@ -124,25 +124,25 @@ pub const Installer = struct {
     fn compileAndLink(self: *Installer, lang: []const u8) !void {
         std.debug.print("Compiling {s} code...\n", .{lang});
         if (std.mem.eql(u8, lang, "java")) {
-            try self.runCommand("javac", &.{ "-d", self.temp_dir, self.temp_dir ++ "/*.java" });
+            try self.runCommand(&.{"javac", "-d", self.temp_dir, self.temp_dir ++ "/*.java"});
         } else if (std.mem.eql(u8, lang, "c")) {
-            try self.runCommand("gcc", &.{ "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so", self.temp_dir ++ "/*.c"});
+            try self.runCommand(&.{"gcc", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so", self.temp_dir ++ "/*.c"});
         } else if (std.mem.eql(u8, lang, "cpp")) {
-            try self.runCommand("g++", &.{ "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so", self.temp_dir ++ "/*.cpp"});
+            try self.runCommand(&.{"g++", "-shared", "-fPIC", "-o", self.temp_dir ++ "/lib.so", self.temp_dir ++ "/*.cpp"});
         } else if (std.mem.eql(u8, lang, "zig")) {
-            try self.runCommand("zig", &.{ "build-lib", "-fPIC", "-O", "ReleaseFast", self.temp_dir ++ "/lib", self.temp_dir ++ "/*.zig"});
+            try self.runCommand(&.{"zig", "build-lib", "-fPIC", "-O", "ReleaseFast", self.temp_dir ++ "/lib", self.temp_dir ++ "/*.zig"});
         }
     }
 
     fn registerScope(self: *Installer, lib_name: []const u8) !void {
         std.debug.print("Registering scope for: {s}\n", .{lib_name});
-        const scope_file = try std.fmt.allocPrint(self.allocator, "{s}/.ko_scopes/{s}.scope", .{ std.fs.cwd().path.?, lib_name });
+        const scope_file = try std.fmt.allocPrint(self.allocator, "/tmp/.ko_scopes/{s}.scope", .{lib_name});
         defer self.allocator.free(scope_file);
-        try std.fs.cwd().makePath(std.fs.path.dirname(scope_file) orelse ".");
+        try std.fs.cwd().makePath("/tmp/.ko_scopes");
         try std.fs.cwd().writeFile(.{ .path = scope_file, .data = lib_name });
     }
 
-    fn runCommand(self: *Installer, cmd: []const u8, args: []const []const u8) ![]const u8 {
+    fn runCommand(self: *Installer, args: []const []const u8) ![]const u8 {
         const result = try std.process.Child.run(.{
             .allocator = self.allocator,
             .argv = args,
@@ -155,11 +155,12 @@ pub const Installer = struct {
     }
 
     pub fn cleanup(self: *Installer) !void {
-        std.fs.cwd().access(self.temp_dir, .{}) catch {};
+        _ = std.fs.cwd().access(self.temp_dir, .{}) catch {};
         std.fs.cwd().deleteTree(self.temp_dir) catch {};
     }
 
     fn extractStringField(self: *Installer, json: []const u8, field: []const u8) ![]const u8 {
+        _ = self;
         var iter = std.mem.split(u8, json, "\"");
         var found_field = false;
         while (iter.next()) |part| {
