@@ -83,7 +83,7 @@ ClassBody := ('@private' '[' Statement* ']')* Statement*
 ```
 IfStmt := '<' 'if' '>' '(' Expression ')' '[' Statement* ']'
 ElifStmt := '<' 'elif' '>' '(' Expression ')' '[' Statement* ']'
-ElseStmt := '<' 'else' '[' Statement* ']'
+ElseStmt := '<' 'else> '[' Statement* ']'
 ```
 
 ### 3.6 System Tags
@@ -185,15 +185,17 @@ Catch blocks execute when an error of the specified type is raised.
 - [x] Exception handling (catch)
 - [x] Immediate mutation (<now>)
 - [x] Import statement stub
+- [x] Function definitions and calls
+- [x] Loop constructs (for/while)
+- [x] Method invocation on class instances
+- [x] Index access operator
+- [x] Return statement
 
 ### Not Yet Implemented
 
-- [ ] Full function definitions and calls
-- [ ] Loop constructs (for/while)
-- [ ] Method invocation on class instances
-- [ ] Index access operator
-- [ ] Real module loading
+- [ ] Real module loading (Import.java integration)
 - [ ] Standard library
+- [ ] Loop optimization subsystem (Loop.cpp integration)
 
 ## 9. Grammar Summary
 
@@ -209,7 +211,7 @@ class_decl      -> 'class' identifier '[' class_body ']'
 class_body      -> ( '@private' '[' statement* ']' )* statement*
 if_stmt         -> '<' 'if' '>' '(' expr ')' '[' statement* ']'
 elif_stmt       -> '<' 'elif' '>' '(' expr ')' '[' statement* ']'
-else_stmt       -> '<' 'else' '[' statement* ']'
+else_stmt       -> '<' 'else> '[' statement* ']'
 catch_stmt      -> '<' 'catch' '>' '(' error_type ')' '[' statement* ']'
 error_type      -> '`' identifier '`'
 expr            -> or_expr
