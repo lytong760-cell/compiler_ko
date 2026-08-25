@@ -474,6 +474,8 @@ pub const VM = struct {
         }
         try self.stdout.print("{s}", .{out.items});
     }
+
+    fn evaluateUnary(self: *VM, unary: *ast.UnaryExpr) !value_mod.Value {
         const val = try self.evaluateExpression(unary.expr);
         return switch (unary.op) {
             .neg => switch (val) {
