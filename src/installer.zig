@@ -172,11 +172,18 @@ pub const Installer = struct {
         try std.fs.cwd().writeFile(.{ .path = scope_file, .data = lib_name });
     }
 
-    fn runCommand(self: *Installer, args: []const []const u8) !std.process.Child.RunResult {
-        return std.process.Child.run(.{
+    fn runCommand(self: *Installer, args: []const []const u8) !void {
+        const result = std.process.Child.run(.{
             .allocator = self.allocator,
             .argv = args,
         });
+        defer self.allocator.free(result.stdout);
+        switch (result.term) {
+            .Exited => |code| {
+                if (code != 0) return error.CommandFailed;
+            },
+            else => return error.CommandFailed,
+        }
     }
 
     pub fn cleanup(self: *Installer) !void {
