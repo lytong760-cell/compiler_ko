@@ -301,17 +301,11 @@ pub const VM = struct {
         if (self.current_scope.functions.get(name)) |func| {
             return value_mod.Value{ .function = func };
         }
-        if (self.current_scope.classes.get(name)) |class_def| {
-            return value_mod.Value{ .class_instance = class_def };
-        }
         if (self.global_scope.variables.get(name)) |val| {
             return val;
         }
         if (self.global_scope.functions.get(name)) |func| {
             return value_mod.Value{ .function = func };
-        }
-        if (self.global_scope.classes.get(name)) |class_def| {
-            return value_mod.Value{ .class_instance = class_def };
         }
         return error.UndefinedVariable;
     }
