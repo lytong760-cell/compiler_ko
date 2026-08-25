@@ -32,11 +32,11 @@ pub const VM = struct {
         self.allocator.destroy(self.global_scope);
     }
 
-    pub fn execute(self: *VM, program: []ast.Statement) !void {
+    pub fn execute(self: *VM, program: []ast.Statement) anyerror!void {
         for (program) |*stmt| try self.executeStatement(stmt);
     }
 
-    fn executeStatement(self: *VM, stmt: *const ast.Statement) !void {
+    fn executeStatement(self: *VM, stmt: *const ast.Statement) anyerror!void {
         if (self.has_returned or self.has_error) return;
 
         switch (stmt.*) {
