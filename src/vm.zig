@@ -65,7 +65,11 @@ pub const VM = struct {
             .var_decl => |*v| {
                 const val = try self.evaluateExpression(v.value_expr);
                 const final_val = if (std.mem.eql(u8, v.type_name, "bytes")) blk: {
-                    const bytes_val = try self.allocator.alloc(u8, 16);
+                    const size: usize = switch (val) {
+                        .int => |i| @intCast(i),
+                        else => 0,
+                    };
+                    const bytes_val = try self.allocator.alloc(u8, size);
                     @memset(bytes_val, 0);
                     break :blk value_mod.Value{ .bytes = bytes_val };
                 } else val;
