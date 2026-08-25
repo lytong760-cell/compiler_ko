@@ -231,7 +231,8 @@ pub const VM = struct {
                 const idx = try self.evaluateExpression(ia.index);
                 switch (obj) {
                     .tuple, .list => |arr| {
-                        if (idx == .int) |i| {
+                        if (idx == .int) {
+                            const i = idx.int;
                             const idx_usize: usize = @intCast(i);
                             if (idx_usize < arr.len) {
                                 arr[idx_usize].deinit(self.allocator);
