@@ -62,7 +62,8 @@ pub const Installer = struct {
         if (github_url.len == 0) {
             return error.LibraryNotFound;
         }
-        return github_url;
+        const duped = try self.allocator.dupe(u8, github_url);
+        return duped;
     }
 
     fn cloneRepo(self: *Installer, repo_url: []const u8) !void {
