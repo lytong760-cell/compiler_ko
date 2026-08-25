@@ -196,7 +196,7 @@ pub const Lexer = struct {
                     self.col += 1;
                     return Token.amp_equals;
                 }
-                continue;
+                return error.UnexpectedToken;
             }
             if (c == '@') return Token.at;
             if (c == '!') return Token.bang;
