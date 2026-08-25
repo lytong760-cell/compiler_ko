@@ -64,8 +64,13 @@ pub const VM = struct {
         switch (stmt.*) {
             .var_decl => |*v| {
                 const val = try self.evaluateExpression(v.value_expr);
+                const final_val = if (std.mem.eql(u8, v.type_name, "bytes")) blk: {
+                    const bytes_val = try self.allocator.alloc(u8, 16);
+                    @memset(bytes_val, 0);
+                    break :blk value_mod.Value{ .bytes = bytes_val };
+                } else val;
                 const name_copy = self.allocator.dupe(u8, v.name) catch unreachable;
-                try self.current_scope.variables.put(name_copy, val);
+                try self.current_scope.variables.put(name_copy, final_val);
             },
             .assignment => |*a| {
                 const val = try self.evaluateExpression(a.value_expr);
