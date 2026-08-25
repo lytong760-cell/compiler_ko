@@ -55,7 +55,10 @@ pub const Installer = struct {
         };
         defer self.allocator.free(result.stdout);
 
-        const github_url = try self.extractStringField(result.stdout, "githubUrl");
+        var github_url = try self.extractStringField(result.stdout, "githubLink");
+        if (github_url.len == 0) {
+            github_url = try self.extractStringField(result.stdout, "githubUrl");
+        }
         if (github_url.len == 0) {
             return error.LibraryNotFound;
         }
