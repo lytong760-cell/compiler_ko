@@ -227,7 +227,7 @@ pub const VM = struct {
                 }
             },
             .index_access => |ia| {
-                const obj = try self.evaluateExpression(ia.object);
+                var obj = try self.evaluateExpression(ia.object);
                 const idx = try self.evaluateExpression(ia.index);
                 switch (obj) {
                     .tuple, .list => |arr| {
