@@ -40,6 +40,7 @@ pub const VM = struct {
             self.allocator.destroy(entry.value_ptr.*);
         }
         self.global_scope.classes.deinit();
+        self.global_scope.variables.deinit();
         self.global_scope.deinit();
         self.allocator.destroy(self.global_scope);
     }
