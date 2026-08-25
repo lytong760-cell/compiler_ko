@@ -113,7 +113,7 @@ pub const Lexer = struct {
         };
     }
 
-    pub fn next(self: *Lexer) ?Token {
+    pub fn next(self: *Lexer) !?Token {
         while (self.pos < self.source.len) {
             const c = self.source[self.pos];
             self.pos += 1;
