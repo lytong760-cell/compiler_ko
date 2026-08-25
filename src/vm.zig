@@ -30,6 +30,7 @@ pub const VM = struct {
     pub fn deinit(self: *VM) void {
         var fiter = self.global_scope.functions.iterator();
         while (fiter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
             entry.value_ptr.*.deinit();
             self.allocator.destroy(entry.value_ptr.*);
         }
@@ -37,6 +38,7 @@ pub const VM = struct {
 
         var citer = self.global_scope.classes.iterator();
         while (citer.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
             entry.value_ptr.*.deinit();
             self.allocator.destroy(entry.value_ptr.*);
         }
@@ -44,6 +46,7 @@ pub const VM = struct {
 
         var viter = self.global_scope.variables.iterator();
         while (viter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
             entry.value_ptr.*.deinit(self.allocator);
         }
         self.global_scope.variables.deinit();
