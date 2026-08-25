@@ -262,7 +262,7 @@ pub const VM = struct {
 
     fn raiseError(self: *VM, err_type: []const u8, message: []const u8) void {
         self.has_error = true;
-        self.error_type = self.allocator.dupe(u8, err_type) catch unreachable;
+        self.error_type = err_type;
         _ = message;
     }
 
