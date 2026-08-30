@@ -2,6 +2,7 @@ const std = @import("std");
 
 const FIRESTORE_BASE = "https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents";
 const API_KEY = "AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE";
+const FIRESTORE_PARENT = "projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents";
 
 pub const Installer = struct {
     allocator: std.mem.Allocator,
@@ -37,6 +38,85 @@ pub const Installer = struct {
         try self.registerScope(lib_name);
 
         std.debug.print("Library {s} installed successfully!\n", .{lib_name});
+    }
+
+    pub fn listLibraries(self: *Installer) ![]const []const u8 {
+        std.debug.print("Querying all libraries from Module Store...\n", .{});
+
+        const url = try std.fmt.allocPrint(self.allocator, "{s}:runQuery?key={s}", .{
+            FIRESTORE_BASE,
+            API_KEY,
+        });
+        defer self.allocator.free(url);
+
+        const post_body = try std.fmt.allocPrint(self.allocator,
+            \\{"parent": "{s}", "query": {"from": [{"collectionId": "libraries"}]}}
+            , .{FIRESTORE_PARENT});
+        defer self.allocator.free(post_body);
+
+        const result = std.process.Child.run(.{
+            .allocator = self.allocator,
+            .argv = &.{ "curl", "-s", "-X", "POST", "-H", "Content-Type: application/json", "-d", post_body, url },
+        }) catch |err| {
+            std.debug.print("curl failed: {any}\n", .{err});
+            return error.CommandFailed;
+        };
+        defer self.allocator.free(result.stdout);
+        defer self.allocator.free(result.stderr);
+
+        if (result.stdout.len == 0) {
+            std.debug.print("No libraries found or empty response.\n", .{});
+            return &[_][]const u8{};
+        }
+
+        var list = std.ArrayList([]const u8).init(self.allocator);
+        defer list.deinit();
+
+        var iter = std.mem.splitSequence(u8, result.stdout, "\"name\":");
+        var count: usize = 0;
+        while (iter.next()) |part| {
+            if (count == 0) {
+                count += 1;
+                continue;
+            }
+            var name_iter = std.mem.splitSequence(u8, part, "\"");
+            if (name_iter.next()) |_| {
+                if (name_iter.next()) |doc_name| {
+                    const trimmed = std.mem.trim(u8, doc_name, " ,\n\r");
+                    const lib_name_start = std.mem.lastIndexOf(u8, trimmed, "/") orelse 0;
+                    if (lib_name_start < trimmed.len) {
+                        const lib_name = trimmed[lib_name_start + 1 ..];
+                        if (lib_name.len > 0) {
+                            try list.append(lib_name);
+                        }
+                    }
+                }
+            }
+        }
+
+        const result_slice = try self.allocator.alloc([]const u8, list.items.len);
+        @memcpy(result_slice, list.items);
+        return result_slice;
+    }
+
+    pub fn searchLibraries(self: *Installer, query: []const u8) ![]const []const u8 {
+        std.debug.print("Searching libraries for: {s}...\n", .{query});
+
+        const all_libs = try self.listLibraries();
+        defer self.allocator.free(all_libs);
+
+        var matches = std.ArrayList([]const u8).init(self.allocator);
+        defer matches.deinit();
+
+        for (all_libs) |lib| {
+            if (std.mem.indexOfPos(u8, lib, 0, query) != null) {
+                try matches.append(lib);
+            }
+        }
+
+        const result_slice = try self.allocator.alloc([]const u8, matches.items.len);
+        @memcpy(result_slice, matches.items);
+        return result_slice;
     }
 
     fn queryLibraryMetadata(self: *Installer, lib_name: []const u8) ![]const u8 {
