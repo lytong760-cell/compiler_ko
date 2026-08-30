@@ -50,7 +50,7 @@ pub const Installer = struct {
         defer self.allocator.free(url);
 
         const post_body = try std.fmt.allocPrint(self.allocator,
-            \\{"parent": "{s}", "query": {"from": [{"collectionId": "libraries"}]}}
+            \\{{"parent": "{s}", "query": {{"from": [{{"collectionId": "libraries"}}]}}}}
             , .{FIRESTORE_PARENT});
         defer self.allocator.free(post_body);
 
