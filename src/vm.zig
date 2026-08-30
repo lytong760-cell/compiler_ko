@@ -65,6 +65,7 @@ pub const VM = struct {
             .var_decl => |*v| {
                 const val = try self.evaluateExpression(v.value_expr);
                 const final_val = if (std.mem.eql(u8, v.type_name, "bytes")) blk: {
+                    defer val.deinit(self.allocator);
                     const size: usize = switch (val) {
                         .int => |i| @intCast(i),
                         else => 0,
@@ -83,11 +84,15 @@ pub const VM = struct {
             .func_decl => |f| {
                 const func = try self.allocator.create(value_mod.Function);
                 const name_copy = try self.allocator.dupe(u8, f.name);
+                const params_copy = try self.allocator.dupe(value_mod.Param, f.params);
+                const body_copy = try self.allocator.dupe(ast.Statement, f.body);
+                const catch_stmts_copy = try self.allocator.dupe(ast.CatchStmt, f.catch_stmts);
                 func.* = value_mod.Function{
                     .name = name_copy,
-                    .params = try self.allocator.dupe(value_mod.Param, f.params),
-                    .body_ptr = @ptrCast(f.body.ptr),
-                    .body_len = f.body.len,
+                    .params = params_copy,
+                    .body_ptr = body_copy.ptr,
+                    .body_len = body_copy.len,
+                    .catch_stmts = catch_stmts_copy,
                     .closure_scope = self.current_scope,
                     .allocator = self.allocator,
                 };
@@ -499,7 +504,8 @@ pub const VM = struct {
     fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Value {
         if (std.mem.eql(u8, call.callee, "Import")) {
             for (call.args) |arg| {
-                _ = try self.evaluateExpression(@constCast(&arg));
+                const val = try self.evaluateExpression(@constCast(&arg));
+                val.deinit(self.allocator);
             }
             return value_mod.Value{ .null = {} };
         }
@@ -511,6 +517,7 @@ pub const VM = struct {
                 } else {
                     try self.stdout.print("{any}\n", .{val});
                 }
+                val.deinit(self.allocator);
             }
             return value_mod.Value{ .null = {} };
         }
@@ -546,6 +553,19 @@ pub const VM = struct {
                 for (body_stmts) |*body_stmt| {
                     try self.executeStatement(body_stmt);
                     if (self.has_returned or self.has_error) break;
+                }
+
+                if (self.has_error) {
+                    for (func.catch_stmts) |*cs| {
+                        if (self.error_type) |err_type| {
+                            if (std.mem.eql(u8, err_type, cs.error_type)) {
+                                self.has_error = false;
+                                self.error_type = null;
+                                for (cs.body) |s| try self.executeStatement(&s);
+                                break;
+                            }
+                        }
+                    }
                 }
 
                 const ret = self.return_value orelse value_mod.Value{ .null = {} };

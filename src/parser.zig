@@ -142,12 +142,7 @@ pub const Parser = struct {
             try body.append(stmt);
         }
         try self.expectRBracket();
-        const block = try self.allocator.create(ast.BlockStmt);
-        block.* = ast.BlockStmt{
-            .body = try body.toOwnedSlice(),
-            .allocator = self.allocator,
-        };
-        return ast.Statement{ .block = block.* };
+        return ast.Statement{ .block = ast.BlockStmt{ .body = try body.toOwnedSlice(), .allocator = self.allocator } };
     }
 
 
@@ -167,13 +162,12 @@ pub const Parser = struct {
         const name = name_tok.identifier;
         _ = self.advance();
 
-        const vd = try self.allocator.create(ast.VarDecl);
-        vd.* = ast.VarDecl{
+        const vd = ast.VarDecl{
             .type_name = type_name,
             .value_expr = value_expr,
             .name = name,
         };
-        return ast.Statement{ .var_decl = vd.* };
+        return ast.Statement{ .var_decl = vd };
     }
 
     fn parseImportStmt(self: *Parser) anyerror!ast.Statement {
@@ -1005,7 +999,23 @@ pub const Parser = struct {
     fn parseRelationalExpr(self: *Parser) anyerror!*ast.Expr {
         var left = try self.parseAdditiveExpr();
         while (true) {
-            if (self.current() == .lt and self.peek(1) != .equals) {
+            if (self.current() == .lt and self.peek(1) == .equals) {
+                _ = self.advance();
+                _ = self.advance();
+                const right = try self.parseAdditiveExpr();
+                const bin = try self.allocator.create(ast.BinaryExpr);
+                bin.* = ast.BinaryExpr{ .op = .lte, .left = left, .right = right };
+                left = try self.allocator.create(ast.Expr);
+                left.* = .{ .binary = bin };
+            } else if (self.current() == .gt and self.peek(1) == .equals) {
+                _ = self.advance();
+                _ = self.advance();
+                const right = try self.parseAdditiveExpr();
+                const bin = try self.allocator.create(ast.BinaryExpr);
+                bin.* = ast.BinaryExpr{ .op = .gte, .left = left, .right = right };
+                left = try self.allocator.create(ast.Expr);
+                left.* = .{ .binary = bin };
+            } else if (self.current() == .lt and self.peek(1) != .equals) {
                 _ = self.advance();
                 const right = try self.parseAdditiveExpr();
                 const bin = try self.allocator.create(ast.BinaryExpr);
