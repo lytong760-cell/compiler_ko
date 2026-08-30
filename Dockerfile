@@ -10,9 +10,9 @@ RUN wget https://ziglang.org/download/0.13.0/zig-linux-x86_64-0.13.0.tar.xz && \
 
 ENV PATH="/opt/zig:${PATH}"
 
-# Build ứng dụng
+# Build ứng dụng với target chuẩn x86_64-linux-musl
 COPY . .
-RUN zig build-exe src/main.zig -O ReleaseSafe --name ko
+RUN zig build-exe src/main.zig -target x86_64-linux-musl -O ReleaseSmall --name ko
 
 # Bước 2: Tạo container chạy
 FROM alpine:latest
