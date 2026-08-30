@@ -1,4 +1,5 @@
 const std = @import("std");
+const ast = @import("ast.zig");
 
 pub const Value = union(enum) {
     null,
@@ -17,6 +18,7 @@ pub const Value = union(enum) {
 
     pub fn deinit(self: *Value, allocator: std.mem.Allocator) void {
         switch (self.*) {
+            .string => allocator.free(self.string),
             .bytes => allocator.free(self.bytes),
             .tuple, .list => {
                 for (self.tuple) |*v| v.deinit(allocator);
@@ -254,11 +256,14 @@ pub const Function = struct {
     params: []Param,
     body_ptr: *anyopaque,
     body_len: usize,
+    catch_stmts: []ast.CatchStmt,
     closure_scope: ?*Scope,
     allocator: std.mem.Allocator,
 
     pub fn deinit(self: *Function) void {
         self.allocator.free(self.params);
+        for (self.catch_stmts) |*c| c.deinit();
+        self.allocator.free(self.catch_stmts);
     }
 };
 
