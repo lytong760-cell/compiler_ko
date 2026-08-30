@@ -16,6 +16,8 @@ pub fn main() !void {
     if (args.len < 2) {
         try std.io.getStdOut().writer().print("Usage: ko <file.ko>\n", .{});
         try std.io.getStdOut().writer().print("       ko -install <library>\n", .{});
+        try std.io.getStdOut().writer().print("       ko -list\n", .{});
+        try std.io.getStdOut().writer().print("       ko -search <query>\n", .{});
         return;
     }
 
@@ -34,6 +36,50 @@ pub fn main() !void {
             try std.io.getStdErr().writer().print("Installation failed: {any}\n", .{err});
             try std.io.getStdErr().writer().print("Auto-purging failed installation...\n", .{});
         };
+        return;
+    }
+
+    if (std.mem.eql(u8, args[1], "-list")) {
+        var inst = installer.Installer.init(allocator) catch |err| {
+            try std.io.getStdErr().writer().print("Error initializing installer: {any}\n", .{err});
+            return;
+        };
+        defer inst.deinit();
+
+        const libs = inst.listLibraries() catch |err| {
+            try std.io.getStdErr().writer().print("Failed to list libraries: {any}\n", .{err});
+            return;
+        };
+        defer allocator.free(libs);
+
+        try std.io.getStdOut().writer().print("Available libraries in Module Store:\n", .{});
+        for (libs) |lib| {
+            try std.io.getStdOut().writer().print("  - {s}\n", .{lib});
+        }
+        return;
+    }
+
+    if (std.mem.eql(u8, args[1], "-search")) {
+        if (args.len < 3) {
+            try std.io.getStdErr().writer().print("Error: Please specify a search query\n", .{});
+            return;
+        }
+        var inst = installer.Installer.init(allocator) catch |err| {
+            try std.io.getStdErr().writer().print("Error initializing installer: {any}\n", .{err});
+            return;
+        };
+        defer inst.deinit();
+
+        const results = inst.searchLibraries(args[2]) catch |err| {
+            try std.io.getStdErr().writer().print("Search failed: {any}\n", .{err});
+            return;
+        };
+        defer allocator.free(results);
+
+        try std.io.getStdOut().writer().print("Search results for '{s}':\n", .{args[2]});
+        for (results) |lib| {
+            try std.io.getStdOut().writer().print("  - {s}\n", .{lib});
+        }
         return;
     }
 
