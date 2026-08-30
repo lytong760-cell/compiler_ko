@@ -260,7 +260,7 @@ pub const Installer = struct {
         const scope_file = try std.fmt.allocPrint(self.allocator, "/tmp/.ko_scopes/{s}.scope", .{lib_name});
         defer self.allocator.free(scope_file);
         try std.fs.cwd().makePath("/tmp/.ko_scopes");
-        try std.fs.cwd().writeFile(.{ .sub_path = scope_file, .data = lib_name });
+        try std.fs.cwd().writeFile(scope_file, lib_name);
     }
 
     fn runCommand(self: *Installer, args: []const []const u8) !void {
