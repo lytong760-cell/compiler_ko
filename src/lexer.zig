@@ -128,9 +128,12 @@ pub const Lexer = struct {
             if (std.ascii.isWhitespace(c)) continue;
 
             if (c == '|') {
-                while (self.pos < self.source.len and self.source[self.pos] != '|') : (self.pos += 1) {}
-                if (self.pos < self.source.len) self.pos += 1;
-                continue;
+                if (self.pos < self.source.len and self.source[self.pos] == '|') {
+                    self.pos += 1;
+                    self.col += 1;
+                    return Token.pipe_pipe;
+                }
+                return error.UnexpectedToken;
             }
 
             if (c == '\"') {
@@ -138,7 +141,7 @@ pub const Lexer = struct {
                 while (end < self.source.len and self.source[end] != '\"') : (end += 1) {}
                 const str = self.source[self.pos..end];
                 self.pos = end + 1;
-                self.col = end + 1;
+                self.col += (end - self.pos + 2);
                 return Token{ .string_lit = str };
             }
 
@@ -147,7 +150,7 @@ pub const Lexer = struct {
                 while (end < self.source.len and self.source[end] != '\'') : (end += 1) {}
                 const str = self.source[self.pos..end];
                 self.pos = end + 1;
-                self.col = end + 1;
+                self.col += (end - self.pos + 2);
                 return Token{ .string_lit = str };
             }
 
@@ -156,7 +159,7 @@ pub const Lexer = struct {
                 while (end < self.source.len and self.source[end] != '`') : (end += 1) {}
                 const str = self.source[self.pos..end];
                 self.pos = end + 1;
-                self.col = end + 1;
+                self.col += (end - self.pos + 2);
                 if (std.mem.eql(u8, str, "True")) return Token.bool_true;
                 if (std.mem.eql(u8, str, "False")) return Token.bool_false;
                 return Token{ .identifier = str };
@@ -221,7 +224,7 @@ pub const Lexer = struct {
                 }
                 const num_str = self.source[self.pos - 1 .. end];
                 self.pos = end;
-                self.col = end + 1;
+                self.col += (end - self.pos + 1);
                 if (has_dot) {
                     return Token{ .freal_lit = std.fmt.parseFloat(f64, num_str) catch unreachable };
                 } else {
@@ -270,12 +273,15 @@ pub const Lexer = struct {
                 const start = self.pos - 1;
                 if (std.mem.startsWith(u8, self.source[start..], "\\True\\")) {
                     self.pos = start + 6;
+                    self.col += 6;
                     return Token.bool_true;
                 }
                 if (std.mem.startsWith(u8, self.source[start..], "\\False\\")) {
                     self.pos = start + 7;
+                    self.col += 7;
                     return Token.bool_false;
                 }
+                return error.UnexpectedToken;
             }
 
             continue;
