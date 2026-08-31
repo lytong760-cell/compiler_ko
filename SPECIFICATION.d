@@ -235,9 +235,9 @@ Mọi tệp .ko chạy độc lập bắt buộc phải có đúng 1 Khối Main
 ```
 
 ### 2. Hệ thống Vòng lặp
-
+chắc chăn rằng bạn có hai dấu ** bao Loop
 ```ko
-Loop** <for>(~x=1&=5) [
+**Loop** <for>(~x=1&=5) [
     <printf>^("x = {x}\n")
 ]
 
@@ -246,7 +246,7 @@ Loop** <for>(~x=1&=5) [
 ]
 
 @loop(hp > 0)
-Loop <for.f.whle>@also [
+Loop** <for.f.whle>@also [
     <printf>^("Fighting...\n")
     <now>(hp - 10)>hp
 ]
