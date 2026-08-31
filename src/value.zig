@@ -260,7 +260,6 @@ pub const Function = struct {
     allocator: std.mem.Allocator,
 
     pub fn deinit(self: *Function) void {
-        self.allocator.free(self.name);
         self.allocator.free(self.params);
         const body_slice = @ptrCast([*]ast.Statement, self.body_ptr)[0..self.body_len];
         self.allocator.free(body_slice);
