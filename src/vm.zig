@@ -504,14 +504,14 @@ pub const VM = struct {
     fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Value {
         if (std.mem.eql(u8, call.callee, "Import")) {
             for (call.args) |arg| {
-                const val = try self.evaluateExpression(@constCast(&arg));
+                var val = try self.evaluateExpression(@constCast(&arg));
                 val.deinit(self.allocator);
             }
             return value_mod.Value{ .null = {} };
         }
         if (std.mem.eql(u8, call.callee, "printf")) {
             for (call.args) |arg| {
-                const val = try self.evaluateExpression(@constCast(&arg));
+                var val = try self.evaluateExpression(@constCast(&arg));
                 if (val == .string) {
                     try self.printInterpolated(val.string);
                 } else {
