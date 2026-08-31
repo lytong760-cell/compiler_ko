@@ -136,12 +136,12 @@ pub const Lexer = struct {
                 return error.UnexpectedToken;
             }
 
-            if (c == '\"') {
+            if (c == '"') {
                 var end = self.pos;
-                while (end < self.source.len and self.source[end] != '\"') : (end += 1) {}
+                while (end < self.source.len and self.source[end] != '"') : (end += 1) {}
                 const str = self.source[self.pos..end];
-                self.pos = end + 1;
                 self.col += (end - self.pos + 2);
+                self.pos = end + 1;
                 return Token{ .string_lit = str };
             }
 
@@ -149,8 +149,8 @@ pub const Lexer = struct {
                 var end = self.pos;
                 while (end < self.source.len and self.source[end] != '\'') : (end += 1) {}
                 const str = self.source[self.pos..end];
-                self.pos = end + 1;
                 self.col += (end - self.pos + 2);
+                self.pos = end + 1;
                 return Token{ .string_lit = str };
             }
 
@@ -158,8 +158,8 @@ pub const Lexer = struct {
                 var end = self.pos;
                 while (end < self.source.len and self.source[end] != '`') : (end += 1) {}
                 const str = self.source[self.pos..end];
-                self.pos = end + 1;
                 self.col += (end - self.pos + 2);
+                self.pos = end + 1;
                 if (std.mem.eql(u8, str, "True")) return Token.bool_true;
                 if (std.mem.eql(u8, str, "False")) return Token.bool_false;
                 return Token{ .identifier = str };
