@@ -97,6 +97,8 @@ pub const ControlFlow = struct {
     kind: Kind,
     condition: *Expr,
     body: []Statement,
+    init: ?*Assignment,
+    step: ?*Expr,
     elifs: []Elif,
     else_body: []Statement,
     allocator: std.mem.Allocator,
@@ -105,6 +107,14 @@ pub const ControlFlow = struct {
 
     pub fn deinit(self: *ControlFlow) void {
         self.condition.deinit();
+        if (self.init) |i| {
+            i.deinit();
+            self.allocator.destroy(i);
+        }
+        if (self.step) |s| {
+            s.deinit();
+            self.allocator.destroy(s);
+        }
         for (self.body) |*stmt| stmt.deinit();
         for (self.elifs) |*e| e.deinit();
         for (self.else_body) |*stmt| stmt.deinit();
