@@ -286,8 +286,14 @@ pub const Parser = struct {
             }
 
             try self.expectLParen();
-            const cond = try self.parseExpression();
-            try self.expectRParen();
+            var init: ?*ast.Assignment = null;
+            var step: ?*ast.Expr = null;
+            var cond = try self.parseExpression();
+            if (self.current() == .r_paren) {
+                _ = self.advance();
+            } else {
+                try self.expectRParen();
+            }
             try self.expectLBracket();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
                 while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
@@ -302,6 +308,8 @@ pub const Parser = struct {
                 .kind = kind,
                 .condition = cond,
                 .body = try body.toOwnedSlice(),
+                .init = init,
+                .step = step,
                 .elifs = &[_]ast.Elif{},
                 .else_body = &[_]ast.Statement{},
                 .allocator = self.allocator,
@@ -323,6 +331,8 @@ pub const Parser = struct {
                 .kind = .while_loop,
                 .condition = try self.allocator.create(ast.Expr),
                 .body = try body.toOwnedSlice(),
+                .init = null,
+                .step = null,
                 .elifs = &[_]ast.Elif{},
                 .else_body = &[_]ast.Statement{},
                 .allocator = self.allocator,
