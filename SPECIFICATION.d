@@ -257,7 +257,7 @@ chắc chăn rằng bạn có hai dấu ** bao Loop
 ### 1. Cú pháp Nạp Mô-đun
 chắc chắn là bạn dùng ** bao từ Import
 ```ko
-Import($Random)@also%~random!`global`:random
+**Import**($Random)@also%~random!`global`:random
 int(<$random>(1, 100))~rand_val
 ```
 
@@ -277,10 +277,10 @@ int(<$random>(1, 100))~rand_val
 Import($Random)@also%~random!`global`:random
 int(<$random>(1, 100))~rand_val
 
-Import($Os)@also%~os!`global`:os
+**Impor**t($Os)@also%~os!`global`:os
 <$os>("data.txt")~file_var
 
-Import($Website)@also%~web!`global`:web
+**Import**($Website)@also%~web!`global`:web
 <$web>("https://api.example.com")
 ```
 
