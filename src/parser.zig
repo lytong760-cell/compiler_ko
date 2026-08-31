@@ -289,11 +289,7 @@ pub const Parser = struct {
             var init: ?*ast.Assignment = null;
             var step: ?*ast.Expr = null;
             var cond = try self.parseExpression();
-            if (self.current() == .r_paren) {
-                _ = self.advance();
-            } else {
-                try self.expectRParen();
-            }
+            try self.expectRParen();
             try self.expectLBracket();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
                 while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
