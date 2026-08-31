@@ -63,7 +63,7 @@ pub const VM = struct {
 
         switch (stmt.*) {
             .var_decl => |*v| {
-                const val = try self.evaluateExpression(v.value_expr);
+                var val = try self.evaluateExpression(v.value_expr);
                 const final_val = if (std.mem.eql(u8, v.type_name, "bytes")) blk: {
                     defer val.deinit(self.allocator);
                     const size: usize = switch (val) {
