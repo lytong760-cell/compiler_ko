@@ -289,7 +289,7 @@ pub const Parser = struct {
             var init_assign: ?*ast.Assignment = null;
             var step: ?*ast.Expr = null;
             var loop_var_name: []const u8 = "";
-            var cond = if (self.current() == .sigil) blk: {
+            const cond = if (self.current() == .sigil) blk: {
                 _ = self.advance();
                 const var_tok = self.current();
                 if (var_tok != .identifier) return error.ExpectedIdentifier;
