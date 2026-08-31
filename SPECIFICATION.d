@@ -502,7 +502,7 @@ Hero !class [
     int(~safe_divide(100, 0))~calc_test
     <printf>^("Kiem tra chia an toan: {calc_test}\n")
 
-    ++Loop <for>(~i=1(2)&=5) [
+    **Loop** <for>(~i=1(2)&=5) [
         <printf>^("--- Turn {i} ---\n")
         string($p1~use_random_item())~used_item
     ]
