@@ -178,6 +178,7 @@ pub const VM = struct {
                                 const target = try self.allocator.create(ast.Expr);
                                 target.* = .{ .identifier = cf.loop_var };
                                 try self.assignValue(target, new_val);
+                                self.allocator.destroy(target);
                             }
                             cond_val = try self.evaluateExpression(cf.condition);
                         }
