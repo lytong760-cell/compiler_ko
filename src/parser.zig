@@ -1353,4 +1353,9 @@ pub const Parser = struct {
         if (self.current() != .sigil) return error.UnexpectedToken;
         _ = self.advance();
     }
+
+    fn expectEquals(self: *Parser) !void {
+        if (self.current() != .equals) return error.UnexpectedToken;
+        _ = self.advance();
+    }
 };
