@@ -173,10 +173,11 @@ pub const VM = struct {
                             if (self.has_returned or self.has_error) break;
                             if (cf.step) |step_expr| {
                                 const step_val = try self.evaluateExpression(step_expr);
-                                if (value_mod.Value.int == cond_val) {
-                                    const new_cond = try cond_val.add(step_val, self.allocator);
-                                    cond_val = new_cond;
-                                }
+                                const current_val = self.current_scope.variables.get(cf.loop_var) orelse cond_val;
+                                const new_val = try current_val.add(step_val, self.allocator);
+                                const target = try self.allocator.create(ast.Expr);
+                                target.* = .{ .identifier = cf.loop_var };
+                                try self.assignValue(target, new_val);
                             }
                             cond_val = try self.evaluateExpression(cf.condition);
                         }
