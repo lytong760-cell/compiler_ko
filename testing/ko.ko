@@ -1,4 +1,4 @@
 [
   <printf>^("hello")
-  Loop<for>
+  Loop<for>(~x=6)
 ]
