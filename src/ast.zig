@@ -99,6 +99,7 @@ pub const ControlFlow = struct {
     body: []Statement,
     init: ?*Assignment,
     step: ?*Expr,
+    loop_var: []const u8,
     elifs: []Elif,
     else_body: []Statement,
     allocator: std.mem.Allocator,
