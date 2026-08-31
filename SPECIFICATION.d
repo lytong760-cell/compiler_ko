@@ -246,7 +246,7 @@ chắc chăn rằng bạn có hai dấu ** bao Loop
 ]
 
 @loop(hp > 0)
-Loop** <for.f.whle>@also [
+**Loop** <for.f.whle>@also [
     <printf>^("Fighting...\n")
     <now>(hp - 10)>hp
 ]
@@ -255,7 +255,7 @@ Loop** <for.f.whle>@also [
 ## VII. MÔ-ĐUN NẠP VÀ HỆ THỐNG PHẠM VI
 
 ### 1. Cú pháp Nạp Mô-đun
-
+chắc chắn là bạn dùng ** bao từ Import
 ```ko
 Import($Random)@also%~random!`global`:random
 int(<$random>(1, 100))~rand_val
