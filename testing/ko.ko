@@ -1,6 +1,6 @@
 [
   <printf>^("hello")
-  **Loop** <for>(~x=1&=5) [
+  **Loop**<for>(~x=1&=5) [
       <printf>^(x)
 ]
 
