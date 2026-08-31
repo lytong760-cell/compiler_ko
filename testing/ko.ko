@@ -1,8 +1,8 @@
 [
   <printf>^("hello")
   int(0)~x
-  Loop <for>(x < 3) [
+  Loop <for>(~x=1(2)&=3) [
     <printf>^(x)
-    <now>(x + 1)>x
+    
   ]
 ]
