@@ -133,7 +133,19 @@ pub const Lexer = struct {
                     self.col += 1;
                     return Token.pipe_pipe;
                 }
-                return error.UnexpectedToken;
+                while (self.pos < self.source.len and self.source[self.pos] != '|') : (self.pos += 1) {
+                    if (self.source[self.pos] == '\n') {
+                        self.line += 1;
+                        self.col = 1;
+                    } else {
+                        self.col += 1;
+                    }
+                }
+                if (self.pos < self.source.len) {
+                    self.pos += 1;
+                    self.col += 1;
+                }
+                continue;
             }
 
             if (c == '"') {
