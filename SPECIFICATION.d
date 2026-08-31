@@ -412,9 +412,9 @@ C. **Quy tắc Ưu tiên Chuỗi**: Kiểm tra từ trên xuống dưới, lỗi
 ## X. CHƯƠNG TRÌNH MẪU HOÀN CHỈNH
 
 ```ko
-**Import($Random)@also%~random!`global`:random
-Import($Os)@also%~os!`global`:os
-Import($Website)@also%~web!`global`:web
+**Import**($Random)@also%~random!`global`:random
+**Import**($Os)@also%~os!`global`:os
+**Import**($Website)@also%~web!`global`:web
 
 init_system_logs() [
     <printf>^("=== KHOI TAO HE THONG .KO ===\n")
@@ -502,7 +502,7 @@ Hero !class [
     int(~safe_divide(100, 0))~calc_test
     <printf>^("Kiem tra chia an toan: {calc_test}\n")
 
-    Loop <for>(~i=1(2)&=5) [
+    ++Loop <for>(~i=1(2)&=5) [
         <printf>^("--- Turn {i} ---\n")
         string($p1~use_random_item())~used_item
     ]
