@@ -286,7 +286,9 @@ pub const Parser = struct {
             }
 
             try self.expectLParen();
-            const cond = try self.parseExpression();
+            var init: ?*ast.Assignment = null;
+            var step: ?*ast.Expr = null;
+            var cond = try self.parseExpression();
             try self.expectRParen();
             try self.expectLBracket();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
@@ -302,6 +304,8 @@ pub const Parser = struct {
                 .kind = kind,
                 .condition = cond,
                 .body = try body.toOwnedSlice(),
+                .init = init,
+                .step = step,
                 .elifs = &[_]ast.Elif{},
                 .else_body = &[_]ast.Statement{},
                 .allocator = self.allocator,
@@ -323,6 +327,8 @@ pub const Parser = struct {
                 .kind = .while_loop,
                 .condition = try self.allocator.create(ast.Expr),
                 .body = try body.toOwnedSlice(),
+                .init = null,
+                .step = null,
                 .elifs = &[_]ast.Elif{},
                 .else_body = &[_]ast.Statement{},
                 .allocator = self.allocator,
