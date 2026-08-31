@@ -274,7 +274,7 @@ int(<$random>(1, 100))~rand_val
 ### 3. Thư viện Chuẩn Built-in
 
 ```ko
-Import($Random)@also%~random!`global`:random
+**Import**($Random)@also%~random!`global`:random
 int(<$random>(1, 100))~rand_val
 
 **Impor**t($Os)@also%~os!`global`:os
@@ -412,7 +412,7 @@ C. **Quy tắc Ưu tiên Chuỗi**: Kiểm tra từ trên xuống dưới, lỗi
 ## X. CHƯƠNG TRÌNH MẪU HOÀN CHỈNH
 
 ```ko
-Import($Random)@also%~random!`global`:random
+**Import($Random)@also%~random!`global`:random
 Import($Os)@also%~os!`global`:os
 Import($Website)@also%~web!`global`:web
 
