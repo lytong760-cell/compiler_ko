@@ -374,6 +374,7 @@ pub const Parser = struct {
                 .body = try body.toOwnedSlice(),
                 .init = null,
                 .step = null,
+                .loop_var = "",
                 .elifs = &[_]ast.Elif{},
                 .else_body = &[_]ast.Statement{},
                 .allocator = self.allocator,
