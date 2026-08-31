@@ -288,7 +288,49 @@ pub const Parser = struct {
             try self.expectLParen();
             var init: ?*ast.Assignment = null;
             var step: ?*ast.Expr = null;
-            var cond = try self.parseExpression();
+            var cond = if (self.current() == .sigil) blk: {
+                _ = self.advance();
+                const var_tok = self.current();
+                if (var_tok != .identifier) return error.ExpectedIdentifier;
+                const var_name = var_tok.identifier;
+                _ = self.advance();
+                try self.expectEquals();
+                const init_expr = try self.parseExpression();
+                try self.expectLParen();
+                const step_expr = try self.parseExpression();
+                try self.expectRParen();
+                const cond_tok = self.current();
+                _ = self.advance();
+                const limit_expr = try self.parseExpression();
+                const var_ident = try self.allocator.create(ast.Expr);
+                var_ident.* = .{ .identifier = var_name };
+                const op: ast.BinaryExpr.Op = switch (cond_tok) {
+                    .amp_equals => .lte,
+                    .lt => .lt,
+                    else => .lte,
+                };
+                const bin = try self.allocator.create(ast.BinaryExpr);
+                bin.* = ast.BinaryExpr{
+                    .op = op,
+                    .left = var_ident,
+                    .right = limit_expr,
+                };
+                const cond_expr = try self.allocator.create(ast.Expr);
+                cond_expr.* = .{ .binary = bin };
+                const target = try self.allocator.create(ast.Expr);
+                target.* = .{ .identifier = var_name };
+                const assign = try self.allocator.create(ast.Assignment);
+                assign.* = ast.Assignment{
+                    .target = target,
+                    .value_expr = init_expr,
+                };
+                init = assign;
+                step = step_expr;
+                break :blk cond_expr;
+            } else blk: {
+                const c = try self.parseExpression();
+                break :blk c;
+            };
             try self.expectRParen();
             try self.expectLBracket();
             var body = std.ArrayList(ast.Statement).init(self.allocator);
