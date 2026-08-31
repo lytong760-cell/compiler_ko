@@ -154,6 +154,7 @@ dic{1{'a'}}       | Lấy theo Key của Từ điển
 
 ```ko
 <print>string^("Xin chao\n")
+<print>[]
 <printf>^("Player HP: {hp}\n")
 ```
 
