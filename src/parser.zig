@@ -286,7 +286,7 @@ pub const Parser = struct {
             }
 
             try self.expectLParen();
-            var init: ?*ast.Assignment = null;
+            var init_assign: ?*ast.Assignment = null;
             var step: ?*ast.Expr = null;
             var loop_var_name: []const u8 = "";
             var cond = if (self.current() == .sigil) blk: {
@@ -326,7 +326,7 @@ pub const Parser = struct {
                     .target = target,
                     .value_expr = init_expr,
                 };
-                init = assign;
+                init_assign = assign;
                 step = step_expr;
                 break :blk cond_expr;
             } else blk: {
@@ -348,7 +348,7 @@ pub const Parser = struct {
                 .kind = kind,
                 .condition = cond,
                 .body = try body.toOwnedSlice(),
-                .init = init,
+                .init = init_assign,
                 .step = step,
                 .loop_var = loop_var_name,
                 .elifs = &[_]ast.Elif{},
