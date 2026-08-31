@@ -288,11 +288,13 @@ pub const Parser = struct {
             try self.expectLParen();
             var init: ?*ast.Assignment = null;
             var step: ?*ast.Expr = null;
+            var loop_var_name: []const u8 = "";
             var cond = if (self.current() == .sigil) blk: {
                 _ = self.advance();
                 const var_tok = self.current();
                 if (var_tok != .identifier) return error.ExpectedIdentifier;
                 const var_name = var_tok.identifier;
+                loop_var_name = var_name;
                 _ = self.advance();
                 try self.expectEquals();
                 const init_expr = try self.parseExpression();
@@ -348,6 +350,7 @@ pub const Parser = struct {
                 .body = try body.toOwnedSlice(),
                 .init = init,
                 .step = step,
+                .loop_var = loop_var_name,
                 .elifs = &[_]ast.Elif{},
                 .else_body = &[_]ast.Statement{},
                 .allocator = self.allocator,
