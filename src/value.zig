@@ -261,7 +261,7 @@ pub const Function = struct {
 
     pub fn deinit(self: *Function) void {
         self.allocator.free(self.params);
-        const body_slice = @as([*]ast.Statement, @ptrCast(self.body_ptr))[0..self.body_len];
+        const body_slice = @as([*]ast.Statement, @ptrCast(@alignCast(self.body_ptr)))[0..self.body_len];
         self.allocator.free(body_slice);
         for (self.catch_stmts) |*c| c.deinit();
         self.allocator.free(self.catch_stmts);
