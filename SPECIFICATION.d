@@ -154,7 +154,7 @@ dic{1{'a'}}       | Lấy theo Key của Từ điển
 
 ```ko
 <print>string^("Xin chao\n")
-<print>[]
+<print>[kiểu dữ liệu]^
 <printf>^("Player HP: {hp}\n")
 ```
 
@@ -237,11 +237,11 @@ Mọi tệp .ko chạy độc lập bắt buộc phải có đúng 1 Khối Main
 ### 2. Hệ thống Vòng lặp
 
 ```ko
-Loop <for>(~x=1&=5) [
+Loop** <for>(~x=1&=5) [
     <printf>^("x = {x}\n")
 ]
 
-Loop <for>(~x=1(2)&=5) [
+**Loop** <for>(~x=1(2)&=5) [
     <printf>^("Odd: {x}\n")
 ]
 
