@@ -360,6 +360,7 @@ pub const ClassDef = struct {
         while (miter.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
             entry.value_ptr.*.deinit();
+            self.allocator.destroy(entry.value_ptr.*);
         }
         self.private_methods.deinit();
         var piter = self.public_fields.iterator();
@@ -372,6 +373,7 @@ pub const ClassDef = struct {
         while (pmiter.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
             entry.value_ptr.*.deinit();
+            self.allocator.destroy(entry.value_ptr.*);
         }
         self.public_methods.deinit();
     }
