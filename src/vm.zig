@@ -163,10 +163,21 @@ pub const VM = struct {
                         for (cf.body) |s| try self.executeStatement(&s);
                     },
                     .for_loop => {
+                        if (cf.init) |init_assign| {
+                            const val = try self.evaluateExpression(init_assign.value_expr);
+                            try self.assignValue(init_assign.target, val);
+                        }
                         var cond_val = try self.evaluateExpression(cf.condition);
                         while (try cond_val.toBool() and !self.has_returned and !self.has_error) {
                             for (cf.body) |s| try self.executeStatement(&s);
                             if (self.has_returned or self.has_error) break;
+                            if (cf.step) |step_expr| {
+                                const step_val = try self.evaluateExpression(step_expr);
+                                if (value_mod.Value.int == cond_val) {
+                                    const new_cond = try cond_val.add(step_val, self.allocator);
+                                    cond_val = new_cond;
+                                }
+                            }
                             cond_val = try self.evaluateExpression(cf.condition);
                         }
                     },
