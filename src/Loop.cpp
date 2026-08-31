@@ -19,6 +19,7 @@
 #include <thread>
 #include <map>
 #include <sstream>
+#include <functional>
 
 namespace ko_loop {
 
