@@ -416,3 +416,5 @@ compiler_ko/
 ├── build.zig
 └── README.md
 ```
+# This is a new version rewritten in zig 
+you can review **[old version](https://github.com/lytong760-cell/compiler-ko-)** rewritten in python
