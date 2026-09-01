@@ -161,7 +161,7 @@ pub const VM = struct {
                     self.raiseError("ClassError", "Class not found: " ++ ci.class_name);
                 }
             },
-                const class_def = try self.allocator.create(value_mod.ClassDef);
+            .class_decl => |c| {
                 class_def.* = value_mod.ClassDef{
                     .name = c.name,
                     .private_fields = std.StringHashMap(value_mod.Value).init(self.allocator),
