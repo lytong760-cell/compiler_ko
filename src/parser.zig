@@ -1248,6 +1248,20 @@ pub const Parser = struct {
             if (name_tok != .identifier) return error.ExpectedIdentifier;
             const name = name_tok.identifier;
             _ = self.advance();
+            if (self.current() == .sigil) {
+                _ = self.advance();
+                const instance_tok = self.current();
+                if (instance_tok != .identifier) return error.ExpectedIdentifier;
+                const instance_name = instance_tok.identifier;
+                _ = self.advance();
+                const ci = try self.allocator.create(ast.ClassInstantiation);
+                ci.* = ast.ClassInstantiation{
+                    .class_name = name,
+                    .instance_name = instance_name,
+                    .allocator = self.allocator,
+                };
+                return ast.Statement{ .class_instantiation = ci };
+            }
             if (self.current() == .l_paren) {
                 _ = self.advance();
                 var args = std.ArrayList(ast.Expr).init(self.allocator);
