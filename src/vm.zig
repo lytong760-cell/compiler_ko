@@ -365,7 +365,7 @@ pub const VM = struct {
         return switch (lit.kind) {
             .int => value_mod.Value{ .int = lit.int_value },
             .freal => value_mod.Value{ .freal = lit.freal_value },
-            .string => value_mod.Value{ .string = lit.raw },
+            .string => value_mod.Value{ .string = try self.allocator.dupe(u8, lit.raw) },
             .bool_true => value_mod.Value{ .booling = true },
             .bool_false => value_mod.Value{ .booling = false },
             .tuple => value_mod.Value{ .tuple = &[_]value_mod.Value{} },
