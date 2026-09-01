@@ -125,8 +125,7 @@ pub const VM = struct {
                 while (miter.next()) |entry| {
                     try class_def.private_methods.put(try self.allocator.dupe(u8, entry.key_ptr.*), entry.value_ptr.*);
                 }
-                private_scope.deinit();
-                self.allocator.destroy(private_scope);
+                class_def.private_scope = private_scope;
 
                 var public_scope = try self.allocator.create(value_mod.Scope);
                 public_scope.* = value_mod.Scope.init(self.allocator, self.current_scope);
@@ -142,8 +141,7 @@ pub const VM = struct {
                 while (pmiter.next()) |entry| {
                     try class_def.public_methods.put(try self.allocator.dupe(u8, entry.key_ptr.*), entry.value_ptr.*);
                 }
-                public_scope.deinit();
-                self.allocator.destroy(public_scope);
+                class_def.public_scope = public_scope;
             },
             .control_flow => |cf| {
                 switch (cf.kind) {
