@@ -371,10 +371,15 @@ pub const Parser = struct {
             }
             try self.expectRBracket();
 
+            const true_lit = try self.allocator.create(ast.Literal);
+            true_lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "" };
+            const true_expr = try self.allocator.create(ast.Expr);
+            true_expr.* = .{ .literal = true_lit.* };
+
             const cf = try self.allocator.create(ast.ControlFlow);
             cf.* = ast.ControlFlow{
                 .kind = .while_loop,
-                .condition = try self.allocator.create(ast.Expr),
+                .condition = true_expr,
                 .body = try body.toOwnedSlice(),
                 .init = null,
                 .step = null,
