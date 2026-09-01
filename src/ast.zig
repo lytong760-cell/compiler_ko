@@ -14,6 +14,7 @@ pub const Statement = union(enum) {
     expr: *Expr,
     catch_stmt: *CatchStmt,
     block: BlockStmt,
+    class_instantiation: ClassInstantiation,
 
     pub fn deinit(self: *Statement) void {
         switch (self.*) {
@@ -29,6 +30,7 @@ pub const Statement = union(enum) {
             .expr => |e| e.deinit(),
             .catch_stmt => |c| c.deinit(),
             .block => |*b| b.deinit(),
+            .class_instantiation => |*ci| ci.deinit(),
         }
     }
 };
