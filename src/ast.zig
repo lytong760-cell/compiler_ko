@@ -45,6 +45,17 @@ pub const BlockStmt = struct {
     }
 };
 
+pub const ClassInstantiation = struct {
+    class_name: []const u8,
+    instance_name: []const u8,
+    allocator: std.mem.Allocator,
+
+    pub fn deinit(self: *ClassInstantiation) void {
+        self.allocator.free(self.class_name);
+        self.allocator.free(self.instance_name);
+    }
+};
+
 pub const VarDecl = struct {
     type_name: []const u8,
     value_expr: *Expr,
