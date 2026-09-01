@@ -190,6 +190,9 @@ pub const VM = struct {
                 while (miter.next()) |entry| {
                     try class_def.private_methods.put(try self.allocator.dupe(u8, entry.key_ptr.*), entry.value_ptr.*);
                 }
+                private_scope.variables.clearRetainingCapacity();
+                private_scope.functions.clearRetainingCapacity();
+                private_scope.classes.clearRetainingCapacity();
                 class_def.private_scope = private_scope;
 
                 var public_scope = try self.allocator.create(value_mod.Scope);
