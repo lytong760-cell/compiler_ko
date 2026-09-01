@@ -66,7 +66,7 @@ pub const VM = struct {
             };
         }
         if (self.has_error) {
-            return self.error_type orelse error.RuntimeError;
+            return error.RuntimeError;
         }
     }
 
