@@ -1,8 +1,15 @@
 const std = @import("std");
 
 const FIRESTORE_BASE = "https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents";
-const API_KEY = "AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE";
 const FIRESTORE_PARENT = "projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents";
+
+fn getApiKey(allocator: std.mem.Allocator) ![]const u8 {
+    if (std.process.getEnvVarOwned(allocator, "KO_FIRESTORE_API_KEY")) |key| {
+        return key;
+    } else |_| {
+        return error.MissingApiKey;
+    }
+}
 
 pub const Installer = struct {
     allocator: std.mem.Allocator,
@@ -43,9 +50,12 @@ pub const Installer = struct {
     pub fn listLibraries(self: *Installer) ![]const []const u8 {
         std.debug.print("Querying all libraries from Module Store...\n", .{});
 
+        const api_key = try getApiKey(self.allocator);
+        defer self.allocator.free(api_key);
+
         const url = try std.fmt.allocPrint(self.allocator, "{s}:runQuery?key={s}", .{
             FIRESTORE_BASE,
-            API_KEY,
+            api_key,
         });
         defer self.allocator.free(url);
 
