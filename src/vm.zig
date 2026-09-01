@@ -346,11 +346,15 @@ pub const VM = struct {
     }
 
     fn evaluateIdentifier(self: *VM, name: []const u8) !value_mod.Value {
-        if (self.current_scope.variables.get(name)) |val| {
-            return val;
-        }
-        if (self.current_scope.functions.get(name)) |func| {
-            return value_mod.Value{ .function = func };
+        var scope: ?*value_mod.Scope = self.current_scope;
+        while (scope) |s| {
+            if (s.variables.get(name)) |val| {
+                return val;
+            }
+            if (s.functions.get(name)) |func| {
+                return value_mod.Value{ .function = func };
+            }
+            scope = s.parent;
         }
         if (self.global_scope.variables.get(name)) |val| {
             return val;
