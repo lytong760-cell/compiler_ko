@@ -209,6 +209,9 @@ pub const VM = struct {
                 while (pmiter.next()) |entry| {
                     try class_def.public_methods.put(try self.allocator.dupe(u8, entry.key_ptr.*), entry.value_ptr.*);
                 }
+                public_scope.variables.clearRetainingCapacity();
+                public_scope.functions.clearRetainingCapacity();
+                public_scope.classes.clearRetainingCapacity();
                 class_def.public_scope = public_scope;
             },
             .control_flow => |cf| {
