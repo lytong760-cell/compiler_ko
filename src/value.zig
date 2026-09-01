@@ -348,6 +348,8 @@ pub const ClassDef = struct {
     public_fields: std.StringHashMap(Value),
     public_methods: std.StringHashMap(*Function),
     allocator: std.mem.Allocator,
+    private_scope: ?*Scope,
+    public_scope: ?*Scope,
 
     pub fn deinit(self: *ClassDef) void {
         var iter = self.private_fields.iterator();
@@ -376,5 +378,13 @@ pub const ClassDef = struct {
             self.allocator.destroy(entry.value_ptr.*);
         }
         self.public_methods.deinit();
+        if (self.private_scope) |ps| {
+            ps.deinit();
+            self.allocator.destroy(ps);
+        }
+        if (self.public_scope) |ps| {
+            ps.deinit();
+            self.allocator.destroy(ps);
+        }
     }
 };
