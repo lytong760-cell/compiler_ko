@@ -298,9 +298,13 @@ pub const Parser = struct {
                 _ = self.advance();
                 try self.expectEquals();
                 const init_expr = try self.parseExpression();
-                try self.expectLParen();
-                const step_expr = try self.parseExpression();
-                try self.expectRParen();
+                var step_expr: ?*ast.Expr = null;
+                if (self.current() == .l_paren) {
+                    _ = self.advance();
+                    const s_expr = try self.parseExpression();
+                    step_expr = s_expr;
+                    try self.expectRParen();
+                }
                 const cond_tok = self.current();
                 _ = self.advance();
                 const limit_expr = try self.parseExpression();
