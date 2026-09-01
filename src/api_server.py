@@ -20,9 +20,9 @@ from urllib.parse import urlparse, parse_qs
 
 PROJECT_ID = "argon-shine-w40ks"
 DATABASE_ID = "ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198"
-API_KEY = os.environ.get("KO_FIRESTORE_API_KEY", "")
+API_KEY = os.environ.get("KO_FIRESTORE_API_KEY")
 if not API_KEY:
-    print("WARNING: KO_FIRESTORE_API_KEY environment variable is not set. API authentication is disabled.", file=sys.stderr)
+    print("WARNING: KO_FIRESTORE_API_KEY environment variable is not set. The server will reject all requests.", file=sys.stderr)
 
 BASE_PATH = f"/v1/projects/{PROJECT_ID}/databases/{DATABASE_ID}/documents"
 
