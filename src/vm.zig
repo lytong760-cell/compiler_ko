@@ -55,7 +55,35 @@ pub const VM = struct {
     }
 
     pub fn execute(self: *VM, program: []ast.Statement) anyerror!void {
-        for (program) |*stmt| try self.executeStatement(stmt);
+        for (program) |*stmt| {
+            if (self.has_returned) break;
+            if (self.has_error) {
+                self.dispatchCatchBlocks(program, stmt) catch {};
+                continue;
+            }
+            self.executeStatement(stmt) catch |err| {
+                self.raiseError("RuntimeError", @errorName(err));
+            };
+        }
+    }
+
+    fn dispatchCatchBlocks(self: *VM, program: []ast.Statement, current: *const ast.Statement) !void {
+        _ = program;
+        _ = current;
+        var i: usize = 0;
+        while (i < program.len) {
+            if (&program[i] == current) break;
+            i += 1;
+        }
+        i += 1;
+        while (i < program.len) {
+            const stmt = &program[i];
+            if (stmt.* == .catch_stmt) {
+                try self.executeStatement(stmt);
+                if (!self.has_error) break;
+            }
+            i += 1;
+        }
     }
 
     fn executeStatement(self: *VM, stmt: *const ast.Statement) anyerror!void {
