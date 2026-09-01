@@ -65,6 +65,9 @@ pub const VM = struct {
                 self.raiseError("RuntimeError", @errorName(err));
             };
         }
+        if (self.has_error) {
+            return self.error_type orelse error.RuntimeError;
+        }
     }
 
     fn dispatchCatchBlocks(self: *VM, program: []ast.Statement, current: *const ast.Statement) !void {
