@@ -130,10 +130,13 @@ pub const Installer = struct {
     }
 
     fn queryLibraryMetadata(self: *Installer, lib_name: []const u8) ![]const u8 {
+        const api_key = try getApiKey(self.allocator);
+        defer self.allocator.free(api_key);
+
         const url = try std.fmt.allocPrint(self.allocator, "{s}/libraries/{s}?key={s}", .{
             FIRESTORE_BASE,
             lib_name,
-            API_KEY,
+            api_key,
         });
         defer self.allocator.free(url);
 
