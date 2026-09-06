@@ -820,6 +820,7 @@ pub const VM = struct {
                 } else {
                     try self.stdout.print("{any}\n", .{arg});
                 }
+                arg.deinit(self.allocator);
                 return value_mod.Value{ .null = {} };
             }
             if (std.mem.eql(u8, st.tag, "len")) {
