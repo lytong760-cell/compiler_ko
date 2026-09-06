@@ -41,40 +41,46 @@ const TEST_PROGRAMS = [_][]const u8{
     "[ int(10)~x int(5)~y int(x % y)~rem ]",
 };
 
-test "test_3600_iterations" {
-    const gpa = std.testing.allocator;
-    var total_time: u64 = 0;
-    var max_time: u64 = 0;
-    var min_time: u64 = std.math.maxInt(u64);
-    var success_count: usize = 0;
-    
-    const iterations = 3600;
-    const programs = TEST_PROGRAMS.len;
-    
-    for (0..iterations) |i| {
-        const prog_idx = i % programs;
-        const source = TEST_PROGRAMS[prog_idx];
-        
-        const start = std.time.nanoTimestamp();
-        
-        runSource(gpa, source) catch {
-            continue;
-        };
-        
-        const end = std.time.nanoTimestamp();
-        const elapsed_i128 = end - start;
-        const elapsed: u64 = @intCast(elapsed_i128);
-        total_time += elapsed;
-        if (elapsed > max_time) max_time = elapsed;
-        if (elapsed < min_time) min_time = elapsed;
-        success_count += 1;
-    }
-    
-    const avg_time = if (success_count > 0) total_time / success_count else 0;
-    std.debug.print("\n=== 3600 Iteration Benchmark ===\n", .{});
-    std.debug.print("Successful iterations: {d}/{d}\n", .{success_count, iterations});
-    std.debug.print("Average time: {d} ns\n", .{avg_time});
-    std.debug.print("Min time: {d} ns\n", .{min_time});
-    std.debug.print("Max time: {d} ns\n", .{max_time});
-    std.debug.print("Total time: {d} ms\n", .{total_time / 1_000_000});
-}
+ test "test_3600_iterations" {
+     const gpa = std.testing.allocator;
+     var total_time: u64 = 0;
+     var max_time: u64 = 0;
+     var min_time: u64 = std.math.maxInt(u64);
+     var success_count: usize = 0;
+     var failure_count: usize = 0;
+     
+     const iterations = 3600;
+     const programs = TEST_PROGRAMS.len;
+     
+     for (0..iterations) |i| {
+         const prog_idx = i % programs;
+         const source = TEST_PROGRAMS[prog_idx];
+         
+         const start = std.time.nanoTimestamp();
+         
+         runSource(gpa, source) catch |err| {
+             std.debug.print("Iteration {d} failed: {any}\n", .{i, err});
+             failure_count += 1;
+             continue;
+         };
+         
+         const end = std.time.nanoTimestamp();
+         const elapsed_i128 = end - start;
+         const elapsed: u64 = @intCast(elapsed_i128);
+         total_time += elapsed;
+         if (elapsed > max_time) max_time = elapsed;
+         if (elapsed < min_time) min_time = elapsed;
+         success_count += 1;
+     }
+     
+     const avg_time = if (success_count > 0) total_time / success_count else 0;
+     std.debug.print("\n=== 3600 Iteration Benchmark ===\n", .{});
+     std.debug.print("Successful iterations: {d}/{d}\n", .{success_count, iterations});
+     std.debug.print("Failed iterations: {d}/{d}\n", .{failure_count, iterations});
+     std.debug.print("Average time: {d} ns\n", .{avg_time});
+     std.debug.print("Min time: {d} ns\n", .{min_time});
+     std.debug.print("Max time: {d} ns\n", .{max_time});
+     std.debug.print("Total time: {d} ms\n", .{total_time / 1_000_000});
+     
+     try std.testing.expect(failure_count == 0);
+ }
