@@ -62,7 +62,7 @@ pub const VM = struct {
                 continue;
             }
             self.executeStatement(stmt) catch |err| {
-                self.raiseError("RuntimeError", @errorName(err));
+                self.raiseError(self.zigErrorToKoType(err), @errorName(err));
             };
         }
         if (self.has_error) {
