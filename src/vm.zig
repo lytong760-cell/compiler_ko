@@ -236,7 +236,7 @@ pub const VM = struct {
                             const val = try self.evaluateExpression(init_assign.value_expr);
                             try self.assignValue(init_assign.target, val);
                         }
-                        var cond_val = try self.evaluateExpression(cf.condition);
+                        var cond_val = try self.evaluateExpression(cf.condition.?);
                         while (try cond_val.toBool() and !self.has_returned and !self.has_error) {
                             for (cf.body) |s| try self.executeStatement(&s);
                             if (self.has_returned or self.has_error) break;
@@ -248,16 +248,24 @@ pub const VM = struct {
                                 target.* = .{ .identifier = cf.loop_var };
                                 try self.assignValue(target, new_val);
                                 self.allocator.destroy(target);
+                            } else {
+                                const one = value_mod.Value{ .int = 1 };
+                                const current_val = self.current_scope.variables.get(cf.loop_var) orelse cond_val;
+                                const new_val = try current_val.add(one, self.allocator);
+                                const target = try self.allocator.create(ast.Expr);
+                                target.* = .{ .identifier = cf.loop_var };
+                                try self.assignValue(target, new_val);
+                                self.allocator.destroy(target);
                             }
-                            cond_val = try self.evaluateExpression(cf.condition);
+                            cond_val = try self.evaluateExpression(cf.condition.?);
                         }
                     },
                     .while_loop => {
-                        var cond_val = try self.evaluateExpression(cf.condition);
+                        var cond_val = try self.evaluateExpression(cf.condition.?);
                         while (try cond_val.toBool() and !self.has_returned and !self.has_error) {
                             for (cf.body) |s| try self.executeStatement(&s);
                             if (self.has_returned or self.has_error) break;
-                            cond_val = try self.evaluateExpression(cf.condition);
+                            cond_val = try self.evaluateExpression(cf.condition.?);
                         }
                     },
                 }
