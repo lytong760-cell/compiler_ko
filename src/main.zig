@@ -91,9 +91,12 @@ pub fn main() !void {
     defer allocator.free(source);
 
     var lx = lexer.Lexer.init(source);
-    const tokens = lx.tokenize(allocator) catch |err| {
-        try std.io.getStdErr().writer().print("Lexer error: {any}\n", .{err});
-        return;
+    const tokens = blk: {
+        const t = lx.tokenize(allocator) catch |err| {
+            try std.io.getStdErr().writer().print("Lexer error: {any}\n", .{err});
+            return;
+        };
+        break :blk t;
     };
     defer allocator.free(tokens);
 
