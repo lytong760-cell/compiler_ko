@@ -416,12 +416,14 @@ pub const Scope = struct {
         while (citer.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
             entry.value_ptr.*.deinit();
+            self.allocator.destroy(entry.value_ptr.*);
         }
         self.classes.deinit();
         var fiter = self.functions.iterator();
         while (fiter.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
             entry.value_ptr.*.deinit();
+            self.allocator.destroy(entry.value_ptr.*);
         }
         self.functions.deinit();
     }
