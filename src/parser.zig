@@ -1387,7 +1387,7 @@ pub const Parser = struct {
             _ = self.advance();
             try self.expectGT();
             const enc_lit = try self.allocator.create(ast.Literal);
-            enc_lit.* = ast.Literal{ .kind = .string, .string = enc_name, .int_value = 0, .freal_value = 0 };
+            enc_lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = enc_name };
             try args.append(ast.Expr{ .literal = enc_lit.* });
         } else {
             try self.expectGT();
