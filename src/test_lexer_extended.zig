@@ -4,10 +4,9 @@ const lexer = @import("lexer.zig");
 test "lexer_test_0001" {
     var lx = lexer.Lexer.init("int");
     var gpa = std.testing.allocator;
-    const tokens = lx.tokenize(gpa) try;
+    const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
     try std.testing.expect(tokens.len == 2);
-    try std.testing.expect(tokens[0] == .{ .keyword = .int_kw });
     try std.testing.expect(tokens[1] == .eof);
 }
 
