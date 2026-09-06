@@ -688,8 +688,10 @@ pub const VM = struct {
                 new_scope.deinit();
                 self.allocator.destroy(new_scope);
                 self.current_scope = prev_scope;
-                self.has_returned = false;
-                self.return_value = null;
+                self.has_returned = prev_has_returned;
+                self.return_value = prev_return_value;
+                self.has_error = prev_has_error;
+                self.error_type = prev_error_type;
 
                 return ret;
             },
