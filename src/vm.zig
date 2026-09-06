@@ -831,7 +831,7 @@ pub const VM = struct {
                 } else {
                     try self.stdout.print("{any}\n", .{arg});
                 }
-                arg.deinit(self.allocator);
+                @constCast(&arg).deinit(self.allocator);
                 return value_mod.Value{ .null = {} };
             }
             if (std.mem.eql(u8, st.tag, "len")) {
@@ -842,20 +842,20 @@ pub const VM = struct {
                     .dict => |d| value_mod.Value{ .int = @intCast(d.count()) },
                     else => value_mod.Value{ .int = 0 },
                 };
-                arg.deinit(self.allocator);
+                @constCast(&arg).deinit(self.allocator);
                 return result;
             }
             if (std.mem.eql(u8, st.tag, "memory")) {
-                arg.deinit(self.allocator);
+                @constCast(&arg).deinit(self.allocator);
                 return value_mod.Value{ .int = 0 };
             }
             if (std.mem.eql(u8, st.tag, "encode")) {
                 if (arg == .string) {
                     const bytes = try self.allocator.dupe(u8, arg.string);
-                    arg.deinit(self.allocator);
+                    @constCast(&arg).deinit(self.allocator);
                     return value_mod.Value{ .bytes = bytes };
                 }
-                arg.deinit(self.allocator);
+                @constCast(&arg).deinit(self.allocator);
                 return value_mod.Value{ .bytes = &[_]u8{} };
             }
         }
