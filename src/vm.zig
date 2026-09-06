@@ -651,6 +651,10 @@ pub const VM = struct {
                 }
 
                 const prev_scope = self.current_scope;
+                const prev_has_returned = self.has_returned;
+                const prev_return_value = self.return_value;
+                const prev_has_error = self.has_error;
+                const prev_error_type = self.error_type;
                 self.current_scope = new_scope;
                 self.has_returned = false;
                 self.return_value = null;
