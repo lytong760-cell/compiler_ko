@@ -13,7 +13,7 @@ test "lexer_test_0001" {
 test "lexer_test_0002" {
     var lx = lexer.Lexer.init("freal");
     var gpa = std.testing.allocator;
-    const tokens = lx.tokenize(gpa) try;
+    const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
     try std.testing.expect(tokens.len == 2);
     try std.testing.expect(tokens[0] == .{ .keyword = .freal_kw });
@@ -23,7 +23,7 @@ test "lexer_test_0002" {
 test "lexer_test_0003" {
     var lx = lexer.Lexer.init("string");
     var gpa = std.testing.allocator;
-    const tokens = lx.tokenize(gpa) try;
+    const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
     try std.testing.expect(tokens.len == 2);
     try std.testing.expect(tokens[0] == .{ .keyword = .string_kw });
@@ -33,7 +33,7 @@ test "lexer_test_0003" {
 test "lexer_test_0004" {
     var lx = lexer.Lexer.init("booling");
     var gpa = std.testing.allocator;
-    const tokens = lx.tokenize(gpa) try;
+    const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
     try std.testing.expect(tokens.len == 2);
     try std.testing.expect(tokens[0] == .{ .keyword = .booling_kw });
