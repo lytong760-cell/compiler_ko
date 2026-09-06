@@ -781,7 +781,7 @@ pub const VM = struct {
                     const i = idx.int;
                     const idx_usize: usize = @intCast(i);
                     if (idx_usize < arr.len) {
-                        return arr[idx_usize];
+                        return try arr[idx_usize].clone(self.allocator);
                     }
                     self.raiseError("IndexError", "Index out of bounds");
                     return error.RuntimeError;
@@ -793,7 +793,7 @@ pub const VM = struct {
                 if (idx == .string) {
                     const key = idx.string;
                     if (d.get(key)) |val| {
-                        return val;
+                        return try val.clone(self.allocator);
                     }
                     self.raiseError("KeyError", "Key not found");
                     return error.RuntimeError;
