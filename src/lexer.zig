@@ -241,7 +241,10 @@ pub const Lexer = struct {
                 if (has_dot) {
                     return Token{ .freal_lit = std.fmt.parseFloat(f64, num_str) catch unreachable };
                 } else {
-                    return Token{ .int_lit = std.fmt.parseInt(i64, num_str, 10) catch unreachable };
+                    return Token{ .int_lit = std.fmt.parseInt(i64, num_str, 10) catch |err| {
+                        if (err == error.Overflow) return error.NumberOverflow;
+                        return err;
+                    } };
                 }
             }
 
