@@ -290,7 +290,7 @@ pub const VM = struct {
                 switch (m.kind) {
                     .address => {
                         const val = try self.evaluateExpression(m.expr);
-                        _ = val;
+                        @constCast(&val).deinit(self.allocator);
                     },
                     .dete => {
                         var val = try self.evaluateExpression(m.expr);
@@ -300,12 +300,12 @@ pub const VM = struct {
             },
             .encoding_op => |eo| {
                 const val = try self.evaluateExpression(eo.expr);
-                _ = val;
+                @constCast(&val).deinit(self.allocator);
                 _ = eo.encoding_type;
             },
             .len_op => |lo| {
                 const val = try self.evaluateExpression(lo.expr);
-                _ = val;
+                @constCast(&val).deinit(self.allocator);
             },
             .return_stmt => |rs| {
                 const val = try self.evaluateExpression(rs.expr);
