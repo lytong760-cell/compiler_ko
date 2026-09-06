@@ -275,9 +275,9 @@ test "lexer_test_0033" {
 test "lexer_test_0034" {
     var lx = lexer.Lexer.init("|comment|");
     var gpa = std.testing.allocator;
-    const tokens = lx.tokenize(gpa) try;
+    const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
-    std.testing.expect(tokens.len == 1) try;
+    try std.testing.expect(tokens.len == 1);
 }
 
 test "lexer_test_0035" {
