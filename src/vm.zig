@@ -316,7 +316,8 @@ pub const VM = struct {
                 for (b.body) |s| try self.executeStatement(&s);
             },
             .expr => |e| {
-                _ = try self.evaluateExpression(e);
+                const val = try self.evaluateExpression(e);
+                val.deinit(self.allocator);
             },
             .catch_stmt => |cs| {
                 if (self.has_error) {
