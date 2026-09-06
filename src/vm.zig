@@ -175,7 +175,8 @@ pub const VM = struct {
                     const name_copy = try self.allocator.dupe(u8, ci.instance_name);
                     try self.current_scope.variables.put(name_copy, value_mod.Value{ .class_instance = instance });
                 } else {
-                    self.raiseError("ClassError", "Class not found: " ++ ci.class_name);
+                    self.raiseError("ClassError", "Class not found");
+                    _ = ci.class_name;
                 }
             },
             .class_decl => |c| {
