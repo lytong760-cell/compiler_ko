@@ -824,22 +824,27 @@ pub const VM = struct {
                 return value_mod.Value{ .null = {} };
             }
             if (std.mem.eql(u8, st.tag, "len")) {
-                return switch (arg) {
+                const result = switch (arg) {
                     .string => |s| value_mod.Value{ .int = @intCast(s.len) },
                     .tuple, .list => |v| value_mod.Value{ .int = @intCast(v.len) },
                     .bytes => |b| value_mod.Value{ .int = @intCast(b.len) },
                     .dict => |d| value_mod.Value{ .int = @intCast(d.count()) },
                     else => value_mod.Value{ .int = 0 },
                 };
+                arg.deinit(self.allocator);
+                return result;
             }
             if (std.mem.eql(u8, st.tag, "memory")) {
+                arg.deinit(self.allocator);
                 return value_mod.Value{ .int = 0 };
             }
             if (std.mem.eql(u8, st.tag, "encode")) {
                 if (arg == .string) {
                     const bytes = try self.allocator.dupe(u8, arg.string);
+                    arg.deinit(self.allocator);
                     return value_mod.Value{ .bytes = bytes };
                 }
+                arg.deinit(self.allocator);
                 return value_mod.Value{ .bytes = &[_]u8{} };
             }
         }
