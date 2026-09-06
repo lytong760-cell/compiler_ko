@@ -35,7 +35,7 @@ pub const Value = union(enum) {
                     entry.value_ptr.*.deinit(allocator);
                 }
                 d.deinit();
-                allocator.free(d);
+                allocator.destroy(d);
             },
             .function => {},
             .class_instance => {
