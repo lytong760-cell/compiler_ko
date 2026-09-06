@@ -1378,40 +1378,46 @@ pub const Parser = struct {
     fn parseSystemTagExpr(self: *Parser) anyerror!*ast.Expr {
         _ = self.advance();
         const tag = try self.parseSystemTagName();
-        try self.expectGT();
+
+        var args = std.ArrayList(ast.Expr).init(self.allocator);
+        defer args.deinit();
+
+        if (std.mem.eql(u8, tag, "encode") and self.current() == .identifier) {
+            const enc_name = self.current().identifier;
+            _ = self.advance();
+            try self.expectGT();
+            const enc_lit = try self.allocator.create(ast.Literal);
+            enc_lit.* = ast.Literal{ .kind = .string, .string = enc_name, .int_value = 0, .freal_value = 0 };
+            try args.append(ast.Expr{ .literal = enc_lit.* });
+        } else {
+            try self.expectGT();
+        }
 
         if (self.current() == .caret) {
             _ = self.advance();
             try self.expectLParen();
             const expr = try self.parseExpression();
             try self.expectRParen();
-
-            const ste = try self.allocator.create(ast.SystemTagExpr);
-            ste.* = ast.SystemTagExpr{
-                .tag = tag,
-                .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
-            };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .system_tag = ste };
-            return e;
+            try args.append(expr.*);
         }
 
         if (self.current() == .l_paren) {
             _ = self.advance();
             const expr = try self.parseExpression();
             try self.expectRParen();
-
-            const call = try self.allocator.create(ast.CallExpr);
-            call.* = ast.CallExpr{
-                .callee = tag,
-                .args = try self.allocator.dupe(ast.Expr, &[_]ast.Expr{expr.*}),
-            };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .call = call };
-            return e;
+            try args.append(expr.*);
         }
 
-        return error.UnexpectedToken;
+        if (args.items.len == 0) return error.UnexpectedToken;
+
+        const ste = try self.allocator.create(ast.SystemTagExpr);
+        ste.* = ast.SystemTagExpr{
+            .tag = tag,
+            .args = try args.toOwnedSlice(),
+        };
+        const e = try self.allocator.create(ast.Expr);
+        e.* = .{ .system_tag = ste };
+        return e;
     }
 
     fn expectLParen(self: *Parser) !void {
