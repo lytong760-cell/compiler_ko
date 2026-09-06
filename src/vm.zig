@@ -71,8 +71,6 @@ pub const VM = struct {
     }
 
     fn dispatchCatchBlocks(self: *VM, program: []ast.Statement, current: *const ast.Statement) !void {
-        _ = program;
-        _ = current;
         var i: usize = 0;
         while (i < program.len) {
             if (&program[i] == current) break;
