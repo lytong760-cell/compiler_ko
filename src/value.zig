@@ -269,6 +269,74 @@ pub const Value = union(enum) {
             else => error.TypeError,
         };
     }
+
+    pub fn clone(self: Value, allocator: std.mem.Allocator) !Value {
+        return switch (self) {
+            .null => Value{ .null = {} },
+            .int => |v| Value{ .int = v },
+            .freal => |v| Value{ .freal = v },
+            .string => |s| Value{ .string = try allocator.dupe(u8, s) },
+            .booling => |v| Value{ .booling = v },
+            .byte => |v| Value{ .byte = v },
+            .bytes => |b| Value{ .bytes = try allocator.dupe(u8, b) },
+            .tuple => |items| blk: {
+                const cloned = try allocator.alloc(Value, items.len);
+                for (items, 0..) |item, i| {
+                    cloned[i] = try item.clone(allocator);
+                }
+                break :blk Value{ .tuple = cloned };
+            },
+            .list => |items| blk: {
+                const cloned = try allocator.alloc(Value, items.len);
+                for (items, 0..) |item, i| {
+                    cloned[i] = try item.clone(allocator);
+                }
+                break :blk Value{ .list = cloned };
+            },
+            .dict => |d| blk: {
+                const new_d = try allocator.create(std.StringHashMap(Value));
+                new_d.* = std.StringHashMap(Value).init(allocator);
+                var iter = d.iterator();
+                while (iter.next()) |entry| {
+                    const key_copy = try allocator.dupe(u8, entry.key_ptr.*);
+                    const val_clone = try entry.value_ptr.*.clone(allocator);
+                    try new_d.put(key_copy, val_clone);
+                }
+                break :blk Value{ .dict = new_d };
+            },
+            .function => |f| Value{ .function = f },
+            .class_instance => |ci| blk: {
+                const new_ci = try allocator.create(ClassInstance);
+                new_ci.* = .{
+                    .class_name = try allocator.dupe(u8, ci.class_name),
+                    .fields = std.StringHashMap(Value).init(allocator),
+                    .methods = std.StringHashMap(*Function).init(allocator),
+                    .allocator = allocator,
+                };
+                var fiter = ci.fields.iterator();
+                while (fiter.next()) |entry| {
+                    const key_copy = try allocator.dupe(u8, entry.key_ptr.*);
+                    const val_clone = try entry.value_ptr.*.clone(allocator);
+                    try new_ci.fields.put(key_copy, val_clone);
+                }
+                var miter = ci.methods.iterator();
+                while (miter.next()) |entry| {
+                    const key_copy = try allocator.dupe(u8, entry.key_ptr.*);
+                    try new_ci.methods.put(key_copy, entry.value_ptr.*);
+                }
+                break :blk Value{ .class_instance = new_ci };
+            },
+            .error_obj => |e| blk: {
+                const new_e = try allocator.create(ErrorObj);
+                new_e.* = .{
+                    .type = e.type,
+                    .code = try allocator.dupe(u8, e.code),
+                    .line = e.line,
+                };
+                break :blk Value{ .error_obj = new_e };
+            },
+        };
+    }
 };
 
 pub const Function = struct {
