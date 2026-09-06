@@ -151,12 +151,12 @@ test "parser_test_0027" {
 
 test "parser_test_0028" {
     const gpa = std.testing.allocator;
-    try parseSource(gpa, "Box !class [ int(0)~x ] ]");
+    try parseSource(gpa, "Box !class [ int(0)~x ]");
 }
 
 test "parser_test_0029" {
     const gpa = std.testing.allocator;
-    try parseSource(gpa, "Box !class [ @private [ int(0)~x ] ] ]");
+    try parseSource(gpa, "Box !class [ @private [ int(0)~x ] ]");
 }
 
 test "parser_test_0030" {
