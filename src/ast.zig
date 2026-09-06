@@ -120,7 +120,7 @@ pub const ClassDecl = struct {
     pub const Kind = enum { if_stmt, elif_stmt, else_stmt, for_loop, while_loop };
 
     pub fn deinit(self: *ControlFlow) void {
-        self.condition.deinit();
+        if (self.condition) |c| c.deinit();
         if (self.init) |i| {
             i.deinit();
             self.allocator.destroy(i);
