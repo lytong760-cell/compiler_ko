@@ -199,10 +199,9 @@ pub const Value = union(enum) {
         return switch (self) {
             .int => |a| switch (other) {
                 .int => |b| blk: {
-                    var result: i64 = undefined;
-                    const overflow = @subWithOverflow(i64, a, b, &result);
-                    if (overflow) break :blk error.OverflowError;
-                    break :blk Value{ .int = result };
+                    const result = @subWithOverflow(a, b);
+                    if (result[1] != 0) break :blk error.OverflowError;
+                    break :blk Value{ .int = result[0] };
                 },
                 .freal => |b| Value{ .freal = @as(f64, @floatFromInt(a)) - b },
                 else => error.TypeError,
@@ -220,10 +219,9 @@ pub const Value = union(enum) {
         return switch (self) {
             .int => |a| switch (other) {
                 .int => |b| blk: {
-                    var result: i64 = undefined;
-                    const overflow = @mulWithOverflow(i64, a, b, &result);
-                    if (overflow) break :blk error.OverflowError;
-                    break :blk Value{ .int = result };
+                    const result = @mulWithOverflow(a, b);
+                    if (result[1] != 0) break :blk error.OverflowError;
+                    break :blk Value{ .int = result[0] };
                 },
                 .freal => |b| Value{ .freal = @as(f64, @floatFromInt(a)) * b },
                 else => error.TypeError,
