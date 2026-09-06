@@ -7,6 +7,8 @@ test "lexer_test_0001" {
     const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
     try std.testing.expect(tokens.len == 2);
+    try std.testing.expect(tokens[0] == .keyword);
+    try std.testing.expect(tokens[0].keyword == .int_kw);
     try std.testing.expect(tokens[1] == .eof);
 }
 
@@ -16,7 +18,8 @@ test "lexer_test_0002" {
     const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
     try std.testing.expect(tokens.len == 2);
-    try std.testing.expect(tokens[0] == .{ .keyword = .freal_kw });
+    try std.testing.expect(tokens[0] == .keyword);
+    try std.testing.expect(tokens[0].keyword == .freal_kw);
     try std.testing.expect(tokens[1] == .eof);
 }
 
@@ -26,7 +29,8 @@ test "lexer_test_0003" {
     const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
     try std.testing.expect(tokens.len == 2);
-    try std.testing.expect(tokens[0] == .{ .keyword = .string_kw });
+    try std.testing.expect(tokens[0] == .keyword);
+    try std.testing.expect(tokens[0].keyword == .string_kw);
     try std.testing.expect(tokens[1] == .eof);
 }
 
@@ -36,7 +40,8 @@ test "lexer_test_0004" {
     const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
     try std.testing.expect(tokens.len == 2);
-    try std.testing.expect(tokens[0] == .{ .keyword = .booling_kw });
+    try std.testing.expect(tokens[0] == .keyword);
+    try std.testing.expect(tokens[0].keyword == .booling_kw);
     try std.testing.expect(tokens[1] == .eof);
 }
 
