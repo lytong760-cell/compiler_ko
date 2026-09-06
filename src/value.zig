@@ -198,7 +198,12 @@ pub const Value = union(enum) {
     pub fn sub(self: Value, other: Value) !Value {
         return switch (self) {
             .int => |a| switch (other) {
-                .int => |b| Value{ .int = a - b },
+                .int => |b| blk: {
+                    var result: i64 = undefined;
+                    const overflow = @subWithOverflow(i64, a, b, &result);
+                    if (overflow) break :blk error.OverflowError;
+                    break :blk Value{ .int = result };
+                },
                 .freal => |b| Value{ .freal = @as(f64, @floatFromInt(a)) - b },
                 else => error.TypeError,
             },
