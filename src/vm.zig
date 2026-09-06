@@ -181,6 +181,10 @@ pub const VM = struct {
             },
             .class_decl => |c| {
                 const class_def = try self.allocator.create(value_mod.ClassDef);
+                var private_scope = try self.allocator.create(value_mod.Scope);
+                private_scope.* = value_mod.Scope.init(self.allocator, self.current_scope);
+                var public_scope = try self.allocator.create(value_mod.Scope);
+                public_scope.* = value_mod.Scope.init(self.allocator, self.current_scope);
                 class_def.* = value_mod.ClassDef{
                     .name = c.name,
                     .private_fields = std.StringHashMap(value_mod.Value).init(self.allocator),
@@ -188,6 +192,8 @@ pub const VM = struct {
                     .public_fields = std.StringHashMap(value_mod.Value).init(self.allocator),
                     .public_methods = std.StringHashMap(*value_mod.Function).init(self.allocator),
                     .allocator = self.allocator,
+                    .private_scope = private_scope,
+                    .public_scope = public_scope,
                 };
                 const name_copy = self.allocator.dupe(u8, c.name) catch unreachable;
                 try self.current_scope.classes.put(name_copy, class_def);
