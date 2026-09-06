@@ -112,7 +112,17 @@ pub const VM = struct {
                     break :blk value_mod.Value{ .bytes = bytes_val };
                 } else val;
                 const name_copy = self.allocator.dupe(u8, v.name) catch unreachable;
-                try self.current_scope.variables.put(name_copy, final_val);
+                if (self.current_scope.variables.get(v.name)) |_| {
+                    const gop = try self.current_scope.variables.getOrPut(v.name);
+                    gop.value_ptr.*.deinit(self.allocator);
+                    gop.value_ptr.* = final_val;
+                } else if (self.global_scope.variables.get(v.name)) |_| {
+                    const gop = try self.global_scope.variables.getOrPut(v.name);
+                    gop.value_ptr.*.deinit(self.allocator);
+                    gop.value_ptr.* = final_val;
+                } else {
+                    try self.current_scope.variables.put(name_copy, final_val);
+                }
             },
             .assignment => |*a| {
                 const val = try self.evaluateExpression(a.value_expr);
