@@ -109,7 +109,6 @@ pub const VM = struct {
                     @memset(bytes_val, 0);
                     break :blk value_mod.Value{ .bytes = bytes_val };
                 } else val;
-                const name_copy = self.allocator.dupe(u8, v.name) catch unreachable;
                 if (self.current_scope.variables.get(v.name)) |_| {
                     const gop = try self.current_scope.variables.getOrPut(v.name);
                     gop.value_ptr.*.deinit(self.allocator);
@@ -119,6 +118,7 @@ pub const VM = struct {
                     gop.value_ptr.*.deinit(self.allocator);
                     gop.value_ptr.* = final_val;
                 } else {
+                    const name_copy = self.allocator.dupe(u8, v.name) catch unreachable;
                     try self.current_scope.variables.put(name_copy, final_val);
                 }
             },
