@@ -11,7 +11,7 @@ pub const Value = union(enum) {
     bytes: []u8,
     tuple: []Value,
     list: []Value,
-    dict: std.StringHashMap(Value),
+    dict: *std.StringHashMap(Value),
     function: *Function,
     class_instance: *ClassInstance,
     error_obj: *ErrorObj,
@@ -23,13 +23,14 @@ pub const Value = union(enum) {
                 for (self.tuple) |*v| v.deinit(allocator);
                 allocator.free(self.tuple);
             },
-            .dict => {
-                var iter = self.dict.iterator();
+            .dict => |d| {
+                var iter = d.iterator();
                 while (iter.next()) |entry| {
                     allocator.free(entry.key_ptr.*);
                     entry.value_ptr.*.deinit(allocator);
                 }
-                self.dict.deinit();
+                d.deinit();
+                allocator.free(d);
             },
             .function => {},
             .class_instance => {
