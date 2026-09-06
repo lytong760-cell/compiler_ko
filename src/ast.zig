@@ -51,6 +51,7 @@ pub const ClassInstantiation = struct {
     allocator: std.mem.Allocator,
 
     pub fn deinit(self: *ClassInstantiation) void {
+        _ = self;
     }
 };
 
