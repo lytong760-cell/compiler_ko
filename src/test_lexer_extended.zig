@@ -6,7 +6,9 @@ test "lexer_test_0001" {
     var gpa = std.testing.allocator;
     const tokens = lx.tokenize(gpa) catch unreachable;
     defer gpa.free(tokens);
-    std.testing.expect(tokens.len == 2) catch unreachable;
+    try std.testing.expect(tokens.len == 2);
+    try std.testing.expect(tokens[0] == .{ .keyword = .int_kw });
+    try std.testing.expect(tokens[1] == .eof);
 }
 
 test "lexer_test_0002" {
@@ -14,7 +16,9 @@ test "lexer_test_0002" {
     var gpa = std.testing.allocator;
     const tokens = lx.tokenize(gpa) catch unreachable;
     defer gpa.free(tokens);
-    std.testing.expect(tokens.len == 2) catch unreachable;
+    try std.testing.expect(tokens.len == 2);
+    try std.testing.expect(tokens[0] == .{ .keyword = .freal_kw });
+    try std.testing.expect(tokens[1] == .eof);
 }
 
 test "lexer_test_0003" {
@@ -22,7 +26,9 @@ test "lexer_test_0003" {
     var gpa = std.testing.allocator;
     const tokens = lx.tokenize(gpa) catch unreachable;
     defer gpa.free(tokens);
-    std.testing.expect(tokens.len == 2) catch unreachable;
+    try std.testing.expect(tokens.len == 2);
+    try std.testing.expect(tokens[0] == .{ .keyword = .string_kw });
+    try std.testing.expect(tokens[1] == .eof);
 }
 
 test "lexer_test_0004" {
@@ -30,7 +36,9 @@ test "lexer_test_0004" {
     var gpa = std.testing.allocator;
     const tokens = lx.tokenize(gpa) catch unreachable;
     defer gpa.free(tokens);
-    std.testing.expect(tokens.len == 2) catch unreachable;
+    try std.testing.expect(tokens.len == 2);
+    try std.testing.expect(tokens[0] == .{ .keyword = .booling_kw });
+    try std.testing.expect(tokens[1] == .eof);
 }
 
 test "lexer_test_0005" {
