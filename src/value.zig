@@ -467,11 +467,15 @@ pub const ClassDef = struct {
         }
         self.public_methods.deinit();
         if (self.private_scope) |ps| {
-            ps.deinit();
+            ps.variables.deinit();
+            ps.classes.deinit();
+            ps.functions.deinit();
             self.allocator.destroy(ps);
         }
         if (self.public_scope) |ps| {
-            ps.deinit();
+            ps.variables.deinit();
+            ps.classes.deinit();
+            ps.functions.deinit();
             self.allocator.destroy(ps);
         }
     }
