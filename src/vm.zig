@@ -412,7 +412,11 @@ pub const VM = struct {
             .bool_true => value_mod.Value{ .booling = true },
             .bool_false => value_mod.Value{ .booling = false },
             .tuple => value_mod.Value{ .tuple = &[_]value_mod.Value{} },
-            .dict => value_mod.Value{ .dict = std.StringHashMap(value_mod.Value).init(self.allocator) },
+            .dict => blk: {
+                const d = try self.allocator.create(std.StringHashMap(value_mod.Value));
+                d.* = std.StringHashMap(value_mod.Value).init(self.allocator);
+                break :blk value_mod.Value{ .dict = d };
+            },
         };
     }
 
