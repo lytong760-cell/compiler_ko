@@ -1264,7 +1264,7 @@ pub const Parser = struct {
                     .instance_name = instance_name,
                     .allocator = self.allocator,
                 };
-                return ast.Statement{ .class_instantiation = ci };
+                return ast.Statement{ .class_instantiation = ci.* };
             }
             if (self.current() == .l_paren) {
                 _ = self.advance();
