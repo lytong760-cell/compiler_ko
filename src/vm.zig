@@ -96,12 +96,12 @@ pub const VM = struct {
                 const final_val = if (std.mem.eql(u8, v.type_name, "bytes")) blk: {
                     defer val.deinit(self.allocator);
                     const size: usize = switch (val) {
-                        .int => |i| blk: {
+                        .int => |i| blk2: {
                             if (i < 0) {
                                 self.raiseError("TypeError", "Cannot cast negative value to bytes");
-                                break :blk 0;
+                                break :blk2 0;
                             }
-                            break :blk @intCast(i);
+                            break :blk2 @intCast(i);
                         },
                         else => 0,
                     };
