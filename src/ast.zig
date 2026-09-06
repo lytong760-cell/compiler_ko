@@ -106,10 +106,10 @@ pub const ClassDecl = struct {
     }
 };
 
-pub const ControlFlow = struct {
-    kind: Kind,
-    condition: *Expr,
-    body: []Statement,
+ pub const ControlFlow = struct {
+     kind: Kind,
+     condition: ?*Expr,
+     body: []Statement,
     init: ?*Assignment,
     step: ?*Expr,
     loop_var: []const u8,
