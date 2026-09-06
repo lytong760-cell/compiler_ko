@@ -51,8 +51,6 @@ pub const ClassInstantiation = struct {
     allocator: std.mem.Allocator,
 
     pub fn deinit(self: *ClassInstantiation) void {
-        self.allocator.free(self.class_name);
-        self.allocator.free(self.instance_name);
     }
 };
 
