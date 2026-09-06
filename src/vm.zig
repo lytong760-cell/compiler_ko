@@ -217,13 +217,13 @@ pub const VM = struct {
             .control_flow => |cf| {
                 switch (cf.kind) {
                     .if_stmt => {
-                        const cond = try self.evaluateExpression(cf.condition);
+                        const cond = try self.evaluateExpression(cf.condition.?);
                         if (try cond.toBool()) {
                             for (cf.body) |s| try self.executeStatement(&s);
                         }
                     },
                     .elif_stmt => {
-                        const cond = try self.evaluateExpression(cf.condition);
+                        const cond = try self.evaluateExpression(cf.condition.?);
                         if (try cond.toBool()) {
                             for (cf.body) |s| try self.executeStatement(&s);
                         }

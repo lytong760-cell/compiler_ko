@@ -817,20 +817,20 @@ pub const Parser = struct {
             try self.expectRBracket();
             const cf = try self.allocator.create(ast.ControlFlow);
             cf.* = ast.ControlFlow{
-                .kind = .else_stmt,
-                .condition = try self.allocator.create(ast.Expr),
-                .body = try body.toOwnedSlice(),
-                .init = null,
-                .step = null,
-                .loop_var = "",
-                .elifs = &[_]ast.Elif{},
-                .else_body = &[_]ast.Statement{},
-                .allocator = self.allocator,
-            };
-            return ast.Statement{ .control_flow = cf };
-        }
-        
-        if (std.mem.eql(u8, tag, "catch")) {
+            .kind = .else_stmt,
+            .condition = null,
+            .body = try body.toOwnedSlice(),
+            .init = null,
+            .step = null,
+            .loop_var = "",
+            .elifs = &[_]ast.Elif{},
+            .else_body = &[_]ast.Statement{},
+            .allocator = self.allocator,
+        };
+        return ast.Statement{ .control_flow = cf };
+    }
+    
+    if (std.mem.eql(u8, tag, "catch")) {
             try self.expectLParen();
             const err_type = try self.parseErrorType();
             try self.expectRParen();
