@@ -141,6 +141,26 @@ pub const Parser = struct {
         return error.UnexpectedToken;
     }
 
+    fn parseClassInstantiation(self: *Parser) anyerror!ast.Statement {
+        _ = self.advance();
+        const name_tok = self.current();
+        if (name_tok != .identifier) return error.ExpectedIdentifier;
+        const name = name_tok.identifier;
+        _ = self.advance();
+        _ = self.advance();
+        const instance_tok = self.current();
+        if (instance_tok != .identifier) return error.ExpectedIdentifier;
+        const instance_name = instance_tok.identifier;
+        _ = self.advance();
+        const ci = try self.allocator.create(ast.ClassInstantiation);
+        ci.* = ast.ClassInstantiation{
+            .class_name = name,
+            .instance_name = instance_name,
+            .allocator = self.allocator,
+        };
+        return ast.Statement{ .class_instantiation = ci.* };
+    }
+
     fn parseBlockStatement(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         var body = std.ArrayList(ast.Statement).init(self.allocator);
