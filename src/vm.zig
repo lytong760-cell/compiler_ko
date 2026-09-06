@@ -317,7 +317,7 @@ pub const VM = struct {
             },
             .expr => |e| {
                 const val = try self.evaluateExpression(e);
-                val.deinit(self.allocator);
+                @constCast(&val).deinit(self.allocator);
             },
             .catch_stmt => |cs| {
                 if (self.has_error) {
