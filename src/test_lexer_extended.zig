@@ -283,47 +283,47 @@ test "lexer_test_0034" {
 test "lexer_test_0035" {
     var lx = lexer.Lexer.init("int(10)~x");
     var gpa = std.testing.allocator;
-    const tokens = lx.tokenize(gpa) try;
+    const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
-    std.testing.expect(tokens.len == 7) try;
+    try std.testing.expect(tokens.len == 7);
 }
 
 test "lexer_test_0036" {
     var lx = lexer.Lexer.init("x + y");
     var gpa = std.testing.allocator;
-    const tokens = lx.tokenize(gpa) try;
+    const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
-    std.testing.expect(tokens.len == 4) try;
+    try std.testing.expect(tokens.len == 4);
 }
 
 test "lexer_test_0037" {
     var lx = lexer.Lexer.init("x && y");
     var gpa = std.testing.allocator;
-    const tokens = lx.tokenize(gpa) try;
+    const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
-    std.testing.expect(tokens.len == 4) try;
+    try std.testing.expect(tokens.len == 4);
 }
 
 test "lexer_test_0038" {
     var lx = lexer.Lexer.init("x %% y");
     var gpa = std.testing.allocator;
-    const tokens = lx.tokenize(gpa) try;
+    const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
-    std.testing.expect(tokens.len == 4) try;
+    try std.testing.expect(tokens.len == 4);
 }
 
 test "lexer_test_0039" {
     var lx = lexer.Lexer.init("<printf>");
     var gpa = std.testing.allocator;
-    const tokens = lx.tokenize(gpa) try;
+    const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
-    std.testing.expect(tokens.len == 4) try;
+    try std.testing.expect(tokens.len == 4);
 }
 
 test "lexer_test_0040" {
     var lx = lexer.Lexer.init("<len>");
     var gpa = std.testing.allocator;
-    const tokens = lx.tokenize(gpa) try;
+    const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
-    std.testing.expect(tokens.len == 4) try;
+    try std.testing.expect(tokens.len == 4);
 }
