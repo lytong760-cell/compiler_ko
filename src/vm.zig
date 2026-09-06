@@ -198,8 +198,6 @@ pub const VM = struct {
                 const name_copy = self.allocator.dupe(u8, c.name) catch unreachable;
                 try self.current_scope.classes.put(name_copy, class_def);
 
-                var private_scope = try self.allocator.create(value_mod.Scope);
-                private_scope.* = value_mod.Scope.init(self.allocator, self.current_scope);
                 for (c.private_body) |*priv_stmt| {
                     try self.executeStatementInScope(priv_stmt, private_scope);
                 }
@@ -215,10 +213,7 @@ pub const VM = struct {
                 private_scope.variables.clearRetainingCapacity();
                 private_scope.functions.clearRetainingCapacity();
                 private_scope.classes.clearRetainingCapacity();
-                class_def.private_scope = private_scope;
 
-                var public_scope = try self.allocator.create(value_mod.Scope);
-                public_scope.* = value_mod.Scope.init(self.allocator, self.current_scope);
                 for (c.public_body) |*pub_stmt| {
                     try self.executeStatementInScope(pub_stmt, public_scope);
                 }
@@ -234,7 +229,6 @@ pub const VM = struct {
                 public_scope.variables.clearRetainingCapacity();
                 public_scope.functions.clearRetainingCapacity();
                 public_scope.classes.clearRetainingCapacity();
-                class_def.public_scope = public_scope;
             },
             .control_flow => |cf| {
                 switch (cf.kind) {
