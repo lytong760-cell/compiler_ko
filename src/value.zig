@@ -19,9 +19,13 @@ pub const Value = union(enum) {
     pub fn deinit(self: *Value, allocator: std.mem.Allocator) void {
         switch (self.*) {
             .bytes => allocator.free(self.bytes),
-            .tuple, .list => {
+            .tuple => {
                 for (self.tuple) |*v| v.deinit(allocator);
                 allocator.free(self.tuple);
+            },
+            .list => {
+                for (self.list) |*v| v.deinit(allocator);
+                allocator.free(self.list);
             },
             .dict => |d| {
                 var iter = d.iterator();
