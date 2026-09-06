@@ -6,28 +6,22 @@ const ast = @import("ast.zig");
 
 fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
     var lx = lexer.Lexer.init(source);
-    const tokens = lx.tokenize(allocator) catch |err| {
-        std.debug.print("Lexer error: {any}\n", .{err});
-        return;
-    };
+    const tokens = try lx.tokenize(allocator);
     defer allocator.free(tokens);
 
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
     var pr = parser.Parser.init(allocator, &arena, tokens);
-    const program = pr.parse() catch |err| {
-        std.debug.print("Parser error: {any}\n", .{err});
-        return;
-    };
+    const program = try pr.parse();
+    defer {
+        for (program) |*stmt| stmt.deinit();
+    }
 
     var virtual_machine = try vm.VM.init(allocator);
     defer virtual_machine.deinit();
 
-    virtual_machine.execute(program) catch |err| {
-        std.debug.print("Runtime error: {any}\n", .{err});
-        return;
-    };
+    try virtual_machine.execute(program);
 }
 
 test "test_0001" {
