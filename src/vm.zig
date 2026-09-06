@@ -749,7 +749,7 @@ pub const VM = struct {
         switch (obj) {
             .class_instance => |ci| {
                 if (ci.fields.get(ma.member)) |val| {
-                    return val;
+                    return try val.clone(self.allocator);
                 }
                 if (ci.methods.get(ma.member)) |func| {
                     return value_mod.Value{ .function = func };
@@ -759,7 +759,7 @@ pub const VM = struct {
             },
             .dict => |d| {
                 if (d.get(ma.member)) |val| {
-                    return val;
+                    return try val.clone(self.allocator);
                 }
                 self.raiseError("KeyError", "Key not found");
                 return error.RuntimeError;
