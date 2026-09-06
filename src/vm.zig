@@ -179,6 +179,7 @@ pub const VM = struct {
                 }
             },
             .class_decl => |c| {
+                const class_def = try self.allocator.create(value_mod.ClassDef);
                 class_def.* = value_mod.ClassDef{
                     .name = c.name,
                     .private_fields = std.StringHashMap(value_mod.Value).init(self.allocator),
