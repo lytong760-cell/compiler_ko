@@ -13,6 +13,9 @@ fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
 
     var pr = parser.Parser.init(allocator, &arena, tokens);
     const program = try pr.parse();
+    defer {
+        for (program) |*stmt| stmt.deinit();
+    }
 
     var virtual_machine = try vm.VM.init(allocator);
     defer virtual_machine.deinit();
