@@ -360,8 +360,9 @@ pub const VM = struct {
                 switch (obj) {
                     .class_instance => |ci| {
                         if (ci.fields.get(ma.member)) |_| {
-                            const key_copy = self.allocator.dupe(u8, ma.member) catch unreachable;
-                            try ci.fields.put(key_copy, val);
+                            const gop = try ci.fields.getOrPut(ma.member);
+                            gop.value_ptr.*.deinit(self.allocator);
+                            gop.value_ptr.* = val;
                         } else if (ci.methods.get(ma.member)) |_| {
                             self.raiseError("AssignmentError", "Cannot assign to method");
                         } else {
