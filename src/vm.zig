@@ -395,6 +395,16 @@ pub const VM = struct {
         }
     }
 
+    fn zigErrorToKoType(err: anyerror) []const u8 {
+        return switch (err) {
+            error.DivideByZero => "DivideByZeroError",
+            error.OverflowError => "OverflowError",
+            error.TypeError => "TypeError",
+            error.UndefinedVariable => "NameError",
+            else => "RuntimeError",
+        };
+    }
+
     fn raiseError(self: *VM, err_type: []const u8, message: []const u8) void {
         self.has_error = true;
         self.error_type = err_type;
