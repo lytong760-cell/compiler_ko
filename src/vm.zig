@@ -637,7 +637,8 @@ pub const VM = struct {
                 if (val == .string) {
                     try self.printInterpolated(val.string);
                 } else {
-                    try self.stdout.print("{any}\n", .{val});
+                    try val.print(self.stdout);
+                    try self.stdout.print("\n", .{});
                 }
                 val.deinit(self.allocator);
             }
