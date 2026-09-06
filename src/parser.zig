@@ -123,7 +123,14 @@ pub const Parser = struct {
             return try self.parseExprStatement();
         }
 
-        if (tok == .sigil or tok == .dollar) {
+        if (tok == .sigil) {
+            if (self.peek(1) == .identifier and self.peek(2) == .sigil) {
+                return try self.parseClassInstantiation();
+            }
+            return try self.parseExprStatement();
+        }
+
+        if (tok == .dollar) {
             return try self.parseExprStatement();
         }
 
