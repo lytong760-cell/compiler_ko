@@ -22,7 +22,7 @@ const std = @import("std");
         gt: void,
         caret: void,
         amp_amp: void,
-        pipe_pipe: void,
+        logical_or: void,
         at: void,
         bang: void,
         colon: void,
@@ -31,6 +31,7 @@ const std = @import("std");
         plus: void,
         minus: void,
         star: void,
+        bold_lit: []const u8,
         slash: void,
         percent: void,
         equals: void,
@@ -128,11 +129,6 @@ pub const Lexer = struct {
             if (std.ascii.isWhitespace(c)) continue;
 
             if (c == '|') {
-                if (self.pos < self.source.len and self.source[self.pos] == '|') {
-                    self.pos += 1;
-                    self.col += 1;
-                    return Token.pipe_pipe;
-                }
                 while (self.pos < self.source.len and self.source[self.pos] != '|') {
                     if (self.source[self.pos] == '\n') {
                         self.line += 1;
@@ -151,7 +147,14 @@ pub const Lexer = struct {
 
             if (c == '"') {
                 var end = self.pos;
-                while (end < self.source.len and self.source[end] != '"') : (end += 1) {}
+                while (end < self.source.len) {
+                    if (self.source[end] == '"') break;
+                    if (self.source[end] == '\\' and end + 1 < self.source.len) {
+                        end += 2;
+                    } else {
+                        end += 1;
+                    }
+                }
                 const str = self.source[self.pos..end];
                 self.col += (end - self.pos + 2);
                 self.pos = end + 1;
@@ -160,7 +163,14 @@ pub const Lexer = struct {
 
             if (c == '\'') {
                 var end = self.pos;
-                while (end < self.source.len and self.source[end] != '\'') : (end += 1) {}
+                while (end < self.source.len) {
+                    if (self.source[end] == '\'') break;
+                    if (self.source[end] == '\\' and end + 1 < self.source.len) {
+                        end += 2;
+                    } else {
+                        end += 1;
+                    }
+                }
                 const str = self.source[self.pos..end];
                 self.col += (end - self.pos + 2);
                 self.pos = end + 1;
@@ -191,13 +201,37 @@ pub const Lexer = struct {
             if (c == '^') return Token.caret;
             if (c == '+') return Token.plus;
             if (c == '-') return Token.minus;
-            if (c == '*') return Token.star;
+            if (c == '*') {
+                if (self.pos < self.source.len and self.source[self.pos] == '*') {
+                    self.pos += 1;
+                    self.col += 1;
+                    const start = self.pos;
+                    while (self.pos < self.source.len) {
+                        if (self.source[self.pos] == '*' and self.pos + 1 < self.source.len and self.source[self.pos + 1] == '*') {
+                            break;
+                        }
+                        self.pos += 1;
+                        self.col += 1;
+                    }
+                    if (self.pos >= self.source.len) {
+                        return error.UnterminatedBoldLiteral;
+                    }
+                    const word = self.source[start..self.pos];
+                    if (!std.mem.eql(u8, word, "Loop") and !std.mem.eql(u8, word, "Import")) {
+                        return error.UnexpectedToken;
+                    }
+                    self.pos += 2;
+                    self.col += 2;
+                    return Token{ .bold_lit = word };
+                }
+                return Token.star;
+            }
             if (c == '/') return Token.slash;
             if (c == '%') {
                 if (self.pos < self.source.len and self.source[self.pos] == '%') {
                     self.pos += 1;
                     self.col += 1;
-                    return Token.pipe_pipe;
+                    return Token.logical_or;
                 }
                 return Token.percent;
             }
@@ -236,8 +270,9 @@ pub const Lexer = struct {
                     }
                 }
                 const num_str = self.source[self.pos - 1 .. end];
+                const num_len = end - self.pos + 1;
                 self.pos = end;
-                self.col += (end - self.pos + 1);
+                self.col += num_len;
                 if (has_dot) {
                     return Token{ .freal_lit = std.fmt.parseFloat(f64, num_str) catch unreachable };
                 } else {

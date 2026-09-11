@@ -11,6 +11,7 @@ pub const VM = struct {
     has_returned: bool,
     error_type: ?[]const u8,
     has_error: bool,
+    skip_elif_else: bool,
 
     pub fn init(allocator: std.mem.Allocator) !VM {
         const global_scope = try allocator.create(value_mod.Scope);
@@ -24,6 +25,7 @@ pub const VM = struct {
             .has_returned = false,
             .error_type = null,
             .has_error = false,
+            .skip_elif_else = false,
         };
     }
 
@@ -55,10 +57,10 @@ pub const VM = struct {
     }
 
     pub fn execute(self: *VM, program: []ast.Statement) anyerror!void {
-        for (program) |*stmt| {
+        for (program, 0..) |*stmt, idx| {
             if (self.has_returned) break;
             if (self.has_error) {
-                self.dispatchCatchBlocks(program, stmt) catch {};
+                self.dispatchCatchBlocks(program, idx) catch {};
                 continue;
             }
             self.executeStatement(stmt) catch |err| {
@@ -70,10 +72,10 @@ pub const VM = struct {
         }
     }
 
-    fn dispatchCatchBlocks(self: *VM, program: []ast.Statement, current: *const ast.Statement) !void {
+    fn dispatchCatchBlocks(self: *VM, program: []ast.Statement, current_idx: usize) !void {
         var i: usize = 0;
         while (i < program.len) {
-            if (&program[i] == current) break;
+            if (i == current_idx) break;
             i += 1;
         }
         i += 1;
@@ -118,7 +120,7 @@ pub const VM = struct {
                     gop.value_ptr.*.deinit(self.allocator);
                     gop.value_ptr.* = final_val;
                 } else {
-                    const name_copy = self.allocator.dupe(u8, v.name) catch unreachable;
+                    const name_copy = try self.allocator.dupe(u8, v.name);
                     try self.current_scope.variables.put(name_copy, final_val);
                 }
             },
@@ -163,7 +165,8 @@ pub const VM = struct {
                     var piter = cd.public_fields.iterator();
                     while (piter.next()) |entry| {
                         const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
-                        try instance.fields.put(key_copy, entry.value_ptr.*);
+                        const cloned_val = try entry.value_ptr.*.clone(self.allocator);
+                        try instance.fields.put(key_copy, cloned_val);
                     }
                     var miter = cd.public_methods.iterator();
                     while (miter.next()) |entry| {
@@ -195,7 +198,7 @@ pub const VM = struct {
                     .private_scope = private_scope,
                     .public_scope = public_scope,
                 };
-                const name_copy = self.allocator.dupe(u8, c.name) catch unreachable;
+                const name_copy = try self.allocator.dupe(u8, c.name);
                 try self.current_scope.classes.put(name_copy, class_def);
 
                 for (c.private_body) |*priv_stmt| {
@@ -209,6 +212,12 @@ pub const VM = struct {
                 var miter = private_scope.functions.iterator();
                 while (miter.next()) |entry| {
                     try class_def.private_methods.put(try self.allocator.dupe(u8, entry.key_ptr.*), entry.value_ptr.*);
+                }
+                {
+                    var free_iter = private_scope.variables.iterator();
+                    while (free_iter.next()) |entry| {
+                        self.allocator.free(entry.key_ptr.*);
+                    }
                 }
                 private_scope.variables.clearRetainingCapacity();
                 private_scope.functions.clearRetainingCapacity();
@@ -226,6 +235,12 @@ pub const VM = struct {
                 while (pmiter.next()) |entry| {
                     try class_def.public_methods.put(try self.allocator.dupe(u8, entry.key_ptr.*), entry.value_ptr.*);
                 }
+                {
+                    var free_iter = public_scope.variables.iterator();
+                    while (free_iter.next()) |entry| {
+                        self.allocator.free(entry.key_ptr.*);
+                    }
+                }
                 public_scope.variables.clearRetainingCapacity();
                 public_scope.functions.clearRetainingCapacity();
                 public_scope.classes.clearRetainingCapacity();
@@ -233,19 +248,38 @@ pub const VM = struct {
             .control_flow => |cf| {
                 switch (cf.kind) {
                     .if_stmt => {
+                        if (self.skip_elif_else) {
+                            self.skip_elif_else = false;
+                            return;
+                        }
                         const cond = try self.evaluateExpression(cf.condition.?);
                         if (try cond.toBool()) {
                             for (cf.body) |s| try self.executeStatement(&s);
+                            self.skip_elif_else = true;
+                        } else {
+                            self.skip_elif_else = false;
                         }
                     },
                     .elif_stmt => {
+                        if (self.skip_elif_else) {
+                            self.skip_elif_else = false;
+                            return;
+                        }
                         const cond = try self.evaluateExpression(cf.condition.?);
                         if (try cond.toBool()) {
                             for (cf.body) |s| try self.executeStatement(&s);
+                            self.skip_elif_else = true;
+                        } else {
+                            self.skip_elif_else = false;
                         }
                     },
                     .else_stmt => {
+                        if (self.skip_elif_else) {
+                            self.skip_elif_else = false;
+                            return;
+                        }
                         for (cf.body) |s| try self.executeStatement(&s);
+                        self.skip_elif_else = true;
                     },
                     .for_loop => {
                         if (cf.init) |init_assign| {
@@ -352,7 +386,7 @@ pub const VM = struct {
                     gop.value_ptr.*.deinit(self.allocator);
                     gop.value_ptr.* = val;
                 } else {
-                    const name_copy = self.allocator.dupe(u8, name) catch unreachable;
+                    const name_copy = try self.allocator.dupe(u8, name);
                     try self.current_scope.variables.put(name_copy, val);
                 }
             },
@@ -391,14 +425,14 @@ pub const VM = struct {
                             self.raiseError("TypeError", "Index must be integer");
                         }
                     },
-                    .dict => |d| {
-                        if (idx == .string) {
-                            const key = idx.string;
-                            const key_copy = self.allocator.dupe(u8, key) catch unreachable;
-                            try d.put(key_copy, val);
-                        } else {
-                            self.raiseError("TypeError", "Dict key must be string");
-                        }
+                        .dict => |d| {
+                            if (idx == .string) {
+                                const key = idx.string;
+                                const key_copy = try self.allocator.dupe(u8, key);
+                                try d.put(key_copy, val);
+                            } else {
+                                self.raiseError("TypeError", "Dict key must be string");
+                            }
                     },
                     else => self.raiseError("TypeError", "Cannot index this type"),
                 }
@@ -629,8 +663,8 @@ pub const VM = struct {
 
     fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Value {
         if (std.mem.eql(u8, call.callee, "Import")) {
-            self.raiseError("NotImplementedError", "Import statement is not implemented at runtime");
-            return error.RuntimeError;
+            try self.stdout.print("Warning: Import subsystem is not yet integrated. Skipping import.\n", .{});
+            return value_mod.Value{ .null = {} };
         }
         if (std.mem.eql(u8, call.callee, "printf")) {
             for (call.args) |arg| {
@@ -659,7 +693,7 @@ pub const VM = struct {
 
                 for (call.args, func.params) |arg_expr, param| {
                     const arg_val = try self.evaluateExpression(@constCast(&arg_expr));
-                    const param_name = self.allocator.dupe(u8, param.name) catch unreachable;
+                    const param_name = try self.allocator.dupe(u8, param.name);
                     try new_scope.variables.put(param_name, arg_val);
                 }
 
@@ -871,7 +905,7 @@ pub const VM = struct {
         if (line) |l| {
             const str = try self.allocator.dupe(u8, l);
             if (ie.target_name.len > 0) {
-                const name_copy = self.allocator.dupe(u8, ie.target_name) catch unreachable;
+                const name_copy = try self.allocator.dupe(u8, ie.target_name);
                 try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = str });
             }
             if (ie.target) |target_expr| {
