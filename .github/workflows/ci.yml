@@ -1,0 +1,143 @@
+name: Multi-Language CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  build:
+    name: Build ${{ matrix.language }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language:
+          - zig
+          - python
+          - java
+          - cpp
+          - c
+          - csharp
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # -------------------------
+      # Zig
+      # -------------------------
+      - name: Setup Zig
+        if: matrix.language == 'zig'
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.15.2
+
+      - name: Build Zig
+        if: matrix.language == 'zig'
+        run: |
+          zig build
+
+      # -------------------------
+      # Python
+      # -------------------------
+      - name: Setup Python
+        if: matrix.language == 'python'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Test Python
+        if: matrix.language == 'python'
+        run: |
+          python --version
+          python -m compileall .
+
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+          if [ -d tests ]; then
+            python -m pytest tests
+          fi
+
+      # -------------------------
+      # Java
+      # -------------------------
+      - name: Setup Java
+        if: matrix.language == 'java'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Build Java
+        if: matrix.language == 'java'
+        run: |
+          java --version
+
+          if [ -f pom.xml ]; then
+            ./mvnw test || mvn test
+          elif [ -f build.gradle ] || [ -f build.gradle.kts ]; then
+            ./gradlew build
+          else
+            find . -name "*.java" -print0 | xargs -0 javac
+          fi
+
+      # -------------------------
+      # C / C++
+      # -------------------------
+      - name: Setup C/C++
+        if: matrix.language == 'c' || matrix.language == 'cpp'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build
+
+      - name: Build C
+        if: matrix.language == 'c'
+        run: |
+          find . -name "*.c" -print
+          
+          if [ -f Makefile ]; then
+            make
+          elif [ -f CMakeLists.txt ]; then
+            cmake -S . -B build
+            cmake --build build
+          else
+            mkdir -p build
+            find . -name "*.c" -print0 | \
+              xargs -0 gcc -Wall -Wextra -O2 -o build/program
+          fi
+
+      - name: Build C++
+        if: matrix.language == 'cpp'
+        run: |
+          find . -name "*.cpp" -print
+          
+          if [ -f Makefile ]; then
+            make
+          elif [ -f CMakeLists.txt ]; then
+            cmake -S . -B build
+            cmake --build build
+          else
+            mkdir -p build
+            find . -name "*.cpp" -print0 | \
+              xargs -0 g++ -Wall -Wextra -O2 -o build/program
+          fi
+
+      # -------------------------
+      # C#
+      # -------------------------
+      - name: Setup .NET
+        if: matrix.language == 'csharp'
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Build C#
+        if: matrix.language == 'csharp'
+        run: |
+          dotnet --info
+          dotnet restore
+          dotnet build --configuration Release --no-restore

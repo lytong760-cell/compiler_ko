@@ -40,6 +40,7 @@ pub const Value = union(enum) {
             .function => {},
             .class_instance => {
                 self.class_instance.deinit();
+                allocator.destroy(self.class_instance);
             },
             .error_obj => {
                 allocator.free(self.error_obj.code);
@@ -378,7 +379,6 @@ pub const ClassInstance = struct {
         }
         self.methods.deinit();
         self.allocator.free(self.class_name);
-        self.allocator.destroy(self);
     }
 };
 

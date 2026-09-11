@@ -471,3 +471,33 @@ test "test_3600_final" {
     const gpa = std.testing.allocator;
     try runSource(gpa, "[ int(42)~answer <printf>^(\"Complete!\") ]");
 }
+
+test "test_nested_if_else_001" {
+    const gpa = std.testing.allocator;
+    try runSource(gpa, "[ int(10)~x <if>(x > 5) [ <if>(x > 15) [ <printf>^(\"big\") ] <else> [ <printf>^(\"medium\") ] ] <else> [ <printf>^(\"small\") ] ]");
+}
+
+test "test_nested_if_else_002" {
+    const gpa = std.testing.allocator;
+    try runSource(gpa, "[ int(10)~x <if>(x > 5) [ <if>(x > 15) [ <printf>^(\"big\") ] <elif>(x > 5) [ <printf>^(\"medium\") ] <else> [ <printf>^(\"small\") ] ] <else> [ <printf>^(\"tiny\") ] ]");
+}
+
+test "test_nested_if_else_003" {
+    const gpa = std.testing.allocator;
+    try runSource(gpa, "[ int(10)~x <if>(x > 20) [ <if>(x > 15) [ <printf>^(\"big\") ] <else> [ <printf>^(\"medium\") ] ] <else> [ <printf>^(\"small\") ] ]");
+}
+
+test "test_nested_if_else_004" {
+    const gpa = std.testing.allocator;
+    try runSource(gpa, "[ int(10)~x <if>(x > 5) [ <if>(x > 15) [ <printf>^(\"big\") ] <else> [ <printf>^(\"medium\") ] ] <else> [ <printf>^(\"small\") ] ]");
+}
+
+test "test_nested_if_else_005" {
+    const gpa = std.testing.allocator;
+    try runSource(gpa, "[ <if>(1 == 1) [ <if>(1 == 1) [ <printf>^(\"a\") ] ] ]");
+}
+
+test "test_nested_if_else_006" {
+    const gpa = std.testing.allocator;
+    try runSource(gpa, "[ <if>(1 == 1) [ <if>(1 == 1) [ <printf>^(\"a\") ] <else> [ <printf>^(\"b\") ] ] ]");
+}
