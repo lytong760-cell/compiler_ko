@@ -4,12 +4,20 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = b.addExecutable(.{
-        .name = "ko",
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/main.zig" } },
-        .target = target,
-        .optimize = optimize,
-    });
+    const exe = if (@hasField(std.Build.ExecutableOptions, "root_source"))
+        b.addExecutable(.{
+            .name = "ko",
+            .root_source = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        })
+    else
+        b.addExecutable(.{
+            .name = "ko",
+            .root_source_file = b.path("src/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        });
 
     b.installArtifact(exe);
 
@@ -31,11 +39,18 @@ pub fn build(b: *std.Build) !void {
         "src/test_parser_extended.zig",
     };
     inline for (files) |file| {
-        const test_exe = b.addTest(.{
-            .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = file } },
-            .target = target,
-            .optimize = optimize,
-        });
+        const test_exe = if (@hasField(std.Build.TestOptions, "root_source"))
+            b.addTest(.{
+                .root_source = b.path(file),
+                .target = target,
+                .optimize = optimize,
+            })
+        else
+            b.addTest(.{
+                .root_source_file = b.path(file),
+                .target = target,
+                .optimize = optimize,
+            });
         const test_run = b.addRunArtifact(test_exe);
         test_step.dependOn(&test_run.step);
     }

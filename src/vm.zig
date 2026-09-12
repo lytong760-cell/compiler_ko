@@ -474,11 +474,43 @@ pub const VM = struct {
         };
     }
 
+    fn unescape(self: *VM, raw: []const u8) ![]u8 {
+        var result = std.ArrayList(u8).init(self.allocator);
+        var i: usize = 0;
+        while (i < raw.len) {
+            if (raw[i] == '\\' and i + 1 < raw.len) {
+                const next = raw[i + 1];
+                switch (next) {
+                    'n' => try result.append('\n'),
+                    't' => try result.append('\t'),
+                    'r' => try result.append('\r'),
+                    '\\' => try result.append('\\'),
+                    '"' => try result.append('"'),
+                    '\'' => try result.append('\''),
+                    '0' => try result.append('\x00'),
+                    else => {
+                        // For unknown escapes, keep the backslash and the character
+                        try result.append('\\');
+                        try result.append(next);
+                    },
+                }
+                i += 2;
+            } else {
+                try result.append(raw[i]);
+                i += 1;
+            }
+        }
+        return result.toOwnedSlice();
+    }
+
     fn evaluateLiteral(self: *VM, lit: ast.Literal) !value_mod.Value {
         return switch (lit.kind) {
             .int => value_mod.Value{ .int = lit.int_value },
             .freal => value_mod.Value{ .freal = lit.freal_value },
-            .string => value_mod.Value{ .string = try self.allocator.dupe(u8, lit.raw) },
+            .string => blk: {
+                const unescaped = try self.unescape(lit.raw);
+                break :blk value_mod.Value{ .string = unescaped };
+            },
             .bool_true => value_mod.Value{ .booling = true },
             .bool_false => value_mod.Value{ .booling = false },
             .tuple => value_mod.Value{ .tuple = &[_]value_mod.Value{} },
