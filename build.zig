@@ -4,7 +4,18 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const exe = if (@hasField(std.Build.ExecutableOptions, "root_source"))
+    const exe = if (@hasField(std.Build.ExecutableOptions, "root_module"))
+        b.addExecutable(.{
+            .name = "ko",
+            .root_module = b.createModule(.{
+                .root_source_file = b.path("src/main.zig"),
+                .target = target,
+                .optimize = optimize,
+            }),
+            .target = target,
+            .optimize = optimize,
+        })
+    else if (@hasField(std.Build.ExecutableOptions, "root_source"))
         b.addExecutable(.{
             .name = "ko",
             .root_source = b.path("src/main.zig"),
@@ -39,7 +50,17 @@ pub fn build(b: *std.Build) !void {
         "src/test_parser_extended.zig",
     };
     inline for (files) |file| {
-        const test_exe = if (@hasField(std.Build.TestOptions, "root_source"))
+        const test_exe = if (@hasField(std.Build.TestOptions, "root_module"))
+            b.addTest(.{
+                .root_module = b.createModule(.{
+                    .root_source_file = b.path(file),
+                    .target = target,
+                    .optimize = optimize,
+                }),
+                .target = target,
+                .optimize = optimize,
+            })
+        else if (@hasField(std.Build.TestOptions, "root_source"))
             b.addTest(.{
                 .root_source = b.path(file),
                 .target = target,
