@@ -15,6 +15,7 @@ pub const Statement = union(enum) {
     catch_stmt: *CatchStmt,
     block: BlockStmt,
     class_instantiation: ClassInstantiation,
+    priority_stmt: PriorityStmt,
 
     pub fn deinit(self: *Statement) void {
         switch (self.*) {
@@ -31,6 +32,7 @@ pub const Statement = union(enum) {
             .catch_stmt => |c| c.deinit(),
             .block => |*b| b.deinit(),
             .class_instantiation => |*ci| ci.deinit(),
+            .priority_stmt => |*p| p.deinit(),
         }
     }
 };
@@ -52,6 +54,17 @@ pub const ClassInstantiation = struct {
 
     pub fn deinit(self: *ClassInstantiation) void {
         _ = self;
+    }
+};
+
+pub const PriorityStmt = struct {
+    priority: i64,
+    stmt: *Statement,
+    allocator: std.mem.Allocator,
+
+    pub fn deinit(self: *PriorityStmt) void {
+        self.stmt.deinit();
+        self.allocator.destroy(self.stmt);
     }
 };
 

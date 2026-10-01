@@ -1,7 +1,7 @@
 const std = @import("std");
-const lexer = @import("lexer.zig");
-const parser = @import("parser.zig");
-const vm = @import("vm.zig");
+const lexer = @import("src").lexer;
+const parser = @import("src").parser;
+const vm = @import("src").vm;
 
 fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
     var lx = lexer.Lexer.init(source);
@@ -17,7 +17,7 @@ fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
         for (program) |*stmt| stmt.deinit();
     }
 
-    var virtual_machine = try vm.VM.init(allocator);
+    var virtual_machine = try vm.VM.init(allocator, std.testing.io, "test.ko");
     defer virtual_machine.deinit();
 
     try virtual_machine.execute(program);
@@ -56,15 +56,15 @@ const TEST_PROGRAMS = [_][]const u8{
          const prog_idx = i % programs;
          const source = TEST_PROGRAMS[prog_idx];
          
-         const start = std.time.nanoTimestamp();
-         
-         runSource(gpa, source) catch |err| {
-             std.debug.print("Iteration {d} failed: {any}\n", .{i, err});
-             failure_count += 1;
-             continue;
-         };
-         
-         const end = std.time.nanoTimestamp();
+      const start = std.Io.Clock.now(.real, std.testing.io).nanoseconds;
+      
+      runSource(gpa, source) catch |err| {
+          std.debug.print("Iteration {d} failed: {any}\n", .{i, err});
+          failure_count += 1;
+          continue;
+      };
+      
+      const end = std.Io.Clock.now(.real, std.testing.io).nanoseconds;
          const elapsed_i128 = end - start;
          const elapsed: u64 = @intCast(elapsed_i128);
          total_time += elapsed;

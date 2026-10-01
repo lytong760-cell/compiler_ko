@@ -1,6 +1,6 @@
 const std = @import("std");
-const lexer = @import("lexer.zig");
-const parser = @import("parser.zig");
+const lexer = @import("src").lexer;
+const parser = @import("src").parser;
 
 fn parseSource(allocator: std.mem.Allocator, source: []const u8) !void {
     var lx = lexer.Lexer.init(source);

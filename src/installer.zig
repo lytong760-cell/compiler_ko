@@ -3,10 +3,10 @@ const std = @import("std");
 const FIRESTORE_BASE = "https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents";
 const FIRESTORE_PARENT = "projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents";
 
-fn getApiKey(allocator: std.mem.Allocator) ![]const u8 {
-    if (std.process.getEnvVarOwned(allocator, "KO_FIRESTORE_API_KEY")) |key| {
+fn getApiKey(environ_map: std.process.Environ.Map) ![]const u8 {
+    if (environ_map.get("KO_FIRESTORE_API_KEY")) |key| {
         return key;
-    } else |_| {
+    } else {
         return error.MissingApiKey;
     }
 }
@@ -14,19 +14,25 @@ fn getApiKey(allocator: std.mem.Allocator) ![]const u8 {
 pub const Installer = struct {
     allocator: std.mem.Allocator,
     temp_dir: []const u8,
+    environ_map: std.process.Environ.Map,
+    io: std.Io,
 
-    pub fn init(allocator: std.mem.Allocator) !Installer {
-        const temp_dir = try std.fmt.allocPrint(allocator, "/tmp/.ko_temp_{d}", .{std.time.milliTimestamp()});
-        try std.fs.cwd().makePath(temp_dir);
+    pub fn init(allocator: std.mem.Allocator, io: std.Io, environ: std.process.Environ) !Installer {
+        const temp_dir = try std.fmt.allocPrint(allocator, "/tmp/.ko_temp_{d}", .{std.posix.getppid()});
+        try std.Io.Dir.cwd().createDirPath(io, temp_dir);
+        const environ_map = try std.process.Environ.createMap(environ, allocator);
         return .{
             .allocator = allocator,
             .temp_dir = temp_dir,
+            .environ_map = environ_map,
+            .io = io,
         };
     }
 
     pub fn deinit(self: *Installer) void {
         self.cleanup() catch {};
         self.allocator.free(self.temp_dir);
+        self.environ_map.deinit();
     }
 
     pub fn installLibrary(self: *Installer, lib_name: []const u8) !void {
@@ -50,7 +56,7 @@ pub const Installer = struct {
     pub fn listLibraries(self: *Installer) ![]const []const u8 {
         std.debug.print("Querying all libraries from Module Store...\n", .{});
 
-        const api_key = try getApiKey(self.allocator);
+        const api_key = try getApiKey(self.environ_map);
         defer self.allocator.free(api_key);
 
         const url = try std.fmt.allocPrint(self.allocator, "{s}:runQuery?key={s}", .{
@@ -64,8 +70,7 @@ pub const Installer = struct {
             , .{FIRESTORE_PARENT});
         defer self.allocator.free(post_body);
 
-        const result = std.process.Child.run(.{
-            .allocator = self.allocator,
+        const result = std.process.run(self.allocator, self.io, .{
             .argv = &.{ "curl", "-s", "-X", "POST", "-H", "Content-Type: application/json", "-d", post_body, url },
         }) catch |err| {
             std.debug.print("curl failed: {any}\n", .{err});
@@ -79,7 +84,7 @@ pub const Installer = struct {
             return &[_][]const u8{};
         }
 
-        var list = std.ArrayList([]const u8).init(self.allocator);
+        var list = std.array_list.Managed([]const u8).init(self.allocator);
         defer list.deinit();
 
         var iter = std.mem.splitSequence(u8, result.stdout, "\"name\":");
@@ -115,7 +120,7 @@ pub const Installer = struct {
         const all_libs = try self.listLibraries();
         defer self.allocator.free(all_libs);
 
-        var matches = std.ArrayList([]const u8).init(self.allocator);
+        var matches = std.array_list.Managed([]const u8).init(self.allocator);
         defer matches.deinit();
 
         for (all_libs) |lib| {
@@ -130,7 +135,7 @@ pub const Installer = struct {
     }
 
     fn queryLibraryMetadata(self: *Installer, lib_name: []const u8) ![]const u8 {
-        const api_key = try getApiKey(self.allocator);
+        const api_key = try getApiKey(self.environ_map);
         defer self.allocator.free(api_key);
 
         const url = try std.fmt.allocPrint(self.allocator, "{s}/libraries/{s}?key={s}", .{
@@ -140,8 +145,7 @@ pub const Installer = struct {
         });
         defer self.allocator.free(url);
 
-        const result = std.process.Child.run(.{
-            .allocator = self.allocator,
+        const result = std.process.run(self.allocator, self.io, .{
             .argv = &.{"curl", "-s", url},
         }) catch |err| {
             std.debug.print("curl failed: {any}\n", .{err});
@@ -166,12 +170,12 @@ pub const Installer = struct {
     }
 
     fn inspectAndFilterZip(self: *Installer) !void {
-        var dir = try std.fs.cwd().openDir(self.temp_dir, .{ .iterate = true });
-        defer dir.close();
+        var dir = try std.Io.Dir.cwd().openDir(self.io, self.temp_dir, .{ .iterate = true });
+        defer dir.close(self.io);
 
         var found_zip = false;
         var iter = dir.iterate();
-        while (try iter.next()) |entry| {
+        while (try iter.next(self.io)) |entry| {
             if (entry.kind == .file and std.mem.endsWith(u8, entry.name, ".zip")) {
                 found_zip = true;
                 break;
@@ -185,30 +189,30 @@ pub const Installer = struct {
         }
 
         var iter2 = dir.iterate();
-        while (try iter2.next()) |entry| {
+        while (try iter2.next(self.io)) |entry| {
             if (!std.mem.endsWith(u8, entry.name, ".zip")) {
-                try dir.deleteTree(entry.name);
+                try dir.deleteTree(self.io, entry.name);
             }
         }
     }
 
     fn detectLanguage(self: *Installer) ![]const u8 {
-        var dir = try std.fs.cwd().openDir(self.temp_dir, .{ .iterate = true });
-        defer dir.close();
+        var dir = try std.Io.Dir.cwd().openDir(self.io, self.temp_dir, .{ .iterate = true });
+        defer dir.close(self.io);
 
         var iter = dir.iterate();
-        while (try iter.next()) |entry| {
+        while (try iter.next(self.io)) |entry| {
             if (entry.kind == .file and std.mem.endsWith(u8, entry.name, ".zip")) {
                 const extract_dir = try std.fmt.allocPrint(self.allocator, "{s}/extracted", .{self.temp_dir});
                 defer self.allocator.free(extract_dir);
-                try std.fs.cwd().makePath(extract_dir);
+                try std.Io.Dir.cwd().createDirPath(self.io, extract_dir);
                 _ = try self.runCommand(&.{"unzip", "-q", entry.name, "-d", extract_dir});
 
-                var ext_dir = try std.fs.cwd().openDir(extract_dir, .{ .iterate = true });
-                defer ext_dir.close();
+                var ext_dir = try std.Io.Dir.cwd().openDir(self.io, extract_dir, .{ .iterate = true });
+                defer ext_dir.close(self.io);
 
                 var file_iter = ext_dir.iterate();
-                while (try file_iter.next()) |file| {
+                while (try file_iter.next(self.io)) |file| {
                     if (file.kind == .file) {
                         if (std.mem.endsWith(u8, file.name, ".java")) return "java";
                         if (std.mem.endsWith(u8, file.name, ".lua")) return "lua";
@@ -228,14 +232,14 @@ pub const Installer = struct {
     fn compileAndLink(self: *Installer, lang: []const u8) !void {
         std.debug.print("Compiling {s} code...\n", .{lang});
         if (std.mem.eql(u8, lang, "java")) {
-            var args = std.ArrayList([]const u8).init(self.allocator);
+            var args = std.array_list.Managed([]const u8).init(self.allocator);
             defer args.deinit();
             try args.append("javac");
             try args.append("-d");
-            try args.append(self.temp_dir);
+            try args.append(try std.fmt.allocPrint(self.allocator, "{s}", .{self.temp_dir}));
             _ = try self.runCommand(args.items);
         } else if (std.mem.eql(u8, lang, "c")) {
-            var args = std.ArrayList([]const u8).init(self.allocator);
+            var args = std.array_list.Managed([]const u8).init(self.allocator);
             defer args.deinit();
             try args.append("gcc");
             try args.append("-shared");
@@ -245,7 +249,7 @@ pub const Installer = struct {
             try args.append(try std.fmt.allocPrint(self.allocator, "{s}/*.c", .{self.temp_dir}));
             _ = try self.runCommand(args.items);
         } else if (std.mem.eql(u8, lang, "cpp")) {
-            var args = std.ArrayList([]const u8).init(self.allocator);
+            var args = std.array_list.Managed([]const u8).init(self.allocator);
             defer args.deinit();
             try args.append("g++");
             try args.append("-shared");
@@ -255,7 +259,7 @@ pub const Installer = struct {
             try args.append(try std.fmt.allocPrint(self.allocator, "{s}/*.cpp", .{self.temp_dir}));
             _ = try self.runCommand(args.items);
         } else if (std.mem.eql(u8, lang, "zig")) {
-            var args = std.ArrayList([]const u8).init(self.allocator);
+            var args = std.array_list.Managed([]const u8).init(self.allocator);
             defer args.deinit();
             try args.append("zig");
             try args.append("build-lib");
@@ -269,22 +273,31 @@ pub const Installer = struct {
     }
 
     fn registerScope(self: *Installer, lib_name: []const u8) !void {
-        std.debug.print("Registering scope for: {s}\n", .{lib_name});
-        const scope_file = try std.fmt.allocPrint(self.allocator, "/tmp/.ko_scopes/{s}.scope", .{lib_name});
-        defer self.allocator.free(scope_file);
-        try std.fs.cwd().makePath("/tmp/.ko_scopes");
-        try std.fs.cwd().writeFile(.{ .sub_path = scope_file, .data = lib_name });
+        std.debug.print("Registering module in store: {s}\n", .{lib_name});
+        const module_dir = try std.fmt.allocPrint(self.allocator, "src/module/{s}", .{lib_name});
+        defer self.allocator.free(module_dir);
+        try std.Io.Dir.cwd().createDirPath(self.io, module_dir);
+        
+        const manifest_path = try std.fmt.allocPrint(self.allocator, "{s}/module.json", .{module_dir});
+        defer self.allocator.free(manifest_path);
+        
+        const manifest_content = try std.fmt.allocPrint(self.allocator,
+            \\{{"name":"{s}","version":"1.0.0","language":"c","installed_at":{d}}}
+            , .{ lib_name, std.Io.Timestamp.now(self.io, .real).toMilliseconds() });
+        defer self.allocator.free(manifest_content);
+        
+        try std.Io.Dir.cwd().writeFile(self.io, .{ .sub_path = manifest_path, .data = manifest_content });
+        std.debug.print("Module manifest written to: {s}\n", .{manifest_path});
     }
 
     fn runCommand(self: *Installer, args: []const []const u8) !void {
-        const result = try std.process.Child.run(.{
-            .allocator = self.allocator,
+        const result = try std.process.run(self.allocator, self.io, .{
             .argv = args,
         });
         defer self.allocator.free(result.stdout);
         defer self.allocator.free(result.stderr);
         switch (result.term) {
-            .Exited => |code| {
+            .exited => |code| {
                 if (code != 0) return error.CommandFailed;
             },
             else => return error.CommandFailed,
@@ -292,8 +305,8 @@ pub const Installer = struct {
     }
 
     pub fn cleanup(self: *Installer) !void {
-        _ = std.fs.cwd().access(self.temp_dir, .{}) catch {};
-        std.fs.cwd().deleteTree(self.temp_dir) catch {};
+        _ = std.Io.Dir.cwd().access(self.io, self.temp_dir, .{}) catch {};
+        std.Io.Dir.cwd().deleteTree(self.io, self.temp_dir) catch {};
     }
 
     fn extractStringField(self: *Installer, json: []const u8, field: []const u8) ![]const u8 {

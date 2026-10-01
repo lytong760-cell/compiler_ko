@@ -41,7 +41,7 @@ pub const Parser = struct {
     }
 
     pub fn parse(self: *Parser) anyerror![]ast.Statement {
-        var stmts = std.ArrayList(ast.Statement).init(self.allocator);
+        var stmts = std.array_list.Managed(ast.Statement).init(self.allocator);
         defer stmts.deinit();
 
         while (!self.isAtEnd()) {
@@ -54,6 +54,20 @@ pub const Parser = struct {
 
     fn parseStatement(self: *Parser) anyerror!ast.Statement {
         const tok = self.current();
+
+        if (tok == .priority_lit) {
+            const priority = tok.priority_lit;
+            _ = self.advance();
+            const stmt = try self.parseStatement();
+            const ps = try self.allocator.create(ast.PriorityStmt);
+            ps.* = ast.PriorityStmt{
+                .priority = priority,
+                .stmt = try self.allocator.create(ast.Statement),
+                .allocator = self.allocator,
+            };
+            ps.stmt.* = stmt;
+            return ast.Statement{ .priority_stmt = ps.* };
+        }
 
         if (tok == .keyword) {
             switch (tok.keyword) {
@@ -172,15 +186,28 @@ pub const Parser = struct {
         return ast.Statement{ .class_instantiation = ci.* };
     }
 
-    fn parseBlockStatement(self: *Parser) anyerror!ast.Statement {
-        _ = self.advance();
-        var body = std.ArrayList(ast.Statement).init(self.allocator);
+    fn parseBlock(self: *Parser) ![]ast.Statement {
+        try self.expectLBracket();
+        var body = std.array_list.Managed(ast.Statement).init(self.allocator);
         while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
             const stmt = try self.parseStatement();
             try body.append(stmt);
         }
         try self.expectRBracket();
-        return ast.Statement{ .block = ast.BlockStmt{ .body = try body.toOwnedSlice(), .allocator = self.allocator } };
+        const slice = try body.toOwnedSlice();
+        std.sort.block(ast.Statement, slice, {}, struct {
+            fn less(_: void, a: ast.Statement, b: ast.Statement) bool {
+                const pa = if (a == .priority_stmt) a.priority_stmt.priority else 0;
+                const pb = if (b == .priority_stmt) b.priority_stmt.priority else 0;
+                if (pa != pb) return pa < pb;
+                return false;
+            }
+        }.less);
+        return slice;
+    }
+
+    fn parseBlockStatement(self: *Parser) anyerror!ast.Statement {
+        return ast.Statement{ .block = ast.BlockStmt{ .body = try self.parseBlock(), .allocator = self.allocator } };
     }
 
 
@@ -255,7 +282,7 @@ pub const Parser = struct {
         const name = name_tok.identifier;
         _ = self.advance();
         try self.expectLParen();
-        var params = std.ArrayList(value_mod.Param).init(self.allocator);
+        var params = std.array_list.Managed(value_mod.Param).init(self.allocator);
         while (!(self.current() == .r_paren) and !self.isAtEnd()) {
             const type_tok = self.current();
             if (type_tok == .keyword) {
@@ -272,8 +299,8 @@ pub const Parser = struct {
         }
         try self.expectRParen();
         try self.expectLBracket();
-        var body = std.ArrayList(ast.Statement).init(self.allocator);
-        var catch_stmts = std.ArrayList(ast.CatchStmt).init(self.allocator);
+        var body = std.array_list.Managed(ast.Statement).init(self.allocator);
+        var catch_stmts = std.array_list.Managed(ast.CatchStmt).init(self.allocator);
         while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
             if (self.current() == .keyword and self.current().keyword == .catch_kw) {
                 const cs_stmt = try self.parseCatchStmt();
@@ -376,20 +403,14 @@ pub const Parser = struct {
                 break :blk c;
             };
             try self.expectRParen();
-            try self.expectLBracket();
-            var body = std.ArrayList(ast.Statement).init(self.allocator);
-                while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-                const stmt = try self.parseStatement();
-                    try body.append(stmt);
-            }
-            try self.expectRBracket();
+            const body = try self.parseBlock();
 
             const kind: ast.ControlFlow.Kind = if (std.mem.eql(u8, tag, "for")) .for_loop else .while_loop;
             const cf = try self.allocator.create(ast.ControlFlow);
             cf.* = ast.ControlFlow{
                 .kind = kind,
                 .condition = cond,
-                .body = try body.toOwnedSlice(),
+                .body = body,
                 .init = init_assign,
                 .step = step,
                 .loop_var = loop_var_name,
@@ -402,12 +423,7 @@ pub const Parser = struct {
 
         if (self.current() == .l_bracket) {
             _ = self.advance();
-            var body = std.ArrayList(ast.Statement).init(self.allocator);
-                while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-                const stmt = try self.parseStatement();
-                    try body.append(stmt);
-            }
-            try self.expectRBracket();
+            const body = try self.parseBlock();
 
             const true_lit = try self.allocator.create(ast.Literal);
             true_lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "" };
@@ -418,7 +434,7 @@ pub const Parser = struct {
             cf.* = ast.ControlFlow{
                 .kind = .while_loop,
                 .condition = true_expr,
-                .body = try body.toOwnedSlice(),
+                .body = body,
                 .init = null,
                 .step = null,
                 .loop_var = "",
@@ -440,19 +456,12 @@ pub const Parser = struct {
         try self.expectLParen();
         const cond = try self.parseExpression();
         try self.expectRParen();
-        try self.expectLBracket();
-        var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-            const stmt = try self.parseStatement();
-                    try body.append(stmt);
-        }
-        try self.expectRBracket();
-
+        const body = try self.parseBlock();
         const cf = try self.allocator.create(ast.ControlFlow);
         cf.* = ast.ControlFlow{
             .kind = .if_stmt,
             .condition = cond,
-            .body = try body.toOwnedSlice(),
+            .body = body,
             .init = null,
             .step = null,
             .loop_var = "",
@@ -471,19 +480,12 @@ pub const Parser = struct {
         try self.expectLParen();
         const cond = try self.parseExpression();
         try self.expectRParen();
-        try self.expectLBracket();
-        var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-            const stmt = try self.parseStatement();
-                    try body.append(stmt);
-        }
-        try self.expectRBracket();
-
+        const body = try self.parseBlock();
         const cf = try self.allocator.create(ast.ControlFlow);
         cf.* = ast.ControlFlow{
             .kind = .elif_stmt,
             .condition = cond,
-            .body = try body.toOwnedSlice(),
+            .body = body,
             .init = null,
             .step = null,
             .loop_var = "",
@@ -496,19 +498,12 @@ pub const Parser = struct {
 
     fn parseElseStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
-        try self.expectLBracket();
-        var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-            const stmt = try self.parseStatement();
-                    try body.append(stmt);
-        }
-        try self.expectRBracket();
-
+        const body = try self.parseBlock();
         const cf = try self.allocator.create(ast.ControlFlow);
         cf.* = ast.ControlFlow{
             .kind = .else_stmt,
             .condition = null,
-            .body = try body.toOwnedSlice(),
+            .body = body,
             .init = null,
             .step = null,
             .loop_var = "",
@@ -535,18 +530,11 @@ pub const Parser = struct {
         try self.expectLParen();
         const err_type = try self.parseErrorType();
         try self.expectRParen();
-        try self.expectLBracket();
-        var body = std.ArrayList(ast.Statement).init(self.allocator);
-        while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-            const stmt = try self.parseStatement();
-                    try body.append(stmt);
-        }
-        try self.expectRBracket();
-
+        const body = try self.parseBlock();
         const cs = try self.allocator.create(ast.CatchStmt);
         cs.* = ast.CatchStmt{
             .error_type = err_type,
-            .body = try body.toOwnedSlice(),
+            .body = body,
             .allocator = self.allocator,
         };
         return ast.Statement{ .catch_stmt = cs };
@@ -581,8 +569,8 @@ pub const Parser = struct {
         }
 
         try self.expectLBracket();
-        var private_body = std.ArrayList(ast.Statement).init(self.allocator);
-        var public_body = std.ArrayList(ast.Statement).init(self.allocator);
+        var private_body = std.array_list.Managed(ast.Statement).init(self.allocator);
+        var public_body = std.array_list.Managed(ast.Statement).init(self.allocator);
         var private_depth: usize = 0;
 
         while (!self.isAtEnd()) {
@@ -703,18 +691,17 @@ pub const Parser = struct {
         lo.* = ast.LenOp{ .expr = expr };
         return ast.Statement{ .len_op = lo };
     }
-
     fn parseInputStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
-        _ = try self.parseExpression();
+        const target_expr = try self.parseExpression();
         try self.expectRParen();
 
         if (self.current() == .equals) {
             _ = self.advance();
-            const target = try self.parseExpression();
+            const value_expr = try self.parseExpression();
             const ie = try self.allocator.create(ast.InputExpr);
-            ie.* = ast.InputExpr{ .target = target, .target_name = "" };
+            ie.* = ast.InputExpr{ .target = value_expr, .target_name = "" };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .input_expr = ie };
             return ast.Statement{ .expr = e };
@@ -736,6 +723,7 @@ pub const Parser = struct {
                     _ = self.advance();
                 }
             }
+
             const ie = try self.allocator.create(ast.InputExpr);
             ie.* = ast.InputExpr{ .target = null, .target_name = target_name };
             const e = try self.allocator.create(ast.Expr);
@@ -744,7 +732,7 @@ pub const Parser = struct {
         }
 
         const ie = try self.allocator.create(ast.InputExpr);
-        ie.* = ast.InputExpr{ .target = null, .target_name = "" };
+        ie.* = ast.InputExpr{ .target = target_expr, .target_name = "" };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .input_expr = ie };
         return ast.Statement{ .expr = e };
@@ -797,18 +785,12 @@ pub const Parser = struct {
             try self.expectLParen();
             const cond = try self.parseExpression();
             try self.expectRParen();
-            try self.expectLBracket();
-            var body = std.ArrayList(ast.Statement).init(self.allocator);
-            while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-                const stmt = try self.parseStatement();
-                try body.append(stmt);
-            }
-            try self.expectRBracket();
+            const body = try self.parseBlock();
             const cf = try self.allocator.create(ast.ControlFlow);
             cf.* = ast.ControlFlow{
                 .kind = .if_stmt,
                 .condition = cond,
-                .body = try body.toOwnedSlice(),
+                .body = body,
                 .init = null,
                 .step = null,
                 .loop_var = "",
@@ -821,18 +803,12 @@ pub const Parser = struct {
             try self.expectLParen();
             const cond = try self.parseExpression();
             try self.expectRParen();
-            try self.expectLBracket();
-            var body = std.ArrayList(ast.Statement).init(self.allocator);
-            while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-                const stmt = try self.parseStatement();
-                try body.append(stmt);
-            }
-            try self.expectRBracket();
+            const body = try self.parseBlock();
             const cf = try self.allocator.create(ast.ControlFlow);
             cf.* = ast.ControlFlow{
                 .kind = .elif_stmt,
                 .condition = cond,
-                .body = try body.toOwnedSlice(),
+                .body = body,
                 .init = null,
                 .step = null,
                 .loop_var = "",
@@ -842,18 +818,12 @@ pub const Parser = struct {
             };
             return ast.Statement{ .control_flow = cf };
         } else if (std.mem.eql(u8, tag, "else")) {
-            try self.expectLBracket();
-            var body = std.ArrayList(ast.Statement).init(self.allocator);
-            while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-                const stmt = try self.parseStatement();
-                try body.append(stmt);
-            }
-            try self.expectRBracket();
+            const body = try self.parseBlock();
             const cf = try self.allocator.create(ast.ControlFlow);
             cf.* = ast.ControlFlow{
                 .kind = .else_stmt,
                 .condition = null,
-                .body = try body.toOwnedSlice(),
+                .body = body,
                 .init = null,
                 .step = null,
                 .loop_var = "",
@@ -866,17 +836,11 @@ pub const Parser = struct {
             try self.expectLParen();
             const err_type = try self.parseErrorType();
             try self.expectRParen();
-            try self.expectLBracket();
-            var body = std.ArrayList(ast.Statement).init(self.allocator);
-            while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-                const stmt = try self.parseStatement();
-                try body.append(stmt);
-            }
-            try self.expectRBracket();
+            const body = try self.parseBlock();
             const cs = try self.allocator.create(ast.CatchStmt);
             cs.* = ast.CatchStmt{
                 .error_type = err_type,
-                .body = try body.toOwnedSlice(),
+                .body = body,
                 .allocator = self.allocator,
             };
             return ast.Statement{ .catch_stmt = cs };
@@ -1045,20 +1009,14 @@ pub const Parser = struct {
                 break :blk c;
             };
             try self.expectRParen();
-            try self.expectLBracket();
-            var body = std.ArrayList(ast.Statement).init(self.allocator);
-            while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
-                const stmt = try self.parseStatement();
-                try body.append(stmt);
-            }
-            try self.expectRBracket();
+            const body = try self.parseBlock();
 
             const kind: ast.ControlFlow.Kind = if (std.mem.eql(u8, tag, "for")) .for_loop else .while_loop;
             const cf = try self.allocator.create(ast.ControlFlow);
             cf.* = ast.ControlFlow{
                 .kind = kind,
                 .condition = cond,
-                .body = try body.toOwnedSlice(),
+                .body = body,
                 .init = init_assign,
                 .step = step,
                 .loop_var = loop_var_name,
@@ -1318,7 +1276,7 @@ pub const Parser = struct {
             _ = self.advance();
             if (self.current() == .l_paren) {
                 _ = self.advance();
-                var args = std.ArrayList(ast.Expr).init(self.allocator);
+                var args = std.array_list.Managed(ast.Expr).init(self.allocator);
                 while (!(self.current() == .r_paren) and !self.isAtEnd()) {
                     const expr = try self.parseExpression();
                     try args.append(expr.*);
@@ -1335,6 +1293,10 @@ pub const Parser = struct {
                 e.* = .{ .call = call };
                 return e;
             }
+            if (self.current() == .l_brace) {
+                const index_expr = try self.parseIndexAccessSuffix(name);
+                return index_expr;
+            }
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .identifier = name };
             return e;
@@ -1348,7 +1310,7 @@ pub const Parser = struct {
             _ = self.advance();
             if (self.current() == .l_paren) {
                 _ = self.advance();
-                var args = std.ArrayList(ast.Expr).init(self.allocator);
+                var args = std.array_list.Managed(ast.Expr).init(self.allocator);
                 while (!(self.current() == .r_paren) and !self.isAtEnd()) {
                     const expr = try self.parseExpression();
                     try args.append(expr.*);
@@ -1378,11 +1340,11 @@ pub const Parser = struct {
             _ = self.advance();
             if (self.current() == .sigil) {
                 _ = self.advance();
-                const method = self.current().identifier;
+                const member = self.current().identifier;
                 _ = self.advance();
                 if (self.current() == .l_paren) {
                     _ = self.advance();
-                    var args = std.ArrayList(ast.Expr).init(self.allocator);
+                    var args = std.array_list.Managed(ast.Expr).init(self.allocator);
                     while (!(self.current() == .r_paren) and !self.isAtEnd()) {
                         const expr = try self.parseExpression();
                         try args.append(expr.*);
@@ -1392,19 +1354,32 @@ pub const Parser = struct {
 
                      const call = try self.allocator.create(ast.CallExpr);
                      call.* = ast.CallExpr{
-                         .callee = method,
+                         .callee = member,
                          .args = try args.toOwnedSlice(),
                      };
-                    const member = try self.allocator.create(ast.MemberAccess);
-                    member.* = ast.MemberAccess{
+                    const member_access = try self.allocator.create(ast.MemberAccess);
+                    member_access.* = ast.MemberAccess{
                         .object = try self.allocator.create(ast.Expr),
-                        .member = method,
+                        .member = member,
                     };
-                    member.object.* = .{ .identifier = name };
+                    member_access.object.* = .{ .identifier = name };
                     const e = try self.allocator.create(ast.Expr);
-                    e.* = .{ .member_access = member };
+                    e.* = .{ .member_access = member_access };
                     return e;
                 }
+                const member_access = try self.allocator.create(ast.MemberAccess);
+                member_access.* = ast.MemberAccess{
+                    .object = try self.allocator.create(ast.Expr),
+                    .member = member,
+                };
+                member_access.object.* = .{ .identifier = name };
+                const e = try self.allocator.create(ast.Expr);
+                e.* = .{ .member_access = member_access };
+                return e;
+            }
+            if (self.current() == .l_brace) {
+                const index_expr = try self.parseIndexAccessSuffix(name);
+                return index_expr;
             }
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .identifier = name };
@@ -1420,7 +1395,7 @@ pub const Parser = struct {
 
         if (tok == .l_brace) {
             _ = self.advance();
-            var items = std.ArrayList(ast.Expr).init(self.allocator);
+            var items = std.array_list.Managed(ast.Expr).init(self.allocator);
                 while (!(self.current() == .r_brace) and !self.isAtEnd()) {
                 const expr = try self.parseExpression();
                 try items.append(expr.*);
@@ -1446,7 +1421,7 @@ pub const Parser = struct {
         _ = self.advance();
         const tag = try self.parseSystemTagName();
 
-        var args = std.ArrayList(ast.Expr).init(self.allocator);
+        var args = std.array_list.Managed(ast.Expr).init(self.allocator);
         defer args.deinit();
 
         if (std.mem.eql(u8, tag, "encode") and self.current() == .identifier) {
@@ -1485,6 +1460,28 @@ pub const Parser = struct {
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .system_tag = ste };
         return e;
+    }
+
+    fn parseIndexAccessSuffix(self: *Parser, object_name: []const u8) anyerror!*ast.Expr {
+        const object = try self.allocator.create(ast.Expr);
+        object.* = .{ .identifier = object_name };
+
+        if (self.current() == .l_brace) {
+            _ = self.advance();
+            const index_expr = try self.parseExpression();
+            try self.expectRBBrace();
+
+            const ia = try self.allocator.create(ast.IndexAccess);
+            ia.* = ast.IndexAccess{
+                .object = object,
+                .index = index_expr,
+            };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .index_access = ia };
+            return e;
+        }
+
+        return object;
     }
 
     fn expectLParen(self: *Parser) !void {

@@ -62,7 +62,7 @@ pub const Value = union(enum) {
             .int => |v| try writer.print("{d}", .{v}),
             .freal => |v| try writer.print("{d}", .{v}),
             .string => |v| try writer.print("{s}", .{v}),
-            .booling => |v| try writer.print("{?s}", .{if (v) "True" else "False"}),
+            .booling => |v| try writer.print("{s}", .{if (v) "True" else "False"}),
             .byte => |v| try writer.print("{b:0>8}", .{v}),
             .bytes => |v| {
                 try writer.print("[", .{});

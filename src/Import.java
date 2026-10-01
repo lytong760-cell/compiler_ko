@@ -15,8 +15,9 @@ public class Import {
     private final File libraryDir;
     
     public Import() {
+        String projectRoot = System.getProperty("user.dir");
         this.tempDir = new File(System.getProperty("java.io.tmpdir"), "ko_import_" + System.currentTimeMillis());
-        this.libraryDir = new File(tempDir, "libraries");
+        this.libraryDir = new File(projectRoot, "src/module");
         this.libraryDir.mkdirs();
     }
     
@@ -197,6 +198,9 @@ public class Import {
             File extractDir = new File(tempDir, "extracted");
             extractDir.mkdirs();
             
+            File moduleDir = new File(libraryDir, alias);
+            moduleDir.mkdirs();
+            
             ProcessBuilder unzipPb = new ProcessBuilder("unzip", "-q", zipFile.getAbsolutePath(), "-d", extractDir.getAbsolutePath());
             unzipPb.directory(tempDir);
             unzipPb.redirectErrorStream(true);
@@ -206,26 +210,40 @@ public class Import {
             String lang = detectLanguage(extractDir);
             System.out.println("[Import.java] Detected language: " + lang);
             
+            boolean compiled = false;
             switch (lang) {
                 case "java":
-                    return compileJava(extractDir, alias);
+                    compiled = compileJava(extractDir, alias);
+                    break;
                 case "c":
-                    return compileC(extractDir, alias);
+                    compiled = compileC(extractDir, alias);
+                    break;
                 case "cpp":
-                    return compileCpp(extractDir, alias);
+                    compiled = compileCpp(extractDir, alias);
+                    break;
                 case "nodejs":
-                    return compileNodeJs(extractDir, alias);
+                    compiled = compileNodeJs(extractDir, alias);
+                    break;
                 case "zig":
-                    return compileZig(extractDir, alias);
+                    compiled = compileZig(extractDir, alias);
+                    break;
                 case "python":
                 case "lua":
-                    return true;
+                    compiled = true;
+                    break;
                 case "ko":
-                    return compileKo(extractDir, alias);
+                    compiled = compileKo(extractDir, alias);
+                    break;
                 default:
                     System.out.println("[Import.java] Unsupported language: " + lang);
-                    return false;
+                    compiled = false;
             }
+            
+            if (compiled) {
+                writeModuleManifest(moduleDir, alias, lang);
+            }
+            
+            return compiled;
         } catch (Exception e) {
             System.out.println("[Import.java] Compile/link exception: " + e.getMessage());
             return false;
@@ -234,7 +252,8 @@ public class Import {
     
     private boolean compileJava(File extractDir, String alias) {
         try {
-            File classesDir = new File(tempDir, "classes_" + alias);
+            File moduleDir = new File(libraryDir, alias);
+            File classesDir = new File(moduleDir, "classes");
             classesDir.mkdirs();
             
             List<File> javaFiles = new ArrayList<>();
@@ -260,7 +279,6 @@ public class Import {
                 return false;
             }
             
-            registerScopeFile(alias, "java:" + classesDir.getAbsolutePath());
             return true;
         } catch (Exception e) {
             System.out.println("[Import.java] Java compile exception: " + e.getMessage());
@@ -270,7 +288,8 @@ public class Import {
     
     private boolean compileC(File extractDir, String alias) {
         try {
-            File outputLib = new File(tempDir, "lib" + alias + ".so");
+            File moduleDir = new File(libraryDir, alias);
+            File outputLib = new File(moduleDir, "lib" + alias + ".so");
             List<File> cFiles = new ArrayList<>();
             collectFiles(extractDir, ".c", cFiles);
             
@@ -296,7 +315,6 @@ public class Import {
                 return false;
             }
             
-            registerScopeFile(alias, "c:" + outputLib.getAbsolutePath());
             return true;
         } catch (Exception e) {
             System.out.println("[Import.java] C compile exception: " + e.getMessage());
@@ -306,7 +324,8 @@ public class Import {
     
     private boolean compileCpp(File extractDir, String alias) {
         try {
-            File outputLib = new File(tempDir, "lib" + alias + ".so");
+            File moduleDir = new File(libraryDir, alias);
+            File outputLib = new File(moduleDir, "lib" + alias + ".so");
             List<File> cppFiles = new ArrayList<>();
             collectFiles(extractDir, ".cpp", cppFiles);
             
@@ -331,7 +350,6 @@ public class Import {
                 return false;
             }
             
-            registerScopeFile(alias, "cpp:" + outputLib.getAbsolutePath());
             return true;
         } catch (Exception e) {
             System.out.println("[Import.java] C++ compile exception: " + e.getMessage());
@@ -341,6 +359,9 @@ public class Import {
     
     private boolean compileNodeJs(File extractDir, String alias) {
         try {
+            File moduleDir = new File(libraryDir, alias);
+            moduleDir.mkdirs();
+            
             File packageJson = new File(extractDir, "package.json");
             if (packageJson.exists()) {
                 ProcessBuilder pb = new ProcessBuilder("npm", "install");
@@ -356,7 +377,8 @@ public class Import {
                 return false;
             }
             
-            registerScopeFile(alias, "nodejs:" + mainFile.getAbsolutePath());
+            File destFile = new File(moduleDir, "main.js");
+            copyFile(mainFile, destFile);
             return true;
         } catch (Exception e) {
             System.out.println("[Import.java] Node.js compile exception: " + e.getMessage());
@@ -366,7 +388,8 @@ public class Import {
     
     private boolean compileZig(File extractDir, String alias) {
         try {
-            File outputLib = new File(tempDir, "lib" + alias + ".so");
+            File moduleDir = new File(libraryDir, alias);
+            File outputLib = new File(moduleDir, "lib" + alias + ".so");
             List<File> zigFiles = new ArrayList<>();
             collectFiles(extractDir, ".zig", zigFiles);
             
@@ -393,7 +416,6 @@ public class Import {
                 return false;
             }
             
-            registerScopeFile(alias, "zig:" + outputLib.getAbsolutePath());
             return true;
         } catch (Exception e) {
             System.out.println("[Import.java] Zig compile exception: " + e.getMessage());
@@ -403,13 +425,17 @@ public class Import {
     
     private boolean compileKo(File extractDir, String alias) {
         try {
+            File moduleDir = new File(libraryDir, alias);
+            moduleDir.mkdirs();
+            
             File mainFile = findMainFile(extractDir, ".ko");
             if (mainFile == null) {
                 System.out.println("[Import.java] No .ko entry file found");
                 return false;
             }
             
-            registerScopeFile(alias, "ko:" + mainFile.getAbsolutePath());
+            File destFile = new File(moduleDir, "main.ko");
+            copyFile(mainFile, destFile);
             return true;
         } catch (Exception e) {
             System.out.println("[Import.java] .ko compile exception: " + e.getMessage());
@@ -468,17 +494,30 @@ public class Import {
         }
     }
     
-    private void registerScopeFile(String alias, String meta) {
+    private void writeModuleManifest(File moduleDir, String alias, String lang) {
         try {
-            File scopeDir = new File(System.getProperty("java.io.tmpdir"), ".ko_scopes");
-            scopeDir.mkdirs();
-            File scopeFile = new File(scopeDir, alias + ".scope");
-            try (FileWriter fw = new FileWriter(scopeFile)) {
-                fw.write(meta);
+            File manifest = new File(moduleDir, "module.json");
+            String json = String.format(
+                "{\"name\":\"%s\",\"version\":\"1.0.0\",\"language\":\"%s\",\"installed_at\":\"%d\"}",
+                alias, lang, System.currentTimeMillis()
+            );
+            try (FileWriter fw = new FileWriter(manifest)) {
+                fw.write(json);
             }
-            System.out.println("[Import.java] Registered scope: " + alias + " -> " + meta);
+            System.out.println("[Import.java] Module manifest written: " + manifest.getAbsolutePath());
         } catch (Exception e) {
-            System.out.println("[Import.java] Scope registration failed: " + e.getMessage());
+            System.out.println("[Import.java] Manifest write failed: " + e.getMessage());
+        }
+    }
+    
+    private void copyFile(File src, File dest) throws IOException {
+        try (FileInputStream fis = new FileInputStream(src);
+             FileOutputStream fos = new FileOutputStream(dest)) {
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = fis.read(buf)) > 0) {
+                fos.write(buf, 0, n);
+            }
         }
     }
     

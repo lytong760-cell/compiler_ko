@@ -1,5 +1,5 @@
 const std = @import("std");
-const lexer = @import("lexer.zig");
+const lexer = @import("src").lexer;
 
 test "lexer_test_0001" {
     var lx = lexer.Lexer.init("int");

@@ -1,27 +1,27 @@
 # .ko Language Formal Technical Specification & Architectural Manual
 
-## I. KIẾN TRÚC HẠT NHÂN VÀ THỰC THI CHUẨN HOÁ (RUNTIME ARCHITECTURE & ENGINE TARGET MAPPING)
+## I. RUNTIME ARCHITECTURE & ENGINE TARGET MAPPING
 
-Ngôn ngữ .ko vận hành dựa trên mô hình thực thi lai (Hybrid Execution Target Engine).
+The .ko language operates on a Hybrid Execution Target Engine model.
 
-Trình biên dịch/phiên dịch trung tâm (`compiler.zig`) đóng vai trò như một "Nhạc trưởng". Nó nhận mã nguồn, phân tích cú pháp và phân chia công việc cho các "Nhà thầu chuyên biệt" ở bên dưới thực thi.
+The central compiler/interpreter (`compiler.zig`) acts as a "Conductor". It receives source code, parses it, and dispatches work to specialized "Subcontractors" underneath for execution.
 
-### 1. Mô hình Toán học Pipeline và Sơ đồ Thực thi
+### 1. Mathematical Pipeline Model and Execution Diagram
 
 $$\mathcal{P}: \text{SourceCode}_{.ko} \xrightarrow{\text{Lexer/Parser}} \text{AST} \xrightarrow{\text{ScopeResolver}} \text{EngineTarget} \xrightarrow{\text{Execution}} \text{State}'$$
 
 ```
 +-------------------------------------------------------------------+
-|                     Mã Nguồn Cấp Cao (.ko)                        |
+|                     High-Level Source Code (.ko)                   |
 +-------------------------------------------------------------------+
-                                  |
-                                  v
+                                   |
+                                   v
 +-------------------------------------------------------------------+
-|        Bộ Phân Tích Cú Pháp Trừu Tượng (compiler.zig)              |
+|        Abstract Syntax Analysis (compiler.zig)                     |
 +-------------------------------------------------------------------+
-                  /                                   \
-                 /                                     \
-                v                                       v
+                   /                                   \
+                  /                                     \
+                 v                                       v
 +--------------------------+           +----------------------------+
 |   Subsystem Import Engine|           |    Subsystem Loop Engine   |
 |      (Import.java)       |           |         (Loop.cpp)         |
@@ -32,62 +32,62 @@ $$\mathcal{P}: \text{SourceCode}_{.ko} \xrightarrow{\text{Lexer/Parser}} \text{A
 +--------------------------+           +----------------------------+
 ```
 
-### 2. Ánh xạ Từ khóa Đặc biệt sang Tệp Thực thi Hệ thống
+### 2. Mapping Special Keywords to System Execution Files
 
-#### A. Thư viện Nạp Module: Import Subsystem Target
+#### A. Module Import Library: Import Subsystem Target
 
-Chỉ thị ngôn ngữ: `Import`
+Language Directive: `Import`
 
-Tệp mã nguồn chịu trách nhiệm: `Import.java` + `installer.zig`
+Responsible Source Files: `Import.java` + `installer.zig`
 
-Giải thích đơn giản: Coi Import.java như một "Thủ thư". Khi bạn dùng từ khóa Import hoặc lệnh `ko -install`, thủ thư Java sẽ đi tìm gói thư viện, kiểm tra tính hợp lệ, biên dịch và mang đặt lên bàn làm việc của bạn.
+Simple Explanation: Think of Import.java as a "Librarian". When you use the `Import` keyword or the `ko -install` command, the Java librarian will find the library package, verify its validity, compile it, and place it on your workspace.
 
-Ngữ nghĩa toán học & kỹ thuật:
+Mathematical & Technical Semantics:
 
 $$\text{Import}_{\text{subsystem}}: \text{ModuleName} \times \text{ScopeTag} \to \mathcal{S}_{\text{updated\_scope\_table}}$$
 
-- Phân giải đường dẫn tập tin (Dynamic Path Resolution)
-- Xác thực chữ ký mã nguồn (Module Signature Verification)
-- Tải lớp động (Dynamic Classloading) và chèn danh sách định danh vào Bảng Tầm Vực (Scope Table)
+- Dynamic File Path Resolution
+- Source Code Signature Verification
+- Dynamic Classloading and insertion of identifiers into the Scope Table
 
-#### B. Động cơ Vòng lặp Hiệu năng cao: Loop Subsystem Target
+#### B. High-Performance Loop Engine: Loop Subsystem Target
 
-Chỉ thị ngôn ngữ: `Loop`
+Language Directive: `Loop`
 
-Tệp mã nguồn chịu trách nhiệm: `Loop.cpp`
+Responsible Source File: `Loop.cpp`
 
-Giải thích đơn giản: Coi Loop.cpp như một "Tay đua F1". Việc lặp lại hành động hàng triệu lần được chuyển giao cho mã C++ chạy trực tiếp ở cấp phần cứng CPU.
+Simple Explanation: Think of Loop.cpp as an "F1 Racing Car". Repeating an action millions of times is handed off to C++ code running directly at the CPU hardware level.
 
-Ngữ nghĩa toán học & kỹ thuật:
+Mathematical & Technical Semantics:
 
 $$\text{Loop}_{\text{subsystem}}: \text{IterCondition} \times \text{BodyBlock} \xrightarrow{\text{Native C++}} \Delta \text{State}$$
 
-- Ép kiểu và tối ưu hóa thanh ghi cứng CPU (Hardware Register Allocation)
-- Bỏ qua overhead của bộ phiên dịch, tối ưu bộ đệm lệnh (Instruction Cache Line Optimization)
+- CPU Hardware Register Allocation and Optimization
+- Bypassing interpreter overhead, Instruction Cache Line Optimization
 
-## II. MÔ HÌNH LÝ THUYẾT VÀ TỪ VỰNG CÚ PHÁP TỔNG QUÁT
+## II. THEORETICAL MODEL AND GENERAL SYNTAX VOCABULARY
 
-### 1. Nguyên tắc Tách biệt Lệnh và Dữ liệu
+### 1. Command and Data Separation Principle
 
-Không gian Lệnh / Scope Block ($\mathcal{B}_E$): Sử dụng duy nhất cặp ngoặc vuông `[ ]`.
+Command Space / Scope Block ($\mathcal{B}_E$): Uses only square brackets `[ ]`.
 
-Không gian Dữ liệu & Tham số ($\mathcal{D}_P$): Sử dụng cặp ngoặc tròn `( )` cho tập hợp/tham số và ngoặc nhọn `{ }` cho ánh xạ Key-Value.
+Data & Parameter Space ($\mathcal{D}_P$): Uses parentheses `( )` for sets/parameters and curly braces `{ }` for Key-Value mappings.
 
-Tiên đề:
+Axiom:
 
 $$\mathcal{B}_E \cap \mathcal{D}_P = \emptyset$$
 
-### 2. Ký hiệu Nhận dạng Đặc biệt
+### 2. Special Recognition Symbols
 
-| Ký hiệu | Tên gọi | Ý nghĩa | Ví dụ |
-|---------|---------|---------|-------|
-| `~` | Toán tử Định danh | Đánh dấu tên biến/hàm/lớp | `int(10)~age` |
-| `< >` | Thẻ Hệ thống | Bao bọc lệnh hệ thống | `<printf>`, `<input>`, `<len>` |
-| `$` | Con trỏ Tham chiếu | Chỉ thuộc tính/phương thức trong Class | `$p1~take_damage()` |
-| `"\n"` | Toán tử Ngắt Dòng | Xuống dòng trong chuỗi kép | `"Hello\n"` |
-| `| |` | Dấu Phân Cách Ghi Chú | Bỏ qua khi biên dịch | `| comment |` |
+| Symbol | Name | Meaning | Example |
+|--------|------|---------|---------|
+| `~` | Identifier Sigil | Marks variable/function/class names | `int(10)~age` |
+| `< >` | System Tag | Wraps system commands | `<printf>`, `<input>`, `<len>` |
+| `$` | Reference Pointer | Accesses properties/methods in Class | `$p1~take_damage()` |
+| `"\n"` | Newline Escape | Newline in double-quoted string | `"Hello\n"` |
+| `| |` | Comment Separator | Ignored at compile time | `| comment |` |
 
-### 3. Cú pháp EBNF
+### 3. EBNF Syntax
 
 ```
 Program            ::= ModuleImport* Statement* MainBlock ExceptionHandler* ;
@@ -108,65 +108,65 @@ EncodingType       ::= "`ASCII`" | "`UTF-8`" | "`UTF-16`" ;
 LenOp              ::= SystemTagOpen "len" SystemTagClose "^(" Expression ")" ;
 ```
 
-### 4. Hệ thống Toán tử
+### 4. Operator System
 
-Toán tử Số học: `+`, `-`, `*`, `/`, `%`
+Arithmetic Operators: `+`, `-`, `*`, `/`, `%`
 
-Toán tử Logic:
-- `&&` : Phép VÀ logic
-- `%%` : Phép HOẶC logic
+Logical Operators:
+- `&&` : Logical AND
+- `%%` : Logical OR
 
-### 5. Tiên đề Tầm vực Thực thi Toàn cục
+### 5. Global Execution Scope Axiom
 
-Các câu lệnh thực thi không được nằm tự do bên ngoài toàn cục. Chúng bắt buộc phải nằm bên trong Hàm hoặc Khối Thực thi Chính `[ ]`. Phạm vi toàn cục chỉ chấp nhận: Lệnh Import, Khai báo Hàm, và Khai báo Lớp.
+Execution statements must not float freely outside the global scope. They are required to be inside a Function or Main Execution Block `[ ]`. The global scope only accepts: Import statements, Function declarations, and Class declarations.
 
-## III. HỆ THỐNG KIỂU DỮ LIỆU
+## III. DATA TYPE SYSTEM
 
-### 1. Kiểu Dữ liệu Nguyên thủy
+### 1. Primitive Data Types
 
-| Kiểu | Miền giá trị | Ví dụ |
-|------|---------------|-------|
+| Type | Value Domain | Example |
+|------|---------------|---------|
 | `int` | $\mathbb{Z} \cap [-2^{63}, 2^{63}-1]$ | `int(100)~hp` |
 | `freal` | $\mathbb{R}$ Double Precision | `freal(3.14159)~pi` |
-| `string` | Chuỗi ký tự UTF-8 | `string("Phong\n")~name` |
+| `string` | UTF-8 character string | `string("Phong\n")~name` |
 | `booling` | $\mathbb{B} = \{\mathtt{\backslash True\backslash}, \mathtt{\backslash False\backslash}\}$ | `booling(\True\)~is_active` |
-| `byte` | Biểu diễn Nhị phân | `byte("A")~b_val` |
-| `bytes` | Vùng đệm Hex | `bytes(16)~empty_buf` |
+| `byte` | Binary representation | `byte("A")~b_val` |
+| `bytes` | Hex buffer area | `bytes(16)~empty_buf` |
 
-### 2. Cấu trúc Dữ liệu Phức hợp
+### 2. Composite Data Structures
 
-- Tuple / Mảng số: `(1, 2)~a`
-- Mảng Chuỗi: `('a', 'b')~b`
-- Danh sách Lồng nhau: `(1('a', 'b'))~list`
-- Từ điển: `(1{'a'})~dic`
+- Tuple / Number array: `(1, 2)~a`
+- String array: `('a', 'b')~b`
+- Nested list: `(1('a', 'b'))~list`
+- Dictionary: `(1{'a'})~dic`
 
-### 3. Cú pháp Truy xuất Chỉ mục
+### 3. Index Access Syntax
 
 ```ko
-list<0>           | Lấy phần tử đầu tiên
-list<1<0>>        | Lấy phần tử thứ 0 trong danh sách con tại vị trí 1
-dic{1{'a'}}       | Lấy theo Key của Từ điển
+list<0>           | Get first element
+list<1<0>>        | Get element 0 in sub-list at position 1
+dic{1{'a'}}       | Get by Dictionary Key
 ```
 
-## IV. HỆ THỐNG NHẬP/XUẤT, BỘ NHỚ, MÃ HÓA, ĐO ĐỘ DÀI
+## IV. INPUT/OUTPUT SYSTEM, MEMORY, ENCODING, LENGTH
 
-### 1. Cấu trúc Xuất Dữ liệu
+### 1. Data Output Structure
 
 ```ko
 <print>string^("Xin chao\n")
-<print>[kiểu dữ liệu]^
+<print>[data_type]^
 <printf>^("Player HP: {hp}\n")
 ```
 
-### 2. Thẻ Hệ thống Mã hóa (`<encode>`)
+### 2. System Encoding Tag (`<encode>`)
 
 ```ko
 <encode(`ASCII`)>^("Hello World\n")
 <encode(`UTF-8`)>^("Xin chào .ko\n")
-bytes(<encode(`UTF-8`)>^("Dữ liệu bảo mật\n"))~encoded_data
+bytes(<encode(`UTF-8`)>^("Secure data\n"))~encoded_data
 ```
 
-### 3. Thẻ Hệ thống Đo Độ Dài (`<len>`)
+### 3. System Length Tag (`<len>`)
 
 ```ko
 int(<len>^("Xin chào .ko\n"))~str_length
@@ -174,36 +174,36 @@ int(<len>^(buffer))~buf_size
 int(<len>^(inventory))~item_count
 ```
 
-### 4. Cấu trúc Nhập Dữ liệu (`<input>`)
+### 4. Data Input Structure (`<input>`)
 
 ```ko
-<input>("Nhập thông tin: \n")
+<input>("Enter info: \n")
 
 string("")~x
 <input>(x)
 
-<input>("Nhập tên: \n")&=string("")~name
+<input>("Enter name: \n")&=string("")~name
 ```
 
-### 5. Thao tác Bộ nhớ Cấp thấp (`<memory>`)
+### 5. Low-Level Memory Operations (`<memory>`)
 
 ```ko
 int(0)~h
-<memory>^h              | Trả về địa chỉ ô nhớ
+<memory>^h              | Returns memory cell address
 
-<memory>dete(h)         | Giải phóng bộ nhớ
+<memory>dete(h)         | Frees memory
 ```
 
-### 6. Đột biến Trạng thái Tức thì (`<now>`)
+### 6. Instant State Mutation (`<now>`)
 
 ```ko
 <now>(100)>hp
 <now>(hp - damage)>hp
 ```
 
-## V. CẤU TRÚC HÀM, GIÁ TRỊ TRẢ VỀ VÀ KHỐI THỰC THI CHÍNH
+## V. FUNCTION STRUCTURE, RETURN VALUES, AND MAIN EXECUTION BLOCK
 
-### 1. Định nghĩa và Gọi Hàm
+### 1. Function Definition and Call
 
 ```ko
 calculate_power(int~base) [
@@ -214,28 +214,30 @@ int(~calculate_power(10))~total
 <now>(~calculate_power(20))>total
 ```
 
-### 2. Khối Thực thi Chính
+### 2. Main Execution Block
 
-Mọi tệp .ko chạy độc lập bắt buộc phải có đúng 1 Khối Main `[ ]`.
+Every standalone .ko file must have exactly one Main Block `[ ]`.
 
-## VI. CẤU TRÚC ĐIỀU KHIỂN LUỒNG
+## VI. CONTROL FLOW STRUCTURE
 
-### 1. Rẽ nhánh Điều kiện
+### 1. Conditional Branching
 
 ```ko
 <if>(hp > 0 && is_active == \True\) [
-    <printf>^("Nhân vật còn sống!\n")
+    <printf>^("Character is alive!\n")
 ]
 <elif>(hp <= 0 %% is_active == \False\) [
-    <printf>^("Nhân vật kiệt sức!\n")
+    <printf>^("Character is exhausted!\n")
 ]
 <else> [
-    <printf>^("Trạng thái không xác định!\n")
+    <printf>^("Status unknown!\n")
 ]
 ```
 
-### 2. Hệ thống Vòng lặp
-chắc chăn rằng bạn có hai dấu ** bao Loop
+### 2. Loop System
+
+Make sure you have two `**` markers around Loop
+
 ```ko
 **Loop** <for>(~x=1&=5) [
     <printf>^("x = {x}\n")
@@ -252,26 +254,28 @@ chắc chăn rằng bạn có hai dấu ** bao Loop
 ]
 ```
 
-## VII. MÔ-ĐUN NẠP VÀ HỆ THỐNG PHẠM VI
+## VII. MODULE IMPORT AND SCOPE SYSTEM
 
-### 1. Cú pháp Nạp Mô-đun
-chắc chắn là bạn dùng ** bao từ Import
+### 1. Module Import Syntax
+
+Make sure you use `**` to wrap Import
+
 ```ko
 **Import**($Random)@also%~random!`global`:random
 int(<$random>(1, 100))~rand_val
 ```
 
-### 2. Quy định Thẻ Phạm vi
+### 2. Scope Tag Regulations
 
-| Thẻ Scope | Phạm vi tác dụng |
-|-----------|------------------|
-| `global` | Toàn cục |
-| `main` hoặc `a` | Khối Main |
-| `func` | Hàm |
-| `class` | Lớp |
-| `tên_hàm` | Hàm cụ thể |
+| Scope Tag | Scope of Effect |
+|-----------|-----------------|
+| `global` | Global |
+| `main` or `a` | Main Block |
+| `func` | Function |
+| `class` | Class |
+| `function_name` | Specific function |
 
-### 3. Thư viện Chuẩn Built-in
+### 3. Built-in Standard Library
 
 ```ko
 **Import**($Random)@also%~random!`global`:random
@@ -284,23 +288,23 @@ int(<$random>(1, 100))~rand_val
 <$web>("https://api.example.com")
 ```
 
-### 4. Hệ thống Quản lý Thư viện Ngoại vi
+### 4. External Library Management System
 
-#### A. Lệnh Cài đặt
+#### A. Install Commands
 
 ```bash
-ko -install "<Thư viện>"
+ko -install "<Library>"
 ko -list
 ko -search "<query>"
 ```
 
-#### B. Cổng Đăng ký Thư viện và API
+#### B. Library Registry Gateway and API
 
 Module Store URL: `https://ko-studio.ai.studio/mobule-store`
 
 Firestore REST API Endpoints:
 
-**POST - Liệt kê toàn bộ Thư viện:**
+**POST - List All Libraries:**
 
 ```
 POST https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents:runQuery?key=AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE
@@ -314,57 +318,57 @@ Content-Type: application/json
 }
 ```
 
-**GET - Tải Thư viện cụ thể:**
+**GET - Load Specific Library:**
 
 ```
-GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents/libraries/<thư viện>?key=AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE
+GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents/libraries/<library>?key=AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE
 ```
 
-#### C. Quy trình Xử lý Tự động
+#### C. Automatic Processing Flow
 
 ```
 +-----------------------------------------------------------------------------------+
-| 1. Terminal Call: ko -install "<Thư viện>"                                        |
+| 1. Terminal Call: ko -install "<Library>"                                         |
 +-------------------------------------------s----------------------------------------+
-                                          |
-                                          v
+                                           |
+                                           v
 +-----------------------------------------------------------------------------------+
-| 2. Gọi Firestore GET API Query:                                                   |
-|    GET /documents/libraries/<thư viện>?key=...                                    |
-|    -> Lấy Metadata & Liên kết Repository GitHub của thư viện                     |
+| 2. Firestore GET API Query:                                                       |
+|    GET /documents/libraries/<library>?key=...                                    |
+|    -> Retrieve Metadata & GitHub Repository link of the library                  |
 +-----------------------------------------------------------------------------------+
-                                          |
-                                          v
+                                           |
+                                           v
 +-----------------------------------------------------------------------------------+
-| 3. Subsystem Import.java thực hiện `git clone` toàn bộ Repo                       |
-|    về thư mục tạm (temp cache) của hệ thống                                       |
+| 3. Subsystem Import.java performs `git clone` of entire Repo                     |
+|    to system temp cache directory                                                 |
 +-----------------------------------------------------------------------------------+
-                                          |
-                                          v
+                                           |
+                                           v
 +-----------------------------------------------------------------------------------+
-| 4. Kiểm tra Tệp Đóng gói (.zip Inspection):                                       |
-|    - [TRƯỜNG HỢP 1]: Tìm thấy tệp `.zip` trong Repo                               |
-|      -> Giữ lại DUY NHẤT tệp `.zip`, XÓA TẤT CẢ các file/thư mục khác.         |
-|    - [TRƯỜNG HỢP 2]: KHÔNG tìm thấy tệp `.zip` nào                                |
-|      -> Hủy tiến trình ngay lập tức, XÓA TOÀN BỘ dữ liệu vừa clone.           |
+| 4. Package File Check (.zip Inspection):                                          |
+|    - [CASE 1]: `.zip` file found in Repo                                         |
+|      -> Keep ONLY the `.zip` file, DELETE ALL other files/directories.          |
+|    - [CASE 2]: NO `.zip` file found                                              |
+|      -> Cancel process immediately, DELETE ALL cloned data.                     |
 +-----------------------------------------------------------------------------------+
-                                          |
-                                          v
+                                           |
+                                           v
 +-----------------------------------------------------------------------------------+
-| 5. Giải nén `.zip` & Tự động Phân tích Ngôn ngữ                                   |
+| 5. Extract `.zip` & Automatic Language Analysis                                   |
 +-----------------------------------------------------------------------------------+
-                /                                       \
-               /                                         \
-[Thành công]  v                                           v [Thất bại]
+                 /                                       \
+                /                                         \
+[Success]  v                                           v [Failure]
 +----------------------------------+     +----------------------------------+
-| Tích hợp Bảng Tầm Vực (Scope)    |     | 1. In báo lỗi chi tiết ra CLI    |
-| Sẵn sàng cho chỉ thị `Import`    |     | 2. TỰ ĐỘNG XÓA SẠCH thư viện    |
+| Scope Table Integration         |     | 1. Print detailed error to CLI   |
+| Ready for `Import` directive    |     | 2. AUTO-CLEAN the library       |
 +----------------------------------+     +----------------------------------+
 ```
 
-## VIII. LẬP TRÌNH HƯỚNG ĐỐI TƯỢNG
+## VIII. OBJECT-ORIENTED PROGRAMMING
 
-### 1. Cấu trúc Lớp
+### 1. Class Structure
 
 ```ko
 Monster !class [
@@ -375,7 +379,7 @@ Monster !class [
         take_damage() [
             int(<$random>(15, 35))~damage
             <now>(hp - damage)>hp
-            <printf>^("Monster {name} bị đánh! HP còn: {hp}\n")
+            <printf>^("Monster {name} was hit! HP remaining: {hp}\n")
             <return>(hp)
         ]
     ]
@@ -385,31 +389,31 @@ Monster !class [
 int($m1~take_damage())~remaining_hp
 ```
 
-## IX. CƠ CHẾ XỬ LÝ LỖI VÀ NGOẠI LỆ
+## IX. ERROR AND EXCEPTION HANDLING MECHANISM
 
-### 1. Cú pháp `<catch>`
+### 1. `<catch>` Syntax
 
 ```ko
-<catch>(`ErrorCode`) [ Khối_Lệnh_Xử_Lý ]
+<catch>(`ErrorCode`) [ Processing_Block ]
 ```
 
-### 2. Quy tắc Phạm vi Quét Lỗi
+### 2. Error Scanning Scope Rules
 
-A. **Catch Nội Cục**: Chỉ quét ngược trong phạm vi Hàm/Khối Main chứa nó.
+A. **Internal Catch**: Only scans backward within the Function/Main Block containing it.
 
-B. **Catch Toàn Cục**: Quét ngược bảo vệ tất cả Hàm/Khối Main nằm trước nó.
+B. **Global Catch**: Scans backward protecting all Functions/Main Blocks preceding it.
 
-C. **Quy tắc Ưu tiên Chuỗi**: Kiểm tra từ trên xuống dưới, lỗi khớp đầu tiên được xử lý.
+C. **Chain Priority Rule**: Checks from top to bottom, first matching error is processed.
 
-### 3. Biến Ngoại lệ Nội tại
+### 3. Intrinsic Exception Variables
 
 ```ko
 <catch>(`DivideByZeroError`) [
-    <printf>^("Lỗi {error<"type">} tại dòng {error<"line">}: {error<"code">'}\n")
+    <printf>^("Error {error<"type">} at line {error<"line">}: {error<"code">'}\n")
 ]
 ```
 
-## X. CHƯƠNG TRÌNH MẪU HOÀN CHỈNH
+## X. COMPLETE SAMPLE PROGRAM
 
 ```ko
 **Import**($Random)@also%~random!`global`:random
@@ -417,7 +421,7 @@ C. **Quy tắc Ưu tiên Chuỗi**: Kiểm tra từ trên xuống dưới, lỗi
 **Import**($Website)@also%~web!`global`:web
 
 init_system_logs() [
-    <printf>^("=== KHOI TAO HE THONG .KO ===\n")
+    <printf>^("=== .KO SYSTEM INITIALIZATION ===\n")
     <$os>("log.txt")~log_file
     <$web>domain("mygame.com")@app_server
     <$web>("https://api.mygame.com/status")
@@ -427,11 +431,11 @@ init_system_logs() [
 safe_divide(int~dividend, int~divisor) [
     int(dividend / divisor)~result
     int(dividend % divisor)~remainder
-    <printf>^("Thuong: {result}, Du: {remainder}\n")
+    <printf>^("Quotient: {result}, Remainder: {remainder}\n")
     <return>(result)
 
     <catch>(`DivideByZeroError`) [
-        <printf>^("Loi chia cho 0!\n")
+        <printf>^("Division by zero error!\n")
         <return>(0)
     ]
 ]
@@ -442,7 +446,7 @@ calculate_crit_damage(int~base_dmg, int~bonus_dmg) [
 ]
 
 <catch>(`SystemException`) [
-    <printf>^("Loi he thong tong quat!\n")
+    <printf>^("General system error!\n")
     <return>(-1)
 ]
 
@@ -450,11 +454,11 @@ Hero !class [
     @private [
         string("")~name
         int(100)~hp
-        ('Kiem', 'Khien', 'Binh mau')~inventory
+        ('Sword', 'Shield', 'Potion')~inventory
 
         setup_player() [
-            <input>("Nhap ten: \n")&=name
-            <printf>^("Chao mung {name}!\n")
+            <input>("Enter name: \n")&=name
+            <printf>^("Welcome {name}!\n")
             <return>(name)
         ]
 
@@ -467,13 +471,13 @@ Hero !class [
 
         check_status() [
             <if>(hp >= 80 && hp <= 100) [
-                <printf>^("Trang thai: Rat khoe\n")
+                <printf>^("Status: Very healthy\n")
             ]
             <elif>(hp >= 30 %% hp < 80) [
-                <printf>^("Trang thai: Binh thuong\n")
+                <printf>^("Status: Normal\n")
             ]
             <else> [
-                <printf>^("Trang thai: Nguy hiem!\n")
+                <printf>^("Status: Dangerous!\n")
             ]
             <return>(hp)
         ]
@@ -488,19 +492,19 @@ Hero !class [
     
     byte("A")~binary_char
     bytes(8)~hex_buffer
-    <printf>^("Ma nhi phan: {binary_char}\n")
+    <printf>^("Binary char: {binary_char}\n")
     
-    int(<len>^("Xin chao .ko\n"))~str_len
+    int(<len>^("Hello .ko\n"))~str_len
     int(<len>^(hex_buffer))~buf_len
-    <printf>^("Do dai chuoi: {str_len}, Kich thuoc bo dem: {buf_len}\n")
+    <printf>^("String length: {str_len}, Buffer size: {buf_len}\n")
 
-    <encode(`UTF-8`)>^("Ma hoa UTF-8 truc tiep\n")
+    <encode(`UTF-8`)>^("Direct UTF-8 encoding\n")
     bytes(<encode(`ASCII`)>^("Hello .ko"))~asc_bytes
     int(<len>^(asc_bytes))~encoded_len
-    <printf>^("Do dai ma hoa ASCII: {encoded_len}\n")
+    <printf>^("ASCII encoding length: {encoded_len}\n")
     
     int(~safe_divide(100, 0))~calc_test
-    <printf>^("Kiem tra chia an toan: {calc_test}\n")
+    <printf>^("Safe division check: {calc_test}\n")
 
     **Loop** <for>(~i=1(2)&=5) [
         <printf>^("--- Turn {i} ---\n")
@@ -509,59 +513,59 @@ Hero !class [
     
     int($p1~check_status())~current_hp
     int(~calculate_crit_damage(50, 10))~final_strike
-    <printf>^("Sat thuong chi mang: {final_strike}\n")
+    <printf>^("Critical damage dealt: {final_strike}\n")
 
     int(999)~temp_data
-    <printf>^("Dia chi o nho: {<memory>^temp_data}\n")
+    <printf>^("Memory address: {<memory>^temp_data}\n")
     <memory>dete(temp_data)
 
     <catch>(`GlobalError`) [
-        <printf>^("Bat loi ngoai le trong Main tai dong {error<"line">}: {error<"code">\n}")
+        <printf>^("Caught exception in Main at line {error<"line">}: {error<"code">\n}")
     ]
 ]
 ```
 
-## XI. TRẠNG THÁI TRIỂN KHAI HIỆN TẠI
+## XI. CURRENT IMPLEMENTATION STATUS
 
-### Đã Triển khai
+### Implemented
 
-- [x] Lexer đầy đủ
-- [x] Parser biểu thức và câu lệnh
+- [x] Full Lexer
+- [x] Expression and statement Parser
 - [x] AST representation
 - [x] VM execution engine
-- [x] Khai báo biến và gán giá trị
-- [x] Biểu thức số học và logic
-- [x] Điều khiển luồng (if/elif/else)
+- [x] Variable declaration and assignment
+- [x] Arithmetic and logical expressions
+- [x] Flow control (if/elif/else)
 - [x] System tags: printf, input, len, encode, memory, now
-- [x] Khai báo Lớp (Class declarations)
-- [x] Xử lý ngoại lệ (catch)
-- [x] Đột biến tức thì (<now>)
-- [x] Import statement với scope registration
-- [x] Định nghĩa và gọi Hàm
-- [x] Vòng lặp (for/while)
-- [x] Gọi phương thức trên class instance
-- [x] Toán tử truy xuất chỉ mục
+- [x] Class declarations
+- [x] Exception handling (catch)
+- [x] Instant mutation (<now>)
+- [x] Import statement with scope registration
+- [x] Function definition and call
+- [x] Loops (for/while)
+- [x] Method calls on class instances
+- [x] Index access operators
 - [x] Return statement
-- [x] String interpolation trong printf
+- [x] String interpolation in printf
 - [x] Bytes buffer allocation
-- [x] `ko -install` với Firestore API
-- [x] `ko -list` - Liệt kê tất cả thư viện (POST runQuery)
-- [x] `ko -search` - Tìm kiếm thư viện
-- [x] Git clone và zip inspection
-- [x] Đa ngôn ngữ compile/link pipeline (Java, C, C++, Zig, Node.js, .ko)
+- [x] `ko -install` with Firestore API
+- [x] `ko -list` - List all libraries (POST runQuery)
+- [x] `ko -search` - Search libraries
+- [x] Git clone and zip inspection
+- [x] Multi-language compile/link pipeline (Java, C, C++, Zig, Node.js, .ko)
 - [x] Scope registration (file-based)
-- [x] Import.java subsystem hoàn chỉnh với HTTP client, git clone, zip inspection, compile/link
+- [x] Complete Import.java subsystem with HTTP client, git clone, zip inspection, compile/link
 - [x] Loop.cpp loop optimization engine
-- [x] API Server (api_server.py) cho Module Store
+- [x] API Server (api_server.py) for Module Store
 
-### Chưa Triển khai
+### Not Yet Implemented
 
-- [ ] Tải module thực thời tại runtime (Import.java integration vào Zig VM)
-- [ ] Thư viện chuẩn (stdlib) mặc định
-- [ ] Tích hợp Loop.cpp vào Zig VM
-- [ ] JNI/JNA bridge giữa Zig VM và native libraries
+- [ ] Runtime module loading (Import.java integration into Zig VM)
+- [ ] Default standard library (stdlib)
+- [ ] Loop.cpp integration into Zig VM
+- [ ] JNI/JNA bridge between Zig VM and native libraries
 
-## XII. TỔNG KẾT NGỮ PHÁP
+## XII. SYNTAX SUMMARY
 
 ```
 program         -> statement*
@@ -591,4 +595,41 @@ literal         -> INT | FLOAT | STRING | '\\True\\' | '\\False\\'
 system_tag      -> '<' identifier '>' '^' '(' expr ')'
 func_call       -> identifier '(' arg_list? ')'
 arg_list        -> expr (',' expr)*
+priority_stmt   -> '{' NUMBER '}' statement ;
+NUMBER          -> [0-9]+ ;
 ```
+
+## XIII. PROCESS MANAGER VISIBILITY
+
+When executing a `.ko` file, the runtime exposes the current execution process in the process manager using the format:
+
+```
+file:main-function
+```
+
+Examples:
+
+```
+test.ko:main
+test.ko:main-test_func
+```
+
+This allows external tools and debuggers to track which file, main block, or function is currently executing.
+
+## XIV. PRIORITY ORDER SYNTAX
+
+Statements can be prefixed with a priority number in curly braces `{number}` to control execution order. Lower numbers execute first.
+
+Examples:
+
+```ko
+{1}<print>string^("test")
+{0} <printf>^("hello")
+```
+
+In the example above, `{0} <printf>^("hello")` runs before `{1}<print>string^("test")` because `0` has higher priority.
+
+Priority rules:
+- Statements without an explicit priority default to priority `0`.
+- When multiple statements share the same priority, their relative order follows source order.
+- Priority affects statement scheduling within the same block scope.

@@ -16,6 +16,7 @@ const std = @import("std");
         r_paren: void,
         l_brace: void,
         r_brace: void,
+        priority_lit: i64,
         sigil: void,
         dollar: void,
         lt: void,
@@ -98,6 +99,35 @@ const std = @import("std");
         };
     }
 };
+
+const KeywordMap = std.StaticStringMap(Token.Keyword).initComptime(&.{
+    .{ "Import", .import_kw },
+    .{ "Loop", .loop_kw },
+    .{ "if", .if_kw },
+    .{ "elif", .elif_kw },
+    .{ "else", .else_kw },
+    .{ "return", .return_kw },
+    .{ "for", .for_kw },
+    .{ "while", .while_kw },
+    .{ "private", .private_kw },
+    .{ "class", .class_kw },
+    .{ "int", .int_kw },
+    .{ "freal", .freal_kw },
+    .{ "string", .string_kw },
+    .{ "booling", .booling_kw },
+    .{ "byte", .byte_kw },
+    .{ "bytes", .bytes_kw },
+    .{ "True", .true_kw },
+    .{ "False", .false_kw },
+    .{ "catch", .catch_kw },
+    .{ "now", .now_kw },
+    .{ "input", .input_kw },
+    .{ "memory", .memory_kw },
+    .{ "encode", .encode_kw },
+    .{ "len", .len_kw },
+    .{ "printf", .printf_kw },
+    .{ "Execute", .execute_kw },
+});
 
 pub const Lexer = struct {
     source: []const u8,
@@ -192,7 +222,21 @@ pub const Lexer = struct {
             if (c == ']') return Token.r_bracket;
             if (c == '(') return Token.l_paren;
             if (c == ')') return Token.r_paren;
-            if (c == '{') return Token.l_brace;
+            if (c == '{') {
+                if (self.pos < self.source.len and std.ascii.isDigit(self.source[self.pos])) {
+                    const start = self.pos;
+                    var end = self.pos;
+                    while (end < self.source.len and std.ascii.isDigit(self.source[end])) : (end += 1) {}
+                    if (end < self.source.len and self.source[end] == '}') {
+                        const num_str = self.source[start..end];
+                        const num = std.fmt.parseInt(i64, num_str, 10) catch unreachable;
+                        self.pos = end + 1;
+                        self.col += (end - start + 2);
+                        return Token{ .priority_lit = num };
+                    }
+                }
+                return Token.l_brace;
+            }
             if (c == '}') return Token.r_brace;
             if (c == '~') return Token.sigil;
             if (c == '$') return Token.dollar;
@@ -292,30 +336,9 @@ pub const Lexer = struct {
 
                 if (std.mem.eql(u8, word, "True")) return Token.bool_true;
                 if (std.mem.eql(u8, word, "False")) return Token.bool_false;
-                if (std.mem.eql(u8, word, "Import")) return Token{ .keyword = .import_kw };
-                if (std.mem.eql(u8, word, "Loop")) return Token{ .keyword = .loop_kw };
-                if (std.mem.eql(u8, word, "if")) return Token{ .keyword = .if_kw };
-                if (std.mem.eql(u8, word, "elif")) return Token{ .keyword = .elif_kw };
-                if (std.mem.eql(u8, word, "else")) return Token{ .keyword = .else_kw };
-                if (std.mem.eql(u8, word, "return")) return Token{ .keyword = .return_kw };
-                if (std.mem.eql(u8, word, "for")) return Token{ .keyword = .for_kw };
-                if (std.mem.eql(u8, word, "while")) return Token{ .keyword = .while_kw };
-                if (std.mem.eql(u8, word, "private")) return Token{ .keyword = .private_kw };
-                if (std.mem.eql(u8, word, "class")) return Token{ .keyword = .class_kw };
-                if (std.mem.eql(u8, word, "int")) return Token{ .keyword = .int_kw };
-                if (std.mem.eql(u8, word, "freal")) return Token{ .keyword = .freal_kw };
-                if (std.mem.eql(u8, word, "string")) return Token{ .keyword = .string_kw };
-                if (std.mem.eql(u8, word, "booling")) return Token{ .keyword = .booling_kw };
-                if (std.mem.eql(u8, word, "byte")) return Token{ .keyword = .byte_kw };
-                if (std.mem.eql(u8, word, "bytes")) return Token{ .keyword = .bytes_kw };
-                if (std.mem.eql(u8, word, "catch")) return Token{ .keyword = .catch_kw };
-                if (std.mem.eql(u8, word, "now")) return Token{ .keyword = .now_kw };
-                if (std.mem.eql(u8, word, "input")) return Token{ .keyword = .input_kw };
-                if (std.mem.eql(u8, word, "memory")) return Token{ .keyword = .memory_kw };
-                if (std.mem.eql(u8, word, "encode")) return Token{ .keyword = .encode_kw };
-                if (std.mem.eql(u8, word, "len")) return Token{ .keyword = .len_kw };
-                if (std.mem.eql(u8, word, "printf")) return Token{ .keyword = .printf_kw };
-                if (std.mem.eql(u8, word, "Execute")) return Token{ .keyword = .execute_kw };
+                if (KeywordMap.get(word)) |kw| {
+                    return Token{ .keyword = kw };
+                }
 
                 return Token{ .identifier = word };
             }
@@ -341,7 +364,7 @@ pub const Lexer = struct {
     }
 
     pub fn tokenize(self: *Lexer, allocator: std.mem.Allocator) ![]Token {
-        var tokens = std.ArrayList(Token).init(allocator);
+        var tokens = std.array_list.Managed(Token).init(allocator);
         defer tokens.deinit();
 
         while (true) {

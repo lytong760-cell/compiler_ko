@@ -1,8 +1,8 @@
 const std = @import("std");
-const lexer = @import("lexer.zig");
-const parser = @import("parser.zig");
-const vm = @import("vm.zig");
-const ast = @import("ast.zig");
+const lexer = @import("src").lexer;
+const parser = @import("src").parser;
+const vm = @import("src").vm;
+const ast = @import("src").ast;
 
 fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
     var lx = lexer.Lexer.init(source);
@@ -18,7 +18,7 @@ fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
         for (program) |*stmt| stmt.deinit();
     }
 
-    var virtual_machine = try vm.VM.init(allocator);
+    var virtual_machine = try vm.VM.init(allocator, std.testing.io, "test.ko");
     defer virtual_machine.deinit();
 
     try virtual_machine.execute(program);
@@ -500,4 +500,19 @@ test "test_nested_if_else_005" {
 test "test_nested_if_else_006" {
     const gpa = std.testing.allocator;
     try runSource(gpa, "[ <if>(1 == 1) [ <if>(1 == 1) [ <printf>^(\"a\") ] <else> [ <printf>^(\"b\") ] ] ]");
+}
+
+test "test_input_target_expr" {
+    const gpa = std.testing.allocator;
+    try runSource(gpa, "[ string(\"\")~s <input>(s) ]");
+}
+
+test "test_priority_order" {
+    const gpa = std.testing.allocator;
+    try runSource(gpa, "[ {1}<printf>^(\"1\") {0}<printf>^(\"0\") ]");
+}
+
+test "test_process_manager_function" {
+    const gpa = std.testing.allocator;
+    try runSource(gpa, "Func() [ <return>(1) ] [ int(~Func())~r ]");
 }

@@ -1,35 +1,59 @@
 const std = @import("std");
 const ast = @import("ast.zig");
 const value_mod = @import("value.zig");
+const bytecode = @import("bytecode.zig");
 
 pub const VM = struct {
     allocator: std.mem.Allocator,
     global_scope: *value_mod.Scope,
     current_scope: *value_mod.Scope,
-    stdout: std.fs.File.Writer,
+    io: std.Io,
+    stdout_buf: [4096]u8,
+    stdout_writer: ?std.Io.File.Writer,
     return_value: ?value_mod.Value,
     has_returned: bool,
     error_type: ?[]const u8,
     has_error: bool,
     skip_elif_else: bool,
+    file_path: []const u8,
+    current_function: []const u8,
 
-    pub fn init(allocator: std.mem.Allocator) !VM {
+    pub fn init(allocator: std.mem.Allocator, io: std.Io, file_path: []const u8) !VM {
         const global_scope = try allocator.create(value_mod.Scope);
         global_scope.* = value_mod.Scope.init(allocator, null);
+        const duped = try allocator.dupe(u8, file_path);
         return .{
             .allocator = allocator,
             .global_scope = global_scope,
             .current_scope = global_scope,
-            .stdout = std.io.getStdOut().writer(),
+            .io = io,
+            .stdout_buf = undefined,
+            .stdout_writer = null,
             .return_value = null,
             .has_returned = false,
             .error_type = null,
             .has_error = false,
             .skip_elif_else = false,
+            .file_path = duped,
+            .current_function = "main",
         };
     }
 
+    fn stdoutWriter(self: *VM) *std.Io.Writer {
+        if (self.stdout_writer == null) {
+            self.stdout_writer = std.Io.File.stdout().writer(self.io, &self.stdout_buf);
+        }
+        return &self.stdout_writer.?.interface;
+    }
+
+    fn appendValueToString(self: *VM, out: *std.array_list.Managed(u8), val: value_mod.Value) !void {
+        const text = try std.fmt.allocPrint(self.allocator, "{any}", .{val});
+        try out.appendSlice(text);
+        self.allocator.free(text);
+    }
+
     pub fn deinit(self: *VM) void {
+        self.allocator.free(self.file_path);
         var fiter = self.global_scope.functions.iterator();
         while (fiter.next()) |entry| {
             self.allocator.free(entry.key_ptr.*);
@@ -56,7 +80,26 @@ pub const VM = struct {
         self.allocator.destroy(self.global_scope);
     }
 
+    fn getProcessName(self: *VM) []const u8 {
+        if (std.mem.eql(u8, self.current_function, "main")) {
+            return std.fmt.allocPrint(self.allocator, "{s}:main", .{self.file_path}) catch self.file_path;
+        }
+        return std.fmt.allocPrint(self.allocator, "{s}:main-{s}", .{ self.file_path, self.current_function }) catch self.file_path;
+    }
+
+    fn exposeProcess(self: *VM) void {
+        const name = self.getProcessName();
+        const writer = self.stdoutWriter();
+        writer.print("{s}\n", .{name}) catch {};
+        writer.flush() catch {};
+        if (!std.mem.eql(u8, name, self.file_path)) {
+            self.allocator.free(name);
+        }
+    }
+
     pub fn execute(self: *VM, program: []ast.Statement) anyerror!void {
+        self.current_function = "main";
+        self.exposeProcess();
         for (program, 0..) |*stmt, idx| {
             if (self.has_returned) break;
             if (self.has_error) {
@@ -347,7 +390,7 @@ pub const VM = struct {
                 self.has_returned = true;
             },
             .block => |b| {
-                for (b.body) |s| try self.executeStatement(&s);
+                try self.executeBlock(b.body);
             },
             .expr => |e| {
                 const val = try self.evaluateExpression(e);
@@ -364,7 +407,14 @@ pub const VM = struct {
                     }
                 }
             },
+            .priority_stmt => |ps| {
+                try self.executeStatement(ps.stmt);
+            },
         }
+    }
+
+    fn executeBlock(self: *VM, body: []ast.Statement) !void {
+        for (body) |s| try self.executeStatement(&s);
     }
 
     fn executeStatementInScope(self: *VM, stmt: *const ast.Statement, scope: *value_mod.Scope) anyerror!void {
@@ -391,20 +441,67 @@ pub const VM = struct {
                 }
             },
             .member_access => |ma| {
-                const obj = try self.evaluateExpression(ma.object);
-                switch (obj) {
-                    .class_instance => |ci| {
-                        if (ci.fields.get(ma.member)) |_| {
-                            const gop = try ci.fields.getOrPut(ma.member);
-                            gop.value_ptr.*.deinit(self.allocator);
-                            gop.value_ptr.* = val;
-                        } else if (ci.methods.get(ma.member)) |_| {
-                            self.raiseError("AssignmentError", "Cannot assign to method");
-                        } else {
-                            self.raiseError("AssignmentError", "Member not found");
+                switch (ma.object.*) {
+                    .identifier => |name| {
+                        var scope: ?*value_mod.Scope = self.current_scope;
+                        while (scope) |s| {
+                            if (s.variables.get(name)) |_| {
+                                const gop = try s.variables.getOrPut(name);
+                                if (gop.value_ptr.* != .class_instance) {
+                                    self.raiseError("AssignmentError", "Not a class instance");
+                                    return;
+                                }
+                                const instance = gop.value_ptr.*.class_instance;
+                                if (instance.fields.get(ma.member)) |_| {
+                                    const fgop = try instance.fields.getOrPut(ma.member);
+                                    fgop.value_ptr.*.deinit(self.allocator);
+                                    fgop.value_ptr.* = val;
+                                } else if (instance.methods.get(ma.member)) |_| {
+                                    self.raiseError("AssignmentError", "Cannot assign to method");
+                                } else {
+                                    self.raiseError("AssignmentError", "Member not found");
+                                }
+                                return;
+                            }
+                            scope = s.parent;
+                        }
+                        if (self.global_scope.variables.get(name)) |_| {
+                            const gop = try self.global_scope.variables.getOrPut(name);
+                            if (gop.value_ptr.* != .class_instance) {
+                                self.raiseError("AssignmentError", "Not a class instance");
+                                return;
+                            }
+                            const instance = gop.value_ptr.*.class_instance;
+                            if (instance.fields.get(ma.member)) |_| {
+                                const fgop = try instance.fields.getOrPut(ma.member);
+                                fgop.value_ptr.*.deinit(self.allocator);
+                                fgop.value_ptr.* = val;
+                            } else if (instance.methods.get(ma.member)) |_| {
+                                self.raiseError("AssignmentError", "Cannot assign to method");
+                            } else {
+                                self.raiseError("AssignmentError", "Member not found");
+                            }
+                            return;
+                        }
+                        self.raiseError("AssignmentError", "Variable not found");
+                    },
+                    else => {
+                        const obj = try self.evaluateExpression(ma.object);
+                        switch (obj) {
+                            .class_instance => |ci| {
+                                if (ci.fields.get(ma.member)) |_| {
+                                    const gop = try ci.fields.getOrPut(ma.member);
+                                    gop.value_ptr.*.deinit(self.allocator);
+                                    gop.value_ptr.* = val;
+                                } else if (ci.methods.get(ma.member)) |_| {
+                                    self.raiseError("AssignmentError", "Cannot assign to method");
+                                } else {
+                                    self.raiseError("AssignmentError", "Member not found");
+                                }
+                            },
+                            else => self.raiseError("AssignmentError", "Not a class instance"),
                         }
                     },
-                    else => self.raiseError("AssignmentError", "Not a class instance"),
                 }
             },
             .index_access => |ia| {
@@ -475,7 +572,7 @@ pub const VM = struct {
     }
 
     fn unescape(self: *VM, raw: []const u8) ![]u8 {
-        var result = std.ArrayList(u8).init(self.allocator);
+        var result = std.array_list.Managed(u8).init(self.allocator);
         var i: usize = 0;
         while (i < raw.len) {
             if (raw[i] == '\\' and i + 1 < raw.len) {
@@ -644,7 +741,7 @@ pub const VM = struct {
     }
 
     fn printInterpolated(self: *VM, s: []const u8) !void {
-        var out = std.ArrayList(u8).init(self.allocator);
+        var out = std.array_list.Managed(u8).init(self.allocator);
         defer out.deinit();
 
         var i: usize = 0;
@@ -659,9 +756,9 @@ pub const VM = struct {
                     if (j < s.len and s[j] == '}') {
                         const var_name = s[i + 1 .. j];
                         if (self.current_scope.variables.get(var_name)) |var_val| {
-                            try var_val.print(out.writer());
+                            try self.appendValueToString(&out, var_val);
                         } else if (self.global_scope.variables.get(var_name)) |var_val| {
-                            try var_val.print(out.writer());
+                            try self.appendValueToString(&out, var_val);
                         } else {
                             try out.appendSlice("{");
                             try out.appendSlice(var_name);
@@ -678,7 +775,9 @@ pub const VM = struct {
                 i += 1;
             }
         }
-        try self.stdout.print("{s}", .{out.items});
+        const writer = self.stdoutWriter();
+        try writer.print("{s}", .{out.items});
+        try writer.flush();
     }
 
     fn evaluateUnary(self: *VM, unary: *ast.UnaryExpr) !value_mod.Value {
@@ -695,7 +794,9 @@ pub const VM = struct {
 
     fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Value {
         if (std.mem.eql(u8, call.callee, "Import")) {
-            try self.stdout.print("Warning: Import subsystem is not yet integrated. Skipping import.\n", .{});
+            const writer = self.stdoutWriter();
+            try writer.print("Warning: Import subsystem is not yet integrated. Skipping import.\n", .{});
+            try writer.flush();
             return value_mod.Value{ .null = {} };
         }
         if (std.mem.eql(u8, call.callee, "printf")) {
@@ -704,8 +805,10 @@ pub const VM = struct {
                 if (val == .string) {
                     try self.printInterpolated(val.string);
                 } else {
-                    try val.print(self.stdout);
-                    try self.stdout.print("\n", .{});
+                    const writer = self.stdoutWriter();
+                    try val.print(writer);
+                    try writer.print("\n", .{});
+                    try writer.flush();
                 }
                 val.deinit(self.allocator);
             }
@@ -734,7 +837,10 @@ pub const VM = struct {
                 const prev_return_value = self.return_value;
                 const prev_has_error = self.has_error;
                 const prev_error_type = self.error_type;
+                const prev_function = self.current_function;
                 self.current_scope = new_scope;
+                self.current_function = func.name;
+                self.exposeProcess();
                 self.has_returned = false;
                 self.return_value = null;
                 self.has_error = false;
@@ -767,6 +873,7 @@ pub const VM = struct {
                 new_scope.deinit();
                 self.allocator.destroy(new_scope);
                 self.current_scope = prev_scope;
+                self.current_function = prev_function;
                 self.has_returned = prev_has_returned;
                 self.return_value = prev_return_value;
                 self.has_error = prev_has_error;
@@ -794,7 +901,8 @@ pub const VM = struct {
                     var piter = cd.public_fields.iterator();
                     while (piter.next()) |entry| {
                         const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
-                        try instance.fields.put(key_copy, entry.value_ptr.*);
+                        const cloned_val = try entry.value_ptr.*.clone(self.allocator);
+                        try instance.fields.put(key_copy, cloned_val);
                     }
                     var miter = cd.public_methods.iterator();
                     while (miter.next()) |entry| {
@@ -874,7 +982,7 @@ pub const VM = struct {
                     const i = idx.int;
                     const idx_usize: usize = @intCast(i);
                     if (idx_usize < s.len) {
-                        const ch = s[idx_usize..idx_usize + 1];
+                        const ch = try self.allocator.dupe(u8, s[idx_usize..idx_usize + 1]);
                         return value_mod.Value{ .string = ch };
                     }
                     self.raiseError("IndexError", "Index out of bounds");
@@ -897,7 +1005,9 @@ pub const VM = struct {
                 if (arg == .string) {
                     try self.printInterpolated(arg.string);
                 } else {
-                    try self.stdout.print("{any}\n", .{arg});
+                    const writer = self.stdoutWriter();
+                    try writer.print("{any}\n", .{arg});
+                    try writer.flush();
                 }
                 @constCast(&arg).deinit(self.allocator);
                 return value_mod.Value{ .null = {} };
@@ -932,20 +1042,17 @@ pub const VM = struct {
 
     fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
         var buf: [4096]u8 = undefined;
-        const stdin = std.io.getStdIn().reader();
-        const line = try stdin.readUntilDelimiterOrEof(buf[0..], '\n');
-        if (line) |l| {
-            const str = try self.allocator.dupe(u8, l);
-            if (ie.target_name.len > 0) {
-                const name_copy = try self.allocator.dupe(u8, ie.target_name);
-                try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = str });
-            }
-            if (ie.target) |target_expr| {
-                try self.assignValue(target_expr, value_mod.Value{ .string = str });
-            }
-            return value_mod.Value{ .string = str };
+        var stdin = std.Io.File.stdin().reader(self.io, &buf);
+        const line = try (&stdin.interface).takeDelimiterExclusive('\n');
+        const str = try self.allocator.dupe(u8, line);
+        if (ie.target_name.len > 0) {
+            const name_copy = try self.allocator.dupe(u8, ie.target_name);
+            try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = str });
         }
-        return value_mod.Value{ .string = "" };
+        if (ie.target) |target_expr| {
+            try self.assignValue(target_expr, value_mod.Value{ .string = str });
+        }
+        return value_mod.Value{ .string = str };
     }
 
     fn evaluateNow(self: *VM, ne: *ast.NowExpr) !value_mod.Value {
@@ -954,4 +1061,274 @@ pub const VM = struct {
         try self.assignValue(ne.target, val);
         return val;
     }
+
+    pub fn executeChunk(self: *VM, chunk: *bytecode.Chunk) !void {
+        self.exposeProcess();
+        if (chunk.functions.items.len == 0) return;
+        const main_fn = &chunk.functions.items[0];
+        try self.runFunction(main_fn, chunk);
+    }
+
+    fn runFunction(self: *VM, func: *bytecode.Function, chunk: *bytecode.Chunk) !void {
+        var stack: [1024]value_mod.Value = undefined;
+        var sp: usize = 0;
+        var ip: usize = 0;
+
+        while (ip < func.instructions.items.len) {
+            const inst = func.instructions.items[ip];
+            ip += 1;
+
+            switch (inst) {
+                .load_const => |idx| {
+                    const val = chunk.constants.items[idx];
+                    stack[sp] = val;
+                    sp += 1;
+                },
+                .load_var => |idx| {
+                    const name = chunk.constants.items[idx].string;
+                    const val = self.current_scope.variables.get(name) orelse value_mod.Value{ .null = {} };
+                    stack[sp] = val;
+                    sp += 1;
+                },
+                .store_var => |idx| {
+                    const name = chunk.constants.items[idx].string;
+                    const val = stack[sp - 1];
+                    const owned = try self.allocator.dupe(u8, name);
+                    try self.current_scope.variables.put(owned, val);
+                },
+                .binary => |op| {
+                    const rhs = stack[sp - 1];
+                    const lhs = stack[sp - 2];
+                    sp -= 2;
+                    const result = try self.binaryOp(op, lhs, rhs);
+                    stack[sp] = result;
+                    sp += 1;
+                },
+                .unary => |op| {
+                    const val = stack[sp - 1];
+                    sp -= 1;
+                    const result = try self.evaluateUnaryOp(op, val);
+                    stack[sp] = result;
+                    sp += 1;
+                },
+                .call => |arity| {
+                    const name_idx = @as(usize, @intCast(arity >> 16));
+                    const arg_count = @as(usize, @intCast(arity & 0xFFFF));
+                    const callee_name = chunk.constants.items[name_idx].string;
+                    const args = stack[sp - arg_count .. sp];
+                    const result = try self.callBuiltin(callee_name, args);
+                    sp -= arg_count;
+                    stack[sp] = result;
+                    sp += 1;
+                },
+                .ret => {
+                    return;
+                },
+                .print => {
+                    const val = stack[sp - 1];
+                    sp -= 1;
+                    try val.print(self.stdoutWriter());
+                    try self.stdoutWriter().print("\n", .{});
+                    try self.stdoutWriter().flush();
+                },
+                .input => {
+                    var buf: [4096]u8 = undefined;
+                    var stdin = std.Io.File.stdin().reader(self.io, &buf);
+                    const line = try (&stdin.interface).takeDelimiterExclusive('\n');
+                    const str = try self.allocator.dupe(u8, line);
+                    stack[sp] = value_mod.Value{ .string = str };
+                    sp += 1;
+                },
+                .now => {
+                    const ts = std.Io.Clock.now(.real, self.io);
+                    stack[sp] = value_mod.Value{ .int = @intCast(ts.nanoseconds) };
+                    sp += 1;
+                },
+                .len => {
+                    const val = stack[sp - 1];
+                    sp -= 1;
+                    const len: i64 = switch (val) {
+                        .string => |s| @intCast(s.len),
+                        .tuple => |t| @intCast(t.len),
+                        .list => |l| @intCast(l.len),
+                        .dict => |d| @intCast(d.count()),
+                        else => 0,
+                    };
+                    stack[sp] = value_mod.Value{ .int = len };
+                    sp += 1;
+                },
+                .memory => {
+                    stack[sp] = value_mod.Value{ .string = try self.allocator.dupe(u8, "0x7fff") };
+                    sp += 1;
+                },
+                .encode => {
+                    const val = stack[sp - 1];
+                    sp -= 1;
+                    const text = try std.fmt.allocPrint(self.allocator, "{any}", .{val});
+                    stack[sp] = value_mod.Value{ .string = text };
+                    sp += 1;
+                },
+                .catch_start => {},
+                .catch_end => {},
+                .import => {
+                    stack[sp] = value_mod.Value{ .null = {} };
+                    sp += 1;
+                },
+                .jump => |offset| {
+                    ip = @intCast(@as(isize, @intCast(ip)) + offset);
+                },
+                .jump_if_false => |offset| {
+                    const val = stack[sp - 1];
+                    sp -= 1;
+                    if (!try val.toBool()) {
+                        ip = @intCast(@as(isize, @intCast(ip)) + offset);
+                    }
+                },
+            }
+        }
+    }
+
+    fn binaryOp(self: *VM, op: u8, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        return switch (op) {
+            0 => self.addValues(lhs, rhs),
+            1 => self.subValues(lhs, rhs),
+            2 => self.mulValues(lhs, rhs),
+            3 => self.divValues(lhs, rhs),
+            4 => self.remValues(lhs, rhs),
+            5 => self.andValues(lhs, rhs),
+            6 => self.orValues(lhs, rhs),
+            7 => self.eqValues(lhs, rhs),
+            8 => self.neqValues(lhs, rhs),
+            9 => self.ltValues(lhs, rhs),
+            10 => self.gtValues(lhs, rhs),
+            11 => self.lteValues(lhs, rhs),
+            12 => self.gteValues(lhs, rhs),
+            else => error.TypeError,
+        };
+    }
+
+    fn evaluateUnaryOp(_: *VM, op: u8, val: value_mod.Value) !value_mod.Value {
+        return switch (op) {
+            0 => switch (val) {
+                .int => |i| value_mod.Value{ .int = -i },
+                .freal => |f| value_mod.Value{ .freal = -f },
+                else => error.TypeError,
+            },
+            1 => value_mod.Value{ .booling = !(try val.toBool()) },
+            else => error.TypeError,
+        };
+    }
+
+    fn callBuiltin(self: *VM, name: []const u8, args: []value_mod.Value) !value_mod.Value {
+        if (std.mem.eql(u8, name, "printf")) {
+            for (args) |arg| {
+                try arg.print(self.stdoutWriter());
+                try self.stdoutWriter().print(" ", .{});
+            }
+            try self.stdoutWriter().print("\n", .{});
+            return value_mod.Value{ .null = {} };
+        }
+        if (std.mem.eql(u8, name, "int")) {
+            return switch (args[0]) {
+                .int => |v| value_mod.Value{ .int = v },
+                .freal => |v| value_mod.Value{ .int = @intFromFloat(v) },
+                else => error.TypeError,
+            };
+        }
+        if (std.mem.eql(u8, name, "string")) {
+            return switch (args[0]) {
+                .string => |s| value_mod.Value{ .string = s },
+                .int => |v| value_mod.Value{ .string = try std.fmt.allocPrint(self.allocator, "{d}", .{v}) },
+                else => error.TypeError,
+            };
+        }
+        return error.UndefinedFunction;
+    }
+
+    fn addValues(self: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        if (lhs == .int and rhs == .int) return value_mod.Value{ .int = lhs.int + rhs.int };
+        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .freal = lhs.freal + rhs.freal };
+        if (lhs == .string and rhs == .string) {
+            const result = try std.mem.concat(self.allocator, u8, &.{ lhs.string, rhs.string });
+            return value_mod.Value{ .string = result };
+        }
+        return error.TypeError;
+    }
+
+    fn subValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        if (lhs == .int and rhs == .int) return value_mod.Value{ .int = lhs.int - rhs.int };
+        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .freal = lhs.freal - rhs.freal };
+        return error.TypeError;
+    }
+
+    fn mulValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        if (lhs == .int and rhs == .int) return value_mod.Value{ .int = lhs.int * rhs.int };
+        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .freal = lhs.freal * rhs.freal };
+        return error.TypeError;
+    }
+
+    fn divValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        if (lhs == .int and rhs == .int) return value_mod.Value{ .int = @divTrunc(lhs.int, rhs.int) };
+        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .freal = lhs.freal / rhs.freal };
+        return error.TypeError;
+    }
+
+    fn remValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        if (lhs == .int and rhs == .int) return value_mod.Value{ .int = @rem(lhs.int, rhs.int) };
+        return error.TypeError;
+    }
+
+    fn andValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        _ = lhs;
+        _ = rhs;
+        return error.TypeError;
+    }
+
+    fn orValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        _ = lhs;
+        _ = rhs;
+        return error.TypeError;
+    }
+
+    fn eqValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        const equal = switch (lhs) {
+            .int => |li| if (rhs == .int) li == rhs.int else false,
+            .freal => |lf| if (rhs == .freal) lf == rhs.freal else false,
+            .string => |ls| if (rhs == .string) std.mem.eql(u8, ls, rhs.string) else false,
+            .booling => |lb| if (rhs == .booling) lb == rhs.booling else false,
+            .null => rhs == .null,
+            else => false,
+        };
+        return value_mod.Value{ .booling = equal };
+    }
+
+    fn neqValues(self: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        const equal = try self.eqValues(lhs, rhs);
+        return value_mod.Value{ .booling = !equal.booling };
+    }
+
+    fn ltValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        if (lhs == .int and rhs == .int) return value_mod.Value{ .booling = lhs.int < rhs.int };
+        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .booling = lhs.freal < rhs.freal };
+        return error.TypeError;
+    }
+
+    fn gtValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        if (lhs == .int and rhs == .int) return value_mod.Value{ .booling = lhs.int > rhs.int };
+        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .booling = lhs.freal > rhs.freal };
+        return error.TypeError;
+    }
+
+    fn lteValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        if (lhs == .int and rhs == .int) return value_mod.Value{ .booling = lhs.int <= rhs.int };
+        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .booling = lhs.freal <= rhs.freal };
+        return error.TypeError;
+    }
+
+    fn gteValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        if (lhs == .int and rhs == .int) return value_mod.Value{ .booling = lhs.int >= rhs.int };
+        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .booling = lhs.freal >= rhs.freal };
+        return error.TypeError;
+    }
 };
+

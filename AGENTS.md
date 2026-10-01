@@ -91,3 +91,17 @@ When writing, refactoring, or generating code blocks within the `/workspaces/com
 3. **NEVER** generate code modifications without reviewing the latest target output blocks defined in `/root/.config/kilo/CHECKPOINT.md`.
 
 alway  use VietNamese
+
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues, accessed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Five canonical roles mapped to default labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context. See `docs/agents/domain.md`.
