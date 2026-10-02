@@ -825,3 +825,22 @@ test "format_no_raw_tagged_union" {
         return error.TestRawUnionLeaked;
     }
 }
+
+test "func_decl_with_untyped_params_parses" {
+    const gpa = std.testing.allocator;
+    try runSource(gpa, "Show(x, y) [ <return>(1) ]");
+}
+
+test "func_decl_with_typed_params_parses" {
+    const gpa = std.testing.allocator;
+    try runSource(gpa, "Add(int~a, int~b) [ <return>(a) ]");
+}
+
+test "method_call_receives_arguments_at_runtime" {
+    const gpa = std.testing.allocator;
+    try expectOutput(
+        gpa,
+        "G !class [ string(\"\")~a Show(x, y) [ <printf>^(\"got {x} {y}\") ] ] ~G~g $g~Show(11, 22)",
+        "got 11 22",
+    );
+}
