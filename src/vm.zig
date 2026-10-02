@@ -75,6 +75,8 @@ fn readInputLine(self: *VM) ![]const u8 {
     return result[0 .. result.len - 1];
 }
 
+const InputError = error{ EndOfInput };
+
     fn stdoutWriter(self: *VM) *std.Io.Writer {
         if (self.output_writer) |writer| return writer;
         if (self.stdout_writer == null) {
@@ -1103,7 +1105,10 @@ fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
     }
 
 fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
-    const line = try self.readInputLine();
+    const line = self.readInputLine() catch |err| switch (err) {
+        error.EndOfStream => return InputError.EndOfInput,
+        else => |e| return e,
+    };
     if (ie.target_name.len > 0) {
         const name_copy = try self.allocator.dupe(u8, ie.target_name);
         const owned = try self.allocator.dupe(u8, line);
