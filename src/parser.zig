@@ -874,9 +874,12 @@ pub const Parser = struct {
             return ast.Statement{ .expr = e };
         } else if (std.mem.eql(u8, tag, "memory")) {
             std.debug.print("DBG memory tag current={any}\n", .{self.current()});
+            std.debug.print("DBG mem: before caret current={any}\\n", .{self.current()});
             if (self.current() == .caret) {
                 _ = self.advance();
+                std.debug.print("DBG mem: after caret advance current={any}\\n", .{self.current()});
                 const expr = try self.parseExpression();
+                std.debug.print("DBG mem: after parseExpression current={any}\\n", .{self.current()});
                 const mo = try self.allocator.create(ast.MemoryOp);
                 mo.* = ast.MemoryOp{
                     .kind = .address,

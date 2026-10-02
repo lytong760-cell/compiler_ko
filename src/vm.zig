@@ -1111,6 +1111,7 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
         error.EndOfStream => return error.EndOfInput,
         else => |e| return e,
     };
+    errdefer self.allocator.free(line);
     if (ie.target_name.len > 0) {
         const name_copy = try self.allocator.dupe(u8, ie.target_name);
         const owned = try self.allocator.dupe(u8, line);
