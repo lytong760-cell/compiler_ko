@@ -343,7 +343,6 @@ pub const Parser = struct {
             const tag = try self.parseSystemTagName();
             try self.expectGT();
 
-            std.debug.print("DBG memory tag current={any}\n", .{self.current()});
             if (self.current() == .caret) {
                 _ = self.advance();
                 try self.expectLParen();
