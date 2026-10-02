@@ -1104,19 +1104,21 @@ fn readInputLine(self: *VM) ![]const u8 {
         return value_mod.Value{ .null = {} };
     }
 
-    fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
-        const line = try self.readInputLine();
-        if (ie.target_name.len > 0) {
-            const name_copy = try self.allocator.dupe(u8, ie.target_name);
-            const owned = try self.allocator.dupe(u8, line);
-            try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = owned });
-        }
-        if (ie.target) |target_expr| {
-            const owned = try self.allocator.dupe(u8, line);
-            try self.assignValue(target_expr, value_mod.Value{ .string = owned });
-        }
-        return value_mod.Value{ .string = try self.allocator.dupe(u8, line) };
+fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
+    const line = try self.readInputLine();
+    std.debug.print("evaluateInput: line=|{s}| len={d} target_name=|{s}|\n", .{ line, line.len, ie.target_name });
+    if (ie.target_name.len > 0) {
+        const name_copy = try self.allocator.dupe(u8, ie.target_name);
+        const owned = try self.allocator.dupe(u8, line);
+        try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = owned });
+        std.debug.print("evaluateInput: stored {s}={s}\n", .{ ie.target_name, owned });
     }
+    if (ie.target) |target_expr| {
+        const owned = try self.allocator.dupe(u8, line);
+        try self.assignValue(target_expr, value_mod.Value{ .string = owned });
+    }
+    return value_mod.Value{ .string = try self.allocator.dupe(u8, line) };
+}
 
     fn evaluateNow(self: *VM, ne: *ast.NowExpr) !value_mod.Value {
         const val = try self.evaluateExpression(ne.expr);
