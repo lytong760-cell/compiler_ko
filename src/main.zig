@@ -404,6 +404,10 @@ fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, sou
     }
 
     virtual_machine.execute(program) catch |err| {
+        if (err == error.EndOfInput) {
+            std.debug.print("InputError: end of input\n", .{});
+            return 4;
+        }
         std.debug.print("Runtime error: {any}\n", .{err});
         return 3;
     };
