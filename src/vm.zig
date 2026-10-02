@@ -1107,7 +1107,7 @@ fn zigErrorToKoType(err: anyerror) []const u8 {
 
 fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
     const line = self.readInputLine() catch |err| switch (err) {
-        error.EndOfStream => return InputError.EndOfInput,
+        error.EndOfStream => return error.EndOfInput,
         else => |e| return e,
     };
     if (ie.target_name.len > 0) {
