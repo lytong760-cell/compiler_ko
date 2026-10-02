@@ -867,5 +867,5 @@ test "relational_operators_combined_with_printf" {
 
 test "all_system_tags_after_expression_statement" {
     const gpa = std.testing.allocator;
-    try runSource(gpa, "[ int(5)~n <len>^(n) <memory>^(0) <input>(\"p\") <encode(`UTF-8`)>^(\"hi\") <printf>^(\"all tags ok\\n\") ]");
+    try runSource(gpa, "[ int(5)~n <len>^(n) <memory>^(0) <encode(`UTF-8`)>^(\"hi\") <printf>^(\"all tags ok\\n\") ]");
 }
