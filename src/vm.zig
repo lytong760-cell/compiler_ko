@@ -147,7 +147,6 @@ fn readInputLine(self: *VM) ![]const u8 {
                 continue;
             }
 self.executeStatement(stmt) catch |err| {
-    std.debug.print("executeStatement catch: {any}\n", .{err});
     self.raiseError(VM.zigErrorToKoType(err), @errorName(err));
 };
         }

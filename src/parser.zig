@@ -343,6 +343,7 @@ pub const Parser = struct {
             const tag = try self.parseSystemTagName();
             try self.expectGT();
 
+            std.debug.print("DBG memory tag current={any}\n", .{self.current()});
             if (self.current() == .caret) {
                 _ = self.advance();
                 try self.expectLParen();
@@ -872,6 +873,7 @@ pub const Parser = struct {
             e.* = .{ .now_expr = ne };
             return ast.Statement{ .expr = e };
         } else if (std.mem.eql(u8, tag, "memory")) {
+            std.debug.print("DBG memory tag current={any}\n", .{self.current()});
             if (self.current() == .caret) {
                 _ = self.advance();
                 const expr = try self.parseExpression();
