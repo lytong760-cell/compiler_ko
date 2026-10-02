@@ -9,6 +9,7 @@ jobs:
   build:
     name: Build ${{ matrix.language }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     strategy:
       fail-fast: false
@@ -32,12 +33,23 @@ jobs:
         if: matrix.language == 'zig'
         uses: mlugg/setup-zig@v2
         with:
-          version: 0.15.2
+          version: 0.16.0
 
       - name: Build Zig
         if: matrix.language == 'zig'
         run: |
           zig build
+
+      - name: Smoke Test Zig
+        if: matrix.language == 'zig'
+        run: |
+          set -o pipefail
+          ./zig-out/bin/ko run examples/simple.ko | grep -q "Hello World"
+
+      - name: Test Zig
+        if: matrix.language == 'zig'
+        run: |
+          timeout 300 zig build test
 
       # -------------------------
       # Python
@@ -97,7 +109,7 @@ jobs:
       - name: Build C
         if: matrix.language == 'c'
         run: |
-          find . -name "*.c" -print
+          find . -name "*.c" -not -path './zig/*' -print
           
           if [ -f Makefile ]; then
             make
@@ -106,14 +118,14 @@ jobs:
             cmake --build build
           else
             mkdir -p build
-            find . -name "*.c" -print0 | \
+            find . -name "*.c" -not -path './zig/*' -print0 | \
               xargs -0 gcc -Wall -Wextra -O2 -o build/program
           fi
 
       - name: Build C++
         if: matrix.language == 'cpp'
         run: |
-          find . -name "*.cpp" -print
+          find . -name "*.cpp" -not -path './zig/*' -print
           
           if [ -f Makefile ]; then
             make
@@ -122,7 +134,7 @@ jobs:
             cmake --build build
           else
             mkdir -p build
-            find . -name "*.cpp" -print0 | \
+            find . -name "*.cpp" -not -path './zig/*' -print0 | \
               xargs -0 g++ -Wall -Wextra -O2 -o build/program
           fi
 

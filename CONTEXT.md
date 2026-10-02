@@ -22,22 +22,31 @@ Current milestone: issue-driven delivery. Each GitHub issue defines one bounded 
 - `src/module/` - Example shared-library modules (Os, Random, Website)
 - `testing/` - Test fixtures and Zig test files
 - `build.zig` - Zig build system configuration
+- `build.zig.zon` - Package manifest, pins `minimum_zig_version`
 
 ## Issue map
 
 Active work is tracked in GitHub Issues. Canonical issue references:
 
-- #5 CLI Framework & `ko <file>` / `ko run <code>`
+- #5 CLI Framework & `ko <file>` / `ko run <code>` (closed)
 - #6 Lexer/AST Refactor + Bytecode VM
-- #7 REPL (`ko repl`)
-- #8 Error Reporting: File/Line/Column + Multi-error Collect
+- #10 REPL (`ko repl`)
+- #11 Error Reporting: File/Line/Column + Multi-error Collect
 - #9 Plugin Loader + `Import` Subsystem (shared lib)
-- #10 Completion Scripts (bash/zsh/fish)
-- #11 Stdlib v1: I/O + String + Math
-- #12 CONTEXT.md Glossary + Architecture
+- #8 Completion Scripts (bash/zsh/fish)
+- #12 Stdlib v1: I/O + String + Math
+- #4 CONTEXT.md Glossary + Architecture
 - #13 Loop Optimization Subsystem (shared lib)
-- #14 Registry Client + `ko install/list/search`
+- #14 Registry Client + `ko install/list/search` (closed)
 - #15 `ko build` -> Native Binary
+- #16 Test Baseline Repair — unblock `zig build test`
+- #17 `ko run <file>` runs a file path, not just inline code
+- #18 Wire Bytecode Backend Into the Execution Pipeline
+- #19 Value Formatting: `<printf>` and `{name}` Print Raw Tagged Unions
+- #20 Method Call Drops All Arguments
+- #21 Second `<input>` in One Program Fails
+- #22 Repo Hygiene: Drop Checked-in `zig/` Distribution and Build Artifacts
+- #23 Zig Version Drift Across CI, Dockerfile, and Docs
 
 ## Glossary
 
@@ -118,10 +127,18 @@ Current modules:
 
 1. Source text -> Lexer -> Token list
 2. Token list -> Parser -> AST
-3. AST -> Compiler -> Bytecode chunk
-4. Bytecode chunk -> VM -> Runtime values and side effects
+3. AST -> VM (`execute`) -> Runtime values and side effects
 
-The VM can execute bytecode directly via `executeChunk`, or fall back to AST walking via `execute` for features not yet covered by the compiler.
+The compiler (`src/compiler.zig`) and bytecode (`src/bytecode.zig`) modules are defined but not wired into the execution pipeline. `Compiler` has zero importers and `VM.executeChunk` is never called from `main.zig`; the live path is AST walking via `VM.execute`.
+
+## CLI argument resolution
+
+`ko run <arg>` accepts either a file path or inline code. The rule is: `arg` is treated as a
+file path when it ends in `.ko` or when it resolves to an existing regular file; otherwise it
+is treated as inline source code. A `.ko` argument that does not exist is reported as a missing
+file rather than a parse error.
+
+`ko <arg>` (no subcommand) always treats `arg` as a file path.
 
 ## Exit codes
 

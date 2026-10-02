@@ -4,6 +4,50 @@ const parser = @import("src").parser;
 const vm = @import("src").vm;
 const ast = @import("src").ast;
 
+fn executeProgram(allocator: std.mem.Allocator, program: []ast.Statement, input: ?[]const u8) !void {
+    var sink_buffer: [1]u8 = undefined;
+    var sink: std.Io.Writer.Discarding = .init(&sink_buffer);
+
+    var virtual_machine = try vm.VM.init(allocator, std.testing.io, "test.ko");
+    defer virtual_machine.deinit();
+    virtual_machine.setOutputWriter(&sink.writer);
+    if (input) |buf| virtual_machine.setInputBuffer(buf);
+
+    try virtual_machine.execute(program);
+}
+
+fn runSourceCapturing(allocator: std.mem.Allocator, source: []const u8, out_buf: []u8) ![]const u8 {
+    var lx = lexer.Lexer.init(source);
+    const tokens = try lx.tokenize(allocator);
+    defer allocator.free(tokens);
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+
+    var pr = parser.Parser.init(allocator, &arena, tokens);
+    const program = try pr.parse();
+    defer {
+        for (program) |*stmt| stmt.deinit();
+    }
+
+    var out: std.Io.Writer = .fixed(out_buf);
+    var virtual_machine = try vm.VM.init(allocator, std.testing.io, "test.ko");
+    defer virtual_machine.deinit();
+    virtual_machine.setOutputWriter(&out);
+
+    try virtual_machine.execute(program);
+    return out.buffered();
+}
+
+fn expectOutput(allocator: std.mem.Allocator, source: []const u8, expected: []const u8) !void {
+    var buf: [4096]u8 = undefined;
+    const got = try runSourceCapturing(allocator, source, &buf);
+    if (std.mem.indexOf(u8, got, expected) == null) {
+        std.debug.print("\nexpected to find: {s}\nactual output: {s}\n", .{ expected, got });
+        return error.TestExpectedOutput;
+    }
+}
+
 fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
     var lx = lexer.Lexer.init(source);
     const tokens = try lx.tokenize(allocator);
@@ -18,10 +62,24 @@ fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
         for (program) |*stmt| stmt.deinit();
     }
 
-    var virtual_machine = try vm.VM.init(allocator, std.testing.io, "test.ko");
-    defer virtual_machine.deinit();
+    try executeProgram(allocator, program, null);
+}
 
-    try virtual_machine.execute(program);
+fn runSourceWithInput(allocator: std.mem.Allocator, source: []const u8, input: []const u8) !void {
+    var lx = lexer.Lexer.init(source);
+    const tokens = try lx.tokenize(allocator);
+    defer allocator.free(tokens);
+
+    var arena = std.heap.ArenaAllocator.init(allocator);
+    defer arena.deinit();
+
+    var pr = parser.Parser.init(allocator, &arena, tokens);
+    const program = try pr.parse();
+    defer {
+        for (program) |*stmt| stmt.deinit();
+    }
+
+    try executeProgram(allocator, program, input);
 }
 
 test "test_0001" {
@@ -358,12 +416,12 @@ test "test_2401" {
 
 test "test_2500" {
     const gpa = std.testing.allocator;
-    try runSource(gpa, "[ <input>(\"test\")&=string(\"\")~s ]");
+    try runSourceWithInput(gpa, "[ <input>(\"test\")&=string(\"\")~s ]", "test input\n");
 }
 
 test "test_2501" {
     const gpa = std.testing.allocator;
-    try runSource(gpa, "[ string(\"hello\")~s <input>(s) ]");
+    try runSourceWithInput(gpa, "[ string(\"hello\")~s <input>(s) ]", "typed input\n");
 }
 
 test "test_2600" {
@@ -504,7 +562,7 @@ test "test_nested_if_else_006" {
 
 test "test_input_target_expr" {
     const gpa = std.testing.allocator;
-    try runSource(gpa, "[ string(\"\")~s <input>(s) ]");
+    try runSourceWithInput(gpa, "[ string(\"\")~s <input>(s) ]", "target expr input\n");
 }
 
 test "test_priority_order" {
@@ -515,4 +573,255 @@ test "test_priority_order" {
 test "test_process_manager_function" {
     const gpa = std.testing.allocator;
     try runSource(gpa, "Func() [ <return>(1) ] [ int(~Func())~r ]");
+}
+
+test "test_method_call_args_preserved" {
+    const gpa = std.testing.allocator;
+    var lx = lexer.Lexer.init("$inst~meth(1, 2)");
+    const tokens = try lx.tokenize(gpa);
+    defer gpa.free(tokens);
+
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+
+    var pr = parser.Parser.init(gpa, &arena, tokens);
+    const program = try pr.parse();
+    defer {
+        for (program) |*stmt| stmt.deinit();
+    }
+
+    try std.testing.expectEqual(program.len, 1);
+
+    const call_expr = blk: {
+        switch (program[0]) {
+            .expr => |e| break :blk e,
+            else => return error.TestExpectedExpr,
+        }
+    };
+
+    const call = blk: {
+        switch (call_expr.*) {
+            .call => |c| break :blk c,
+            else => return error.TestExpectedCall,
+        }
+    };
+
+    try std.testing.expectEqualStrings(call.callee, "meth");
+    try std.testing.expect(call.target != null);
+    try std.testing.expectEqual(call.args.len, 2);
+
+    if (call.target) |target_expr| {
+        const ma = blk: {
+            switch (target_expr.*) {
+                .member_access => |m| break :blk m,
+                else => return error.TestExpectedMemberAccess,
+            }
+        };
+        try std.testing.expectEqualStrings(ma.member, "meth");
+        switch (ma.object.*) {
+            .identifier => |name| {
+                try std.testing.expectEqualStrings(name, "inst");
+            },
+            else => return error.TestExpectedIdentifier,
+        }
+    }
+
+    switch (call.args[0]) {
+        .literal => |lit| {
+            try std.testing.expectEqual(lit.kind, ast.Literal.Kind.int);
+            try std.testing.expectEqual(lit.int_value, 1);
+        },
+        else => return error.TestExpectedLiteral,
+    }
+    switch (call.args[1]) {
+        .literal => |lit| {
+            try std.testing.expectEqual(lit.kind, ast.Literal.Kind.int);
+            try std.testing.expectEqual(lit.int_value, 2);
+        },
+        else => return error.TestExpectedLiteral,
+    }
+}
+
+test "test_method_call_three_args" {
+    const gpa = std.testing.allocator;
+    var lx = lexer.Lexer.init("$inst~meth(10, 20, 30)");
+    const tokens = try lx.tokenize(gpa);
+    defer gpa.free(tokens);
+
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+
+    var pr = parser.Parser.init(gpa, &arena, tokens);
+    const program = try pr.parse();
+    defer {
+        for (program) |*stmt| stmt.deinit();
+    }
+
+    try std.testing.expectEqual(program.len, 1);
+
+    const call = blk: {
+        switch (program[0]) {
+            .expr => |e| switch (e.*) {
+                .call => |c| break :blk c,
+                else => return error.TestExpectedCall,
+            },
+            else => return error.TestExpectedExpr,
+        }
+    };
+
+    try std.testing.expectEqualStrings(call.callee, "meth");
+    try std.testing.expect(call.target != null);
+    try std.testing.expectEqual(call.args.len, 3);
+
+    const expected = [_]i64{ 10, 20, 30 };
+    for (call.args, 0..) |arg, i| {
+        switch (arg) {
+            .literal => |lit| {
+                try std.testing.expectEqual(lit.kind, ast.Literal.Kind.int);
+                try std.testing.expectEqual(lit.int_value, expected[i]);
+            },
+            else => return error.TestExpectedLiteral,
+        }
+    }
+}
+
+test "test_sigil_call_has_no_target" {
+    const gpa = std.testing.allocator;
+    var lx = lexer.Lexer.init("~f(1, 2)");
+    const tokens = try lx.tokenize(gpa);
+    defer gpa.free(tokens);
+
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+
+    var pr = parser.Parser.init(gpa, &arena, tokens);
+    const program = try pr.parse();
+    defer {
+        for (program) |*stmt| stmt.deinit();
+    }
+
+    try std.testing.expectEqual(program.len, 1);
+
+    const call = blk: {
+        switch (program[0]) {
+            .expr => |e| switch (e.*) {
+                .call => |c| break :blk c,
+                else => return error.TestExpectedCall,
+            },
+            else => return error.TestExpectedExpr,
+        }
+    };
+
+    try std.testing.expectEqualStrings(call.callee, "f");
+    try std.testing.expect(call.target == null);
+    try std.testing.expectEqual(call.args.len, 2);
+}
+
+test "test_plain_call_has_no_target" {
+    const gpa = std.testing.allocator;
+    var lx = lexer.Lexer.init("f(1, 2)");
+    const tokens = try lx.tokenize(gpa);
+    defer gpa.free(tokens);
+
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+
+    var pr = parser.Parser.init(gpa, &arena, tokens);
+    const program = try pr.parse();
+    defer {
+        for (program) |*stmt| stmt.deinit();
+    }
+
+    try std.testing.expectEqual(program.len, 1);
+
+    const call = blk: {
+        switch (program[0]) {
+            .expr => |e| switch (e.*) {
+                .call => |c| break :blk c,
+                else => return error.TestExpectedCall,
+            },
+            else => return error.TestExpectedExpr,
+        }
+    };
+
+    try std.testing.expectEqualStrings(call.callee, "f");
+    try std.testing.expect(call.target == null);
+    try std.testing.expectEqual(call.args.len, 2);
+}
+
+test "test_class_member_access_parse_only" {
+    const gpa = std.testing.allocator;
+    var lx = lexer.Lexer.init("Greeter !class [ string(\"hi\")~greeting ] [ ~Greeter~g ] [ $g~greeting ]");
+    const tokens = try lx.tokenize(gpa);
+    defer gpa.free(tokens);
+
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+
+    var pr = parser.Parser.init(gpa, &arena, tokens);
+    const program = try pr.parse();
+    defer {
+        for (program) |*stmt| stmt.deinit();
+    }
+
+    try std.testing.expectEqual(program.len, 3);
+    const member_access = blk: {
+        const block_stmt = switch (program[2]) {
+            .block => |b| b,
+            else => return error.TestExpectedBlock,
+        };
+        try std.testing.expectEqual(block_stmt.body.len, 1);
+        const expr_stmt = switch (block_stmt.body[0]) {
+            .expr => |e| e,
+            else => return error.TestExpectedExpr,
+        };
+        switch (expr_stmt.*) {
+            .member_access => |ma| break :blk ma,
+            else => return error.TestExpectedMemberAccess,
+        }
+    };
+
+    const obj = blk: {
+        switch (member_access.object.*) {
+            .identifier => |name| break :blk name,
+            else => return error.TestExpectedIdentifier,
+        }
+    };
+    try std.testing.expectEqualStrings(obj, "g");
+    try std.testing.expectEqualStrings(member_access.member, "greeting");
+}
+
+test "format_int_interpolation" {
+    const gpa = std.testing.allocator;
+    try expectOutput(gpa, "[ int(30)~n <printf>^(\"Sum: {n}\") ]", "Sum: 30");
+}
+
+test "format_int_printf_tag" {
+    const gpa = std.testing.allocator;
+    try expectOutput(gpa, "[ int(42)~n <printf>^(n) ]", "42");
+}
+
+test "format_string_interpolation" {
+    const gpa = std.testing.allocator;
+    try expectOutput(gpa, "[ string(\"abc\")~s <printf>^(\"v={s}\") ]", "v=abc");
+}
+
+test "format_freal_interpolation" {
+    const gpa = std.testing.allocator;
+    try expectOutput(gpa, "[ freal(2)~f <printf>^(\"f={f}\") ]", "f=2");
+}
+
+test "format_booling_interpolation" {
+    const gpa = std.testing.allocator;
+    try expectOutput(gpa, "[ booling(\\True\\)~b <printf>^(\"b={b}\") ]", "b=True");
+}
+
+test "format_no_raw_tagged_union" {
+    const gpa = std.testing.allocator;
+    var buf: [4096]u8 = undefined;
+    const got = try runSourceCapturing(gpa, "[ int(30)~n <printf>^(\"Sum: {n}\") ]", &buf);
+    if (std.mem.indexOf(u8, got, ".{") != null or std.mem.indexOf(u8, got, ".int") != null) {
+        std.debug.print("\nraw union leaked into output: {s}\n", .{got});
+        return error.TestRawUnionLeaked;
+    }
 }

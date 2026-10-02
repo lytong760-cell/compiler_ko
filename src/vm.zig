@@ -10,6 +10,7 @@ pub const VM = struct {
     io: std.Io,
     stdout_buf: [4096]u8,
     stdout_writer: ?std.Io.File.Writer,
+    output_writer: ?*std.Io.Writer,
     return_value: ?value_mod.Value,
     has_returned: bool,
     error_type: ?[]const u8,
@@ -17,6 +18,8 @@ pub const VM = struct {
     skip_elif_else: bool,
     file_path: []const u8,
     current_function: []const u8,
+    stdin_buf: [4096]u8,
+    stdin_reader: ?std.Io.Reader,
 
     pub fn init(allocator: std.mem.Allocator, io: std.Io, file_path: []const u8) !VM {
         const global_scope = try allocator.create(value_mod.Scope);
@@ -29,6 +32,7 @@ pub const VM = struct {
             .io = io,
             .stdout_buf = undefined,
             .stdout_writer = null,
+            .output_writer = null,
             .return_value = null,
             .has_returned = false,
             .error_type = null,
@@ -36,10 +40,36 @@ pub const VM = struct {
             .skip_elif_else = false,
             .file_path = duped,
             .current_function = "main",
+            .stdin_buf = undefined,
+            .stdin_reader = null,
         };
     }
 
+    /// Replace the source `<input>` reads from. Tests use this to stay hermetic;
+    /// the default remains the real process stdin.
+    pub fn setInputBuffer(self: *VM, buffer: []const u8) void {
+        self.stdin_reader = std.Io.Reader.fixed(buffer);
+    }
+
+    /// Redirect everything the VM writes. Under `zig build test` the real stdout is
+    /// the test-runner protocol channel, so program output must not go there.
+    pub fn setOutputWriter(self: *VM, writer: *std.Io.Writer) void {
+        self.output_writer = writer;
+    }
+
+    fn readInputLine(self: *VM) ![]const u8 {
+        if (self.stdin_reader) |*reader| {
+            return reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
+                error.EndOfStream => self.stdin_reader.?.buffered(),
+                else => return err,
+            };
+        }
+        var file_reader = std.Io.File.stdin().reader(self.io, &self.stdin_buf);
+        return (&file_reader.interface).takeDelimiterExclusive('\n');
+    }
+
     fn stdoutWriter(self: *VM) *std.Io.Writer {
+        if (self.output_writer) |writer| return writer;
         if (self.stdout_writer == null) {
             self.stdout_writer = std.Io.File.stdout().writer(self.io, &self.stdout_buf);
         }
@@ -47,7 +77,10 @@ pub const VM = struct {
     }
 
     fn appendValueToString(self: *VM, out: *std.array_list.Managed(u8), val: value_mod.Value) !void {
-        const text = try std.fmt.allocPrint(self.allocator, "{any}", .{val});
+        var aw: std.Io.Writer.Allocating = .init(self.allocator);
+        errdefer aw.deinit();
+        try val.print(&aw.writer);
+        const text = try aw.toOwnedSlice();
         try out.appendSlice(text);
         self.allocator.free(text);
     }
@@ -815,7 +848,7 @@ pub const VM = struct {
             return value_mod.Value{ .null = {} };
         }
 
-        const callee_val = try self.evaluateIdentifier(call.callee);
+        const callee_val = if (call.target) |target_expr| try self.evaluateExpression(target_expr) else try self.evaluateIdentifier(call.callee);
         switch (callee_val) {
             .function => |func| {
                 if (call.args.len != func.params.len) {
@@ -1006,7 +1039,8 @@ pub const VM = struct {
                     try self.printInterpolated(arg.string);
                 } else {
                     const writer = self.stdoutWriter();
-                    try writer.print("{any}\n", .{arg});
+                    try arg.print(writer);
+                    try writer.print("\n", .{});
                     try writer.flush();
                 }
                 @constCast(&arg).deinit(self.allocator);
@@ -1041,18 +1075,17 @@ pub const VM = struct {
     }
 
     fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
-        var buf: [4096]u8 = undefined;
-        var stdin = std.Io.File.stdin().reader(self.io, &buf);
-        const line = try (&stdin.interface).takeDelimiterExclusive('\n');
-        const str = try self.allocator.dupe(u8, line);
+        const line = try self.readInputLine();
         if (ie.target_name.len > 0) {
             const name_copy = try self.allocator.dupe(u8, ie.target_name);
-            try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = str });
+            const owned = try self.allocator.dupe(u8, line);
+            try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = owned });
         }
         if (ie.target) |target_expr| {
-            try self.assignValue(target_expr, value_mod.Value{ .string = str });
+            const owned = try self.allocator.dupe(u8, line);
+            try self.assignValue(target_expr, value_mod.Value{ .string = owned });
         }
-        return value_mod.Value{ .string = str };
+        return value_mod.Value{ .string = try self.allocator.dupe(u8, line) };
     }
 
     fn evaluateNow(self: *VM, ne: *ast.NowExpr) !value_mod.Value {
@@ -1132,9 +1165,7 @@ pub const VM = struct {
                     try self.stdoutWriter().flush();
                 },
                 .input => {
-                    var buf: [4096]u8 = undefined;
-                    var stdin = std.Io.File.stdin().reader(self.io, &buf);
-                    const line = try (&stdin.interface).takeDelimiterExclusive('\n');
+                    const line = try self.readInputLine();
                     const str = try self.allocator.dupe(u8, line);
                     stack[sp] = value_mod.Value{ .string = str };
                     sp += 1;
@@ -1164,7 +1195,10 @@ pub const VM = struct {
                 .encode => {
                     const val = stack[sp - 1];
                     sp -= 1;
-                    const text = try std.fmt.allocPrint(self.allocator, "{any}", .{val});
+                    var aw: std.Io.Writer.Allocating = .init(self.allocator);
+                    errdefer aw.deinit();
+                    try val.print(&aw.writer);
+                    const text = try aw.toOwnedSlice();
                     stack[sp] = value_mod.Value{ .string = text };
                     sp += 1;
                 },

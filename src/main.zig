@@ -69,13 +69,12 @@ fn printUsage(it: std.process.Init) void {
     const writer = &file_writer.interface;
     writer.print(
         \\Usage: ko <file.ko>
-        \\       ko run <code>
+        \\       ko run <file|code>
         \\       ko -install <library>
         \\       ko -list
         \\       ko -search <query>
         \\       ko --version
         \\       ko --help
-        \\       ko --generate-completion <bash|zsh|fish>
     , .{}) catch {};
     writer.flush() catch {};
 }
@@ -86,23 +85,21 @@ fn printHelp(it: std.process.Init) void {
     const writer = &file_writer.interface;
     writer.print(
         \\Usage: ko <file.ko>
-        \\       ko run <code>
+        \\       ko run <file|code>
         \\       ko -install <library>
         \\       ko -list
         \\       ko -search <query>
         \\       ko --version
         \\       ko --help
-        \\       ko --generate-completion <bash|zsh|fish>
         \\
         \\Commands:
         \\  <file.ko>       Run a .ko source file
-        \\  run <code>      Run inline .ko code
+        \\  run <file|code>  Run a .ko source file, or run the argument as inline .ko code when it is not a file path (a .ko suffix or an existing file is treated as a file path)
         \\  -install <lib>  Install a library from the Module Store
         \\  -list           List all available libraries
         \\  -search <query> Search libraries by name
         \\  --version       Print compiler version
         \\  --help          Print this help message
-        \\  --generate-completion <shell>  Output shell completion script
     , .{}) catch {};
     writer.flush() catch {};
 }
@@ -236,23 +233,42 @@ fn mainInner(it: std.process.Init) !u8 {
             writer.flush() catch {};
             return 1;
         }
-        const code = args[2];
-        return try executeCode(allocator, it.io, code, "<repl>");
+        const arg = args[2];
+        if (isFilePath(it.io, arg)) {
+            const source = readSourceFile(allocator, it.io, arg) catch return 1;
+            defer allocator.free(source);
+            return try executeCode(allocator, it.io, source, arg);
+        }
+        return try executeCode(allocator, it.io, arg, "<repl>");
     }
 
     // Default: treat first arg as a .ko file path
     const file_path = args[1];
-    const source = std.Io.Dir.cwd().readFileAlloc(it.io, file_path, allocator, .limited(10 * 1024 * 1024)) catch |err| {
-        var buf: [4096]u8 = undefined;
-        var file_writer = std.Io.File.stderr().writer(it.io, &buf);
-        const writer = &file_writer.interface;
-        writer.print("Error reading file: {any}\n", .{err}) catch {};
-        writer.flush() catch {};
-        return 1;
-    };
+    const source = readSourceFile(allocator, it.io, file_path) catch return 1;
     defer allocator.free(source);
 
     return try executeCode(allocator, it.io, source, file_path);
+}
+
+fn readSourceFile(allocator: std.mem.Allocator, io: std.Io, path: []const u8) ![]u8 {
+    return std.Io.Dir.cwd().readFileAlloc(io, path, allocator, .limited(10 * 1024 * 1024)) catch |err| switch (err) {
+        error.FileNotFound => {
+            var buf: [4096]u8 = undefined;
+            var file_writer = std.Io.File.stderr().writer(io, &buf);
+            const writer = &file_writer.interface;
+            writer.print("Error: file '{s}' not found\n", .{path}) catch {};
+            writer.flush() catch {};
+            return error.FileNotFound;
+        },
+        else => {
+            var buf: [4096]u8 = undefined;
+            var file_writer = std.Io.File.stderr().writer(io, &buf);
+            const writer = &file_writer.interface;
+            writer.print("Error: could not read file '{s}': {any}\n", .{ path, err }) catch {};
+            writer.flush() catch {};
+            return err;
+        },
+    };
 }
 
 fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, source_name: []const u8) !u8 {
@@ -293,4 +309,13 @@ fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, sou
     };
 
     return 0;
+}
+
+fn isFilePath(io: std.Io, arg: []const u8) bool {
+    if (std.mem.endsWith(u8, arg, ".ko")) return true;
+    const stat = std.Io.Dir.cwd().statFile(io, arg, .{}) catch |err| switch (err) {
+        error.FileNotFound => return false,
+        else => return false,
+    };
+    return stat.kind == .file;
 }

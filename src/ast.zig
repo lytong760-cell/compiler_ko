@@ -272,9 +272,13 @@ pub const UnaryExpr = struct {
 pub const CallExpr = struct {
     callee: []const u8,
     args: []Expr,
+    target: ?*Expr = null,
 
     pub fn deinit(self: *CallExpr) void {
         for (self.args) |*arg| arg.deinit();
+        if (self.target) |t| {
+            t.deinit();
+        }
     }
 };
 

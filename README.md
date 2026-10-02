@@ -376,10 +376,7 @@ See the `examples/` directory for sample .ko programs.
 ## Testing
 
 ```bash
-zig test src/test_3600.zig
-zig test src/test_harness.zig
-zig test src/test_lexer_extended.zig
-zig test src/test_parser_extended.zig
+zig build test
 ```
 
 ## Benchmark
@@ -403,9 +400,9 @@ compiler_ko/
 │   ├── builtins.zig          # Built-in system tags
 │   ├── Loop.cpp              # C++ loop optimization engine
 │   ├── Import.java           # Java module import subsystem
-│   ├── api_server.py         # Local Module Store API server
-│   ├── test_3600.zig         # Stress test
-│   ├── test_harness.zig      # Integration tests
+│   └── api_server.py         # Local Module Store API server
+├── testing/
+│   ├── test_3600.zig         # End-to-end lex/parse/VM tests
 │   ├── test_lexer_extended.zig
 │   └── test_parser_extended.zig
 ├── examples/

@@ -1352,19 +1352,22 @@ pub const Parser = struct {
                     }
                     try self.expectRParen();
 
-                     const call = try self.allocator.create(ast.CallExpr);
-                     call.* = ast.CallExpr{
-                         .callee = member,
-                         .args = try args.toOwnedSlice(),
-                     };
                     const member_access = try self.allocator.create(ast.MemberAccess);
                     member_access.* = ast.MemberAccess{
                         .object = try self.allocator.create(ast.Expr),
                         .member = member,
                     };
                     member_access.object.* = .{ .identifier = name };
+                    const target_expr = try self.allocator.create(ast.Expr);
+                    target_expr.* = .{ .member_access = member_access };
+                    const call = try self.allocator.create(ast.CallExpr);
+                    call.* = ast.CallExpr{
+                        .callee = member,
+                        .args = try args.toOwnedSlice(),
+                        .target = target_expr,
+                    };
                     const e = try self.allocator.create(ast.Expr);
-                    e.* = .{ .member_access = member_access };
+                    e.* = .{ .call = call };
                     return e;
                 }
                 const member_access = try self.allocator.create(ast.MemberAccess);
