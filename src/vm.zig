@@ -598,7 +598,7 @@ fn zigErrorToKoType(err: anyerror) []const u8 {
         error.OverflowError => "OverflowError",
         error.TypeError => "TypeError",
         error.UndefinedVariable => "NameError",
-        InputError.EndOfInput => "InputError",
+        error.EndOfInput => "InputError",
         else => "RuntimeError",
     };
 }
