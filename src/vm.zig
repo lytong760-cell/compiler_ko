@@ -296,6 +296,12 @@ pub const VM = struct {
                     }
                 }
                 private_scope.variables.clearRetainingCapacity();
+                {
+                    var free_iter = private_scope.functions.iterator();
+                    while (free_iter.next()) |entry| {
+                        self.allocator.free(entry.key_ptr.*);
+                    }
+                }
                 private_scope.functions.clearRetainingCapacity();
                 private_scope.classes.clearRetainingCapacity();
 
