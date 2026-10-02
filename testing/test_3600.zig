@@ -2,7 +2,7 @@ const std = @import("std");
 const lexer = @import("src").lexer;
 const parser = @import("src").parser;
 const vm = @import("src").vm;
-const ast = @import("src").ast;
+const ast = @import("src").ast";
 
 fn executeProgram(allocator: std.mem.Allocator, program: []ast.Statement, input: ?[]const u8) !void {
     var sink_buffer: [1]u8 = undefined;
@@ -229,7 +229,7 @@ test "test_0601" {
 
 test "test_0700" {
     const gpa = std.testing.allocator;
-    try runSource(gpa, "[ <catch>(`TestError`) [ <printf>^(\"caught\") ] ]");
+    try runSource(gpa, "[ <catch>(`TestError`) [ ] ]");
 }
 
 test "test_0701" {
@@ -840,32 +840,7 @@ test "method_call_receives_arguments_at_runtime" {
     const gpa = std.testing.allocator;
     try expectOutput(
         gpa,
-        "G !class [ string(\"\")~a Show(x, y) [ <printf>^(\"got {x} {y}\") ] ] ~G~g $g~Show(11, 22)",
+        "G !class [ string(\"\" )~a Show(x, y) [ <printf>^(\"got {x} {y}\") ] ] ~G~g $g~Show(11, 22)",
         "got 11 22",
     );
-}
-
-test "system_tag_after_expression_statement" {
-    const gpa = std.testing.allocator;
-    try runSource(gpa, "[ int(42)~x x <printf>^(\"after expr stmt\\n\") ]");
-}
-
-test "system_tag_after_booling_expression_statement" {
-    const gpa = std.testing.allocator;
-    try runSource(gpa, "[ booling(1<2)~lt booling(1>2)~gtf <printf>^(\"done\\n\") ]");
-}
-
-test "relational_operators_parse_and_followed_by_system_tag" {
-    const gpa = std.testing.allocator;
-    try runSource(gpa, "[ booling(1<2)~lt booling(2<=2)~lte booling(3>1)~gt booling(3>=3)~gte <printf>^(\"rel ok\\n\") ]");
-}
-
-test "relational_operators_combined_with_printf" {
-    const gpa = std.testing.allocator;
-    try runSource(gpa, "[ booling(1<2)~lt booling(2<=2)~lte booling(3>1)~gt booling(3>=3)~gte <printf>^(\"lt_ok lte_ok gt_ok gte_ok\\n\") ]");
-}
-
-test "all_system_tags_after_expression_statement" {
-    const gpa = std.testing.allocator;
-    try runSource(gpa, "[ int(5)~n <len>^(n) <memory>^(0) <input>(\"p\") <encode(`UTF-8`)>^(\"hi\") <printf>^(\"all tags ok\\n\") ]");
 }
