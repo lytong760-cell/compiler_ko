@@ -12,7 +12,7 @@ test "test_multi_input" {
     const program = try pr.parse();
     defer {
         for (program) |*stmt| stmt.deinit();
-    };
+    }
     // Set up VM
     var out_buf: [4096]u8 = undefined;
     var out: std.Io.Writer = .fixed(&out_buf);
@@ -44,7 +44,7 @@ test "test_eof_error" {
     const program = try pr.parse();
     defer {
         for (program) |*stmt| stmt.deinit();
-    };
+    }
     // We don't care about output, so we can use a sinking writer.
     var sink_buffer: [1]u8 = undefined;
     var sink: std.Io.Writer.Discarding = .init(&sink_buffer);
