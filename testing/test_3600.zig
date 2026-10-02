@@ -63,7 +63,7 @@ test "test_eof_error" {
         return error.TestExpectedError;
     }
     // Check that the error type is EOFError
-    if (vm.error_type) |et| {
+    if (virtual_machine.error_type) |et| {
         if (!std.mem.eql(u8, et, "EOFError")) {
             std.debug.print("Expected error type EOFError, got {s}\\n", .{et});
             return error.TestFailed;
