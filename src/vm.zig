@@ -152,6 +152,9 @@ self.executeStatement(stmt) catch |err| {
 };
         }
         if (self.has_error) {
+            if (self.error_type) |et| {
+                if (std.mem.eql(u8, et, "InputError")) return error.EndOfInput;
+            }
             return error.RuntimeError;
         }
     }
