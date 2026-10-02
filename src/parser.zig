@@ -872,13 +872,9 @@ pub const Parser = struct {
             e.* = .{ .now_expr = ne };
             return ast.Statement{ .expr = e };
         } else if (std.mem.eql(u8, tag, "memory")) {
-            std.debug.print("DBG memory tag current={any}\n", .{self.current()});
-            std.debug.print("DBG mem: before caret current={any}\\n", .{self.current()});
             if (self.current() == .caret) {
                 _ = self.advance();
-                std.debug.print("DBG mem: after caret advance current={any}\\n", .{self.current()});
                 const expr = try self.parseExpression();
-                std.debug.print("DBG mem: after parseExpression current={any}\\n", .{self.current()});
                 const mo = try self.allocator.create(ast.MemoryOp);
                 mo.* = ast.MemoryOp{
                     .kind = .address,
@@ -934,7 +930,6 @@ pub const Parser = struct {
             e.* = .{ .input_expr = ie };
             return ast.Statement{ .expr = e };
         } else if (std.mem.eql(u8, tag, "encode")) {
-            std.debug.print("DBG encode tag current={any} encoding_type={s}\n", .{ self.current(), encoding_type });
             try self.expectCaret();
             try self.expectLParen();
             const expr = try self.parseExpression();
@@ -1259,7 +1254,6 @@ pub const Parser = struct {
 
     fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
         const tok = self.current();
-        std.debug.print("DBG primaryExpr tok={any}\\n", .{tok});
 
         if (tok == .int_lit) {
             _ = self.advance();
