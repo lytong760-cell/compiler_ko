@@ -148,9 +148,10 @@ const InputError = error{ EndOfInput };
                 self.dispatchCatchBlocks(program, idx) catch {};
                 continue;
             }
-            self.executeStatement(stmt) catch |err| {
-                self.raiseError(VM.zigErrorToKoType(err), @errorName(err));
-            };
+self.executeStatement(stmt) catch |err| {
+    std.debug.print("executeStatement catch: {any}\n", .{err});
+    self.raiseError(VM.zigErrorToKoType(err), @errorName(err));
+};
         }
         if (self.has_error) {
             return error.RuntimeError;
