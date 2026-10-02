@@ -897,7 +897,7 @@ pub const Parser = struct {
             return error.UnexpectedToken;
         } else if (std.mem.eql(u8, tag, "input")) {
             try self.expectLParen();
-            _ = try self.parseExpression();
+            const target_expr = try self.parseExpression();
             try self.expectRParen();
             if (self.current() == .amp_equals) {
                 _ = self.advance();
@@ -906,12 +906,12 @@ pub const Parser = struct {
                 if (self.current() == .identifier) {
                     target_name = self.current().identifier;
                     _ = self.advance();
-            } else if (self.current() == .keyword) {
-                _ = self.advance();
-                try self.expectLParen();
-                _ = try self.parseExpression();
-                try self.expectRParen();
-                try self.expectSigil();
+                } else if (self.current() == .keyword) {
+                    _ = self.advance();
+                    try self.expectLParen();
+                    _ = try self.parseExpression();
+                    try self.expectRParen();
+                    try self.expectSigil();
                     if (self.current() == .identifier) {
                         target_name = self.current().identifier;
                         _ = self.advance();
@@ -919,13 +919,13 @@ pub const Parser = struct {
                 }
                 
                 const ie = try self.allocator.create(ast.InputExpr);
-                ie.* = ast.InputExpr{ .target = null, .target_name = target_name };
+                ie.* = ast.InputExpr{ .target = target_expr, .target_name = target_name };
                 const e = try self.allocator.create(ast.Expr);
                 e.* = .{ .input_expr = ie };
                 return ast.Statement{ .expr = e };
             }
             const ie = try self.allocator.create(ast.InputExpr);
-            ie.* = ast.InputExpr{ .target = null, .target_name = "" };
+            ie.* = ast.InputExpr{ .target = target_expr, .target_name = "" };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .input_expr = ie };
             return ast.Statement{ .expr = e };
