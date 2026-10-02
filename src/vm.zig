@@ -1106,7 +1106,7 @@ fn readInputLine(self: *VM) ![]const u8 {
 
 fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
     const line = try self.readInputLine();
-    std.debug.print("evaluateInput: line=|{s}| len={d} target_name=|{s}|\n", .{ line, line.len, ie.target_name });
+    std.debug.print("evaluateInput: line=|{s}| len={d} target_name=|{s}| target={any}\n", .{ line, line.len, ie.target_name, ie.target });
     if (ie.target_name.len > 0) {
         const name_copy = try self.allocator.dupe(u8, ie.target_name);
         const owned = try self.allocator.dupe(u8, line);
@@ -1115,7 +1115,9 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
     }
     if (ie.target) |target_expr| {
         const owned = try self.allocator.dupe(u8, line);
+        std.debug.print("evaluateInput: assignValue target={any} val={s}\n", .{ target_expr, owned });
         try self.assignValue(target_expr, value_mod.Value{ .string = owned });
+        std.debug.print("evaluateInput: assignValue done\n", .{});
     }
     return value_mod.Value{ .string = try self.allocator.dupe(u8, line) };
 }
