@@ -27,7 +27,7 @@ pub const VM = struct {
         const global_scope = try allocator.create(value_mod.Scope);
         global_scope.* = value_mod.Scope.init(allocator, null);
         const duped = try allocator.dupe(u8, file_path);
-        var vm = .{
+        return .{
             .allocator = allocator,
             .global_scope = global_scope,
             .current_scope = global_scope,
@@ -43,10 +43,8 @@ pub const VM = struct {
             .file_path = duped,
             .current_function = "main",
             .stdin_buf = undefined,
-            .stdin_reader = std.Io.Reader{},
+            .stdin_reader = null,
         };
-        vm.stdin_reader = std.Io.File.stdin().reader(io, &vm.stdin_buf);
-        return vm;
     }
 
     /// Replace the source `<input>` reads from. Tests use this to stay hermetic;
