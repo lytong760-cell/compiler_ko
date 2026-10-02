@@ -954,26 +954,35 @@ pub const VM = struct {
     }
 
     fn evaluateMemberAccess(self: *VM, ma: *ast.MemberAccess) !value_mod.Value {
+        const owned = ma.object.* == .identifier;
         const obj = try self.evaluateExpression(ma.object);
         switch (obj) {
             .class_instance => |ci| {
                 if (ci.fields.get(ma.member)) |val| {
-                    return try val.clone(self.allocator);
+                    const cloned = try val.clone(self.allocator);
+                    if (owned) @constCast(&obj).deinit(self.allocator);
+                    return cloned;
                 }
                 if (ci.methods.get(ma.member)) |func| {
+                    if (owned) @constCast(&obj).deinit(self.allocator);
                     return value_mod.Value{ .function = func };
                 }
+                if (owned) @constCast(&obj).deinit(self.allocator);
                 self.raiseError("MemberError", "Member not found");
                 return error.RuntimeError;
             },
             .dict => |d| {
                 if (d.get(ma.member)) |val| {
-                    return try val.clone(self.allocator);
+                    const cloned = try val.clone(self.allocator);
+                    if (owned) @constCast(&obj).deinit(self.allocator);
+                    return cloned;
                 }
+                if (owned) @constCast(&obj).deinit(self.allocator);
                 self.raiseError("KeyError", "Key not found");
                 return error.RuntimeError;
             },
             else => {
+                if (owned) @constCast(&obj).deinit(self.allocator);
                 self.raiseError("TypeError", "Cannot access member of this type");
                 return error.RuntimeError;
             },
