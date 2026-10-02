@@ -596,6 +596,7 @@ fn readInputLine(self: *VM) ![]const u8 {
             error.OverflowError => "OverflowError",
             error.TypeError => "TypeError",
             error.UndefinedVariable => "NameError",
+            error.EndOfInput => "InputError",
             else => "RuntimeError",
         };
     }
