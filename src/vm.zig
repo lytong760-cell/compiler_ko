@@ -592,15 +592,16 @@ fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
         }
     }
 
-    fn zigErrorToKoType(err: anyerror) []const u8 {
-        return switch (err) {
-            error.DivideByZero => "DivideByZeroError",
-            error.OverflowError => "OverflowError",
-            error.TypeError => "TypeError",
-            error.UndefinedVariable => "NameError",
-            else => "RuntimeError",
-        };
-    }
+fn zigErrorToKoType(err: anyerror) []const u8 {
+    return switch (err) {
+        error.DivideByZero => "DivideByZeroError",
+        error.OverflowError => "OverflowError",
+        error.TypeError => "TypeError",
+        error.UndefinedVariable => "NameError",
+        InputError.EndOfInput => "InputError",
+        else => "RuntimeError",
+    };
+}
 
     fn raiseError(self: *VM, err_type: []const u8, message: []const u8) void {
         self.has_error = true;
