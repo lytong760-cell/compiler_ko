@@ -1135,13 +1135,6 @@ pub const Parser = struct {
         return left;
     }
 
-    fn isSystemTagOpener(self: *Parser) bool {
-        if (self.current() != .lt) return false;
-        const peek1 = self.peek(1);
-        if (peek1 != .identifier and peek1 != .keyword) return false;
-        return self.peek(2) == .gt;
-    }
-
     fn parseRelationalExpr(self: *Parser) anyerror!*ast.Expr {
         var left = try self.parseAdditiveExpr();
         while (true) {
@@ -1161,7 +1154,7 @@ pub const Parser = struct {
                 bin.* = ast.BinaryExpr{ .op = .gte, .left = left, .right = right };
                 left = try self.allocator.create(ast.Expr);
                 left.* = .{ .binary = bin };
-            } else if (self.current() == .lt and self.peek(1) != .equals and !self.isSystemTagOpener()) {
+            } else if (self.current() == .lt and self.peek(1) != .equals) {
                 _ = self.advance();
                 const right = try self.parseAdditiveExpr();
                 const bin = try self.allocator.create(ast.BinaryExpr);
