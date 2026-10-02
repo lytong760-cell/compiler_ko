@@ -1246,6 +1246,7 @@ pub const Parser = struct {
 
     fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
         const tok = self.current();
+        std.debug.print("DBG primaryExpr tok={any}\\n", .{tok});
 
         if (tok == .int_lit) {
             _ = self.advance();
