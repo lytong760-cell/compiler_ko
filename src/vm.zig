@@ -150,7 +150,9 @@ const InputError = error{ EndOfInput };
             }
 self.executeStatement(stmt) catch |err| {
     std.debug.print("executeStatement catch: {any}\n", .{err});
-    self.raiseError(VM.zigErrorToKoType(err), @errorName(err));
+    const err_type = VM.zigErrorToKoType(err);
+    std.debug.print("err_type={s} err_name={s}\n", .{ err_type, @errorName(err) });
+    self.raiseError(err_type, @errorName(err));
 };
         }
         if (self.has_error) {
