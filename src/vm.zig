@@ -59,9 +59,17 @@ pub const VM = struct {
         self.output_writer = writer;
     }
 
+    fn stdinReader(self: *VM) !*std.Io.Reader {
+        if (self.stdin_reader == null) {
+            self.stdin_reader = std.Io.File.stdin().reader(self.io, &self.stdin_buf).interface;
+        }
+        return &self.stdin_reader.?;
+    }
+
     fn readInputLine(self: *VM) ![]const u8 {
-        return self.stdin_reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
-            error.EndOfStream => self.stdin_reader.buffered(),
+        const reader = try self.stdinReader();
+        return reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
+            error.EndOfStream => reader.buffered(),
             else => return err,
         };
     }
