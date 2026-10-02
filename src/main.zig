@@ -74,6 +74,15 @@ const COMPLETION_COMMANDS = [_][]const u8{
     "--generate-completion", // duplicate for consistency
 };
 
+fn unsupportedShell(it: std.process.Init, shell: []const u8) noreturn {
+    var buf: [4096]u8 = undefined;
+    var file_writer = std.Io.File.stderr().writer(it.io, &buf);
+    const writer = &file_writer.interface;
+    writer.print("Error: unsupported shell '{s}': expected bash, zsh, or fish\n", .{shell}) catch {};
+    writer.flush() catch {};
+    std.process.exit(1);
+}
+
 fn generateBashCompletion() []const u8 {
     return \\#!/usr/bin/env bash
 \\#completion for ko
@@ -306,6 +315,31 @@ fn mainInner(it: std.process.Init) !u8 {
             return try executeCode(allocator, it.io, source, arg);
         }
         return try executeCode(allocator, it.io, arg, "<repl>");
+    }
+
+    if (std.mem.eql(u8, args[1], "--generate-completion")) {
+        if (args.len < 3) {
+            var buf: [4096]u8 = undefined;
+            var file_writer = std.Io.File.stderr().writer(it.io, &buf);
+            const writer = &file_writer.interface;
+            writer.print("Error: --generate-completion requires a shell: bash, zsh, or fish\n", .{}) catch {};
+            writer.flush() catch {};
+            return 1;
+        }
+        const script: []const u8 = if (std.mem.eql(u8, args[2], "bash"))
+            generateBashCompletion()
+        else if (std.mem.eql(u8, args[2], "zsh"))
+            generateZshCompletion()
+        else if (std.mem.eql(u8, args[2], "fish"))
+            generateFishCompletion()
+        else
+            unsupportedShell(it, args[2]);
+        var buf: [4096]u8 = undefined;
+        var file_writer = std.Io.File.stdout().writer(it.io, &buf);
+        const writer = &file_writer.interface;
+        writer.writeAll(script) catch {};
+        writer.flush() catch {};
+        return 0;
     }
 
     // Default: treat first arg as a .ko file path
