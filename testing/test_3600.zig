@@ -1,6 +1,6 @@
 test "test_multi_input" {
     const gpa = std.testing.allocator;
-    const source = [&]u8{ string("")~a string("")~b <input>(a) <input>(b) <printf>^("a={a}\\nb={b}") };
+    const source = "string(\"\")~a string(\"\")~b <input>(a) <input>(b) <printf>^(\"a={a}\\nb={b}\")";
     const input = "first line\\nsecond line\\n";
     // Lex and parse
     var lx = lexer.Lexer.init(&source);
@@ -32,7 +32,7 @@ test "test_multi_input" {
 
 test "test_eof_error" {
     const gpa = std.testing.allocator;
-    const source = [&]u8{ string("")~a string("")~b <input>(a) <input>(b) };
+    const source = "string(\"\")~a string(\"\")~b <input>(a) <input>(b)";
     const input = "first line\\n";
     // Lex and parse
     var lx = lexer.Lexer.init(&source);
