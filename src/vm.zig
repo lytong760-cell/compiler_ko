@@ -21,7 +21,7 @@ pub const VM = struct {
     file_path: []const u8,
     current_function: []const u8,
     stdin_buf: [4096]u8,
-    stdin_reader: std.Io.Reader,
+    stdin_reader: ?std.Io.Reader,
 
     pub fn init(allocator: std.mem.Allocator, io: std.Io, file_path: []const u8) !VM {
         const global_scope = try allocator.create(value_mod.Scope);
