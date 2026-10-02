@@ -12,7 +12,7 @@ test "test_multi_input" {
     var lx = lexer.Lexer.init(source);
     const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
-    var arena = std.heap.AreaAllocator.init(gpa);
+    var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
     var pr = parser.Parser.init(gpa, &arena, tokens);
     const program = try pr.parse();
@@ -63,7 +63,7 @@ test "test_eof_error" {
         return error.TestExpectedError;
     }
     // Check that the error type is EOFError
-    if (virtual_machine.error_type) |et| {
+    if (vm.error_type) |et| {
         if (!std.mem.eql(u8, et, "EOFError")) {
             std.debug.print("Expected error type EOFError, got {s}\\n", .{et});
             return error.TestFailed;
