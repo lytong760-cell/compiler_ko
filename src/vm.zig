@@ -69,13 +69,11 @@ pub const VM = struct {
         return &self.stdin_file_reader.?.interface;
     }
 
-    fn readInputLine(self: *VM) ![]const u8 {
-        const reader = try self.stdinReader();
-        return reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
-            error.EndOfStream => reader.buffered(),
-            else => return err,
-        };
-    }
+fn readInputLine(self: *VM) ![]const u8 {
+    const reader = try self.stdinReader();
+    const result = try reader.takeDelimiterInclusive('\n');
+    return result[0 .. result.len - 1];
+}
 
     fn stdoutWriter(self: *VM) *std.Io.Writer {
         if (self.output_writer) |writer| return writer;
