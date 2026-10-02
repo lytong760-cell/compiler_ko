@@ -1,3 +1,9 @@
+const std = @import("std");
+const lexer = @import("src").lexer;
+const parser = @import("src").parser;
+const vm = @import("src").vm;
+const ast = @import("src").ast;
+
 test "test_multi_input" {
     const gpa = std.testing.allocator;
     const source = "string(\"\")~a string(\"\")~b <input>(a) <input>(b) <printf>^(\"a={a}\\nb={b}\")";
