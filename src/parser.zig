@@ -767,7 +767,6 @@ pub const Parser = struct {
     fn parseSystemTagStmt(self: *Parser) anyerror!ast.Statement {
         try self.expectLT();
         const tag = try self.parseSystemTagName();
-        std.debug.print("DBG parseSystemTagStmt tag={s} current={any}\n", .{ tag, self.current() });
         
         var encoding_type: []const u8 = "";
         if (std.mem.eql(u8, tag, "encode")) {
