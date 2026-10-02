@@ -284,18 +284,27 @@ pub const Parser = struct {
         try self.expectLParen();
         var params = std.array_list.Managed(value_mod.Param).init(self.allocator);
         while (!(self.current() == .r_paren) and !self.isAtEnd()) {
-            const type_tok = self.current();
-            if (type_tok == .keyword) {
-                const type_name = lexer.Token.keywordText(type_tok.keyword);
+            if (self.current() == .comma) {
+                _ = self.advance();
+                continue;
+            }
+            if (self.current() == .keyword) {
+                const type_name = lexer.Token.keywordText(self.current().keyword);
                 _ = self.advance();
                 try self.expectSigil();
                 const param_tok = self.current();
                 if (param_tok != .identifier) return error.ExpectedIdentifier;
-                const param_name = param_tok.identifier;
                 _ = self.advance();
-                try params.append(value_mod.Param{ .type_name = type_name, .name = param_name });
+                try params.append(value_mod.Param{ .type_name = type_name, .name = param_tok.identifier });
+                continue;
             }
-            if (self.current() == .comma) _ = self.advance();
+            if (self.current() == .identifier) {
+                const param_tok = self.current();
+                _ = self.advance();
+                try params.append(value_mod.Param{ .type_name = "", .name = param_tok.identifier });
+                continue;
+            }
+            return error.ExpectedIdentifier;
         }
         try self.expectRParen();
         try self.expectLBracket();
