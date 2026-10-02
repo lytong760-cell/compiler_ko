@@ -69,15 +69,13 @@ pub const VM = struct {
         return &self.stdin_file_reader.?.interface;
     }
 
-fn readInputLine(self: *VM) ![]const u8 {
-    const reader = try self.stdinReader();
-    const result = reader.takeDelimiterInclusive('\n') catch |err| switch (err) {
-        error.EndOfStream => return reader.buffered(),
-        else => return err,
-    };
-    if (result.len > 0 and result[result.len - 1] == '\n') return result[0 .. result.len - 1];
-    return result;
-}
+    fn readInputLine(self: *VM) ![]const u8 {
+        const reader = try self.stdinReader();
+        return reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
+            error.EndOfStream => reader.buffered(),
+            else => return err,
+        };
+    }
 
     fn stdoutWriter(self: *VM) *std.Io.Writer {
         if (self.output_writer) |writer| return writer;
@@ -150,14 +148,11 @@ fn readInputLine(self: *VM) ![]const u8 {
                 self.dispatchCatchBlocks(program, idx) catch {};
                 continue;
             }
-self.executeStatement(stmt) catch |err| {
-    self.raiseError(VM.zigErrorToKoType(err), @errorName(err));
-};
+            self.executeStatement(stmt) catch |err| {
+                self.raiseError(VM.zigErrorToKoType(err), @errorName(err));
+            };
         }
         if (self.has_error) {
-            if (self.error_type) |et| {
-                if (std.mem.eql(u8, et, "InputError")) return error.EndOfInput;
-            }
             return error.RuntimeError;
         }
     }
@@ -603,7 +598,6 @@ self.executeStatement(stmt) catch |err| {
             error.OverflowError => "OverflowError",
             error.TypeError => "TypeError",
             error.UndefinedVariable => "NameError",
-            error.EndOfInput => "InputError",
             else => "RuntimeError",
         };
     }
@@ -1110,22 +1104,19 @@ self.executeStatement(stmt) catch |err| {
         return value_mod.Value{ .null = {} };
     }
 
-fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
-    const line = self.readInputLine() catch |err| switch (err) {
-        error.EndOfStream => return error.EndOfInput,
-        else => |e| return e,
-    };
-    if (ie.target_name.len > 0) {
-        const name_copy = try self.allocator.dupe(u8, ie.target_name);
-        const owned = try self.allocator.dupe(u8, line);
-        try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = owned });
+    fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
+        const line = try self.readInputLine();
+        if (ie.target_name.len > 0) {
+            const name_copy = try self.allocator.dupe(u8, ie.target_name);
+            const owned = try self.allocator.dupe(u8, line);
+            try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = owned });
+        }
+        if (ie.target) |target_expr| {
+            const owned = try self.allocator.dupe(u8, line);
+            try self.assignValue(target_expr, value_mod.Value{ .string = owned });
+        }
+        return value_mod.Value{ .string = try self.allocator.dupe(u8, line) };
     }
-    if (ie.target) |target_expr| {
-        const owned = try self.allocator.dupe(u8, line);
-        try self.assignValue(target_expr, value_mod.Value{ .string = owned });
-    }
-    return value_mod.Value{ .string = try self.allocator.dupe(u8, line) };
-}
 
     fn evaluateNow(self: *VM, ne: *ast.NowExpr) !value_mod.Value {
         const val = try self.evaluateExpression(ne.expr);
