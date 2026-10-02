@@ -71,8 +71,12 @@ pub const VM = struct {
 
 fn readInputLine(self: *VM) ![]const u8 {
     const reader = try self.stdinReader();
-    const result = try reader.takeDelimiterInclusive('\n');
-    return result[0 .. result.len - 1];
+    const result = reader.takeDelimiterInclusive('\n') catch |err| switch (err) {
+        error.EndOfStream => reader.buffered(),
+        else => return err,
+    };
+    if (result.len > 0 and result[result.len - 1] == '\n') return result[0 .. result.len - 1];
+    return result;
 }
 
     fn stdoutWriter(self: *VM) *std.Io.Writer {
