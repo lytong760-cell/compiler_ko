@@ -478,22 +478,27 @@ fn readInputLine(self: *VM) ![]const u8 {
         try self.executeStatement(stmt);
     }
 
-    fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
-        switch (target.*) {
-            .identifier => |name| {
-                if (self.current_scope.variables.get(name)) |_| {
-                    const gop = try self.current_scope.variables.getOrPut(name);
-                    gop.value_ptr.*.deinit(self.allocator);
-                    gop.value_ptr.* = val;
-                } else if (self.global_scope.variables.get(name)) |_| {
-                    const gop = try self.global_scope.variables.getOrPut(name);
-                    gop.value_ptr.*.deinit(self.allocator);
-                    gop.value_ptr.* = val;
-                } else {
-                    const name_copy = try self.allocator.dupe(u8, name);
-                    try self.current_scope.variables.put(name_copy, val);
-                }
-            },
+fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
+    switch (target.*) {
+        .identifier => |name| {
+            std.debug.print("assignValue: identifier={s} val={any}\n", .{ name, val });
+            if (self.current_scope.variables.get(name)) |_| {
+                std.debug.print("assignValue: found in current_scope\n", .{});
+                const gop = try self.current_scope.variables.getOrPut(name);
+                gop.value_ptr.*.deinit(self.allocator);
+                gop.value_ptr.* = val;
+            } else if (self.global_scope.variables.get(name)) |_| {
+                std.debug.print("assignValue: found in global_scope\n", .{});
+                const gop = try self.global_scope.variables.getOrPut(name);
+                gop.value_ptr.*.deinit(self.allocator);
+                gop.value_ptr.* = val;
+            } else {
+                std.debug.print("assignValue: not found, creating new\n", .{});
+                const name_copy = try self.allocator.dupe(u8, name);
+                try self.current_scope.variables.put(name_copy, val);
+            }
+            std.debug.print("assignValue: done identifier\n", .{});
+        },
             .member_access => |ma| {
                 switch (ma.object.*) {
                     .identifier => |name| {
