@@ -13,3 +13,4 @@ int ko_exec(const char *cmd, char *output, size_t output_size);
 int ko_exit(int code);
 const char* ko_get_cwd(void);
 int ko_set_cwd(const char *path);
+#endif
