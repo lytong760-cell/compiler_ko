@@ -62,10 +62,11 @@ pub const VM = struct {
     }
 
     fn stdinReader(self: *VM) !*std.Io.Reader {
-        if (self.stdin_reader == null) {
-            self.stdin_reader = std.Io.File.stdin().reader(self.io, &self.stdin_buf).interface;
+        if (self.stdin_reader) |*reader| return reader;
+        if (self.stdin_file_reader == null) {
+            self.stdin_file_reader = std.Io.File.stdin().reader(self.io, &self.stdin_buf);
         }
-        return &self.stdin_reader.?;
+        return &self.stdin_file_reader.?.interface;
     }
 
     fn readInputLine(self: *VM) ![]const u8 {
