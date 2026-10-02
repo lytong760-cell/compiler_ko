@@ -150,6 +150,10 @@ jobs:
       - name: Build C#
         if: matrix.language == 'csharp'
         run: |
+          if [ -z "$(git ls-files '*.cs')" ]; then
+            echo "No .cs files in repo — skipping C# build."
+            exit 0
+          fi
           dotnet --info
           dotnet restore
           dotnet build --configuration Release --no-restore

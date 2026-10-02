@@ -63,6 +63,68 @@ fn scanModuleStore(allocator: std.mem.Allocator, io: std.Io) ![]ModuleManifest {
 
 const VERSION = "0.1.0";
 
+const COMPLETION_COMMANDS = [_][]const u8{
+    "run",
+    "-install",
+    "-list",
+    "-search",
+    "--version",
+    "--help",
+    "--generate-completion",
+};
+
+fn generateBashCompletion() []const u8 {
+    return \\#!/usr/bin/env bash
+\\#completion for ko
+\\ko_completion() {
+\\    local cur prev words cword
+\\    _init_completion || return
+\\
+\\    case $prev in
+\\        run|-install|-search)
+\\            COMPREPLY=($(compgen -f -- "$cur"));;
+\\        *)
+\\            local commands
+\\            commands=(run -install -list -search --version --help --generate-completion)
+\\            COMPREPLY=($(compgen -W "${commands[*]}" -- "$cur"));;
+\\    esac
+\\}
+\\complete -F ko_completion ko
+;
+}
+
+fn generateZshCompletion() []const u8 {
+    return \\#compdef ko
+\\
+\\ko() {
+\\    local -a commands
+\\    commands=(
+\\        'run:run a .ko source file or inline code'
+\\        '-install [library]:library to install'
+\\        '-list:list all available libraries'
+\\        '-search [query]:search libraries'
+\\        '--version:print compiler version'
+\\        '--help:print this help message'
+\\        '--generate-completion [shell]:generate shell completion (bash, zsh, fish)'
+\\    )
+\\    _arguments -C $commands
+\\}
+\\compdef ko
+;
+}
+
+fn generateFishCompletion() []const u8 {
+    return \\# Fish completion for ko
+\\complete -c ko -l generate-completion -s g -x -a 'bash zsh fish' -d 'Generate shell completion'
+\\complete -c ko -l help -s h -x -d 'Print this help message'
+\\complete -c ko -l version -x -d 'Print compiler version'
+\\complete -c ko -l install -s i -x -a '(__fish_complete_path)' -d 'Install a library from the Module Store'
+\\complete -c ko -l search -s s -x -a '(__fish_complete_path)' -d 'Search libraries by name'
+\\complete -c ko -l list -x -d 'List all available libraries'
+\\complete -c ko -l run -r -d 'Run a .ko source file or inline code'
+;
+}
+
 fn printUsage(it: std.process.Init) void {
     var buf: [4096]u8 = undefined;
     var file_writer = std.Io.File.stdout().writer(it.io, &buf);
