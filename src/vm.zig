@@ -1106,7 +1106,7 @@ fn readInputLine(self: *VM) ![]const u8 {
 
 fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
     const line = try self.readInputLine();
-    std.debug.print("evaluateInput: line=|{s}| len={d} target_name=|{s}| target={any}\n", .{ line, line.len, ie.target_name, ie.target });
+    std.debug.print("evaluateInput: line=|{s}| len={d} target_name_len={d} target_name=|{s}| target={any}\n", .{ line, line.len, ie.target_name.len, ie.target_name, ie.target });
     if (ie.target_name.len > 0) {
         const name_copy = try self.allocator.dupe(u8, ie.target_name);
         const owned = try self.allocator.dupe(u8, line);
