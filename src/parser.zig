@@ -1412,9 +1412,13 @@ pub const Parser = struct {
         }
 
         if (tok == .l_paren) {
+            std.debug.print("DBG paren: before consume ( current={any}\\n", .{self.current()});
             _ = self.advance();
+            std.debug.print("DBG paren: after consume ( current={any}\\n", .{self.current()});
             const expr = try self.parseExpression();
+            std.debug.print("DBG paren: after parseExpression current={any}\\n", .{self.current()});
             try self.expectRParen();
+            std.debug.print("DBG paren: after expectRParen current={any}\\n", .{self.current()});
             return expr;
         }
 
