@@ -137,6 +137,7 @@ fn printUsage(it: std.process.Init) void {
         \\       ko -search <query>
         \\       ko --version
         \\       ko --help
+        \\       ko --generate-completion <bash|zsh|fish>
     , .{}) catch {};
     writer.flush() catch {};
 }
@@ -153,6 +154,7 @@ fn printHelp(it: std.process.Init) void {
         \\       ko -search <query>
         \\       ko --version
         \\       ko --help
+        \\       ko --generate-completion <shell>
         \\
         \\Commands:
         \\  <file.ko>       Run a .ko source file
@@ -162,6 +164,7 @@ fn printHelp(it: std.process.Init) void {
         \\  -search <query> Search libraries by name
         \\  --version       Print compiler version
         \\  --help          Print this help message
+        \\  --generate-completion <shell> Generate shell completion script (bash, zsh, fish)
     , .{}) catch {};
     writer.flush() catch {};
 }

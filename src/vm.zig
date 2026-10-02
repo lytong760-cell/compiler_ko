@@ -3,6 +3,8 @@ const ast = @import("ast.zig");
 const value_mod = @import("value.zig");
 const bytecode = @import("bytecode.zig");
 
+const EndOfInput = error.EndOfInput;
+
 pub const VM = struct {
     allocator: std.mem.Allocator,
     global_scope: *value_mod.Scope,
