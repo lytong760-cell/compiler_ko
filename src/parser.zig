@@ -112,7 +112,6 @@ pub const Parser = struct {
         }
 
         if (tok == .lt) {
-            std.debug.print("DBG parseStatement: calling parseSystemTagStmt, current={any}\n", .{self.current()});
             return try self.parseSystemTagStmt();
         }
 
