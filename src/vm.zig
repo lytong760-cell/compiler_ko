@@ -71,7 +71,9 @@ pub const VM = struct {
 
 fn readInputLine(self: *VM) ![]const u8 {
     const reader = try self.stdinReader();
+    std.debug.print("readInputLine: seek={d} end={d} buf_len={d}\n", .{ reader.seek, reader.end, reader.buffer.len });
     const result = try reader.takeDelimiterInclusive('\n');
+    std.debug.print("readInputLine: result len={d}\n", .{result.len});
     return result[0 .. result.len - 1];
 }
 
