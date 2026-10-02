@@ -4,7 +4,7 @@ const parser = @import("src").parser;
 const vm = @import("src").vm;
 const ast = @import("src").ast";
 
-fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
+fn runSourceWithInput(allocator: std.mem.Allocator, source: []const u8, input: []const u8) !void {
     var lx = lexer.Lexer.init(source);
     const tokens = try lx.tokenize(allocator);
     defer allocator.free(tokens);
@@ -24,11 +24,12 @@ fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
     var virtual_machine = try vm.VM.init(allocator, std.testing.io, "test.ko");
     defer virtual_machine.deinit();
     virtual_machine.setOutputWriter(&sink.writer);
+    virtual_machine.setInputBuffer(input);
 
     try virtual_machine.execute(program);
 }
 
-test "debug_input" {
+test "debug_input_setInputBuffer" {
     const gpa = std.testing.allocator;
-    try runSource(gpa, "[ <input>(\"a\")&=string(\"\")~s <printf>^(\"got {a}\") ]");
+    try runSourceWithInput(gpa, "[ <input>(\"a\")&=string(\"\")~s <printf>^(\"got {a}\") ]", "only\n");
 }
