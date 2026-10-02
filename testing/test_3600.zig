@@ -2,7 +2,7 @@ const std = @import("std");
 const lexer = @import("src").lexer;
 const parser = @import("src").parser;
 const vm = @import("src").vm;
-const ast = @import("src").ast";
+const ast = @import("src").ast;
 
 fn executeProgram(allocator: std.mem.Allocator, program: []ast.Statement, input: ?[]const u8) !void {
     var sink_buffer: [1]u8 = undefined;
@@ -229,7 +229,7 @@ test "test_0601" {
 
 test "test_0700" {
     const gpa = std.testing.allocator;
-    try runSource(gpa, "[ <catch>(`TestError`) [ ] ]");
+    try runSource(gpa, "[ <catch>(`TestError`) [ <printf>^(\"caught\") ] ]");
 }
 
 test "test_0701" {
@@ -840,7 +840,7 @@ test "method_call_receives_arguments_at_runtime" {
     const gpa = std.testing.allocator;
     try expectOutput(
         gpa,
-        "G !class [ string(\"\" )~a Show(x, y) [ <printf>^(\"got {x} {y}\") ] ] ~G~g $g~Show(11, 22)",
+        "G !class [ string(\"\")~a Show(x, y) [ <printf>^(\"got {x} {y}\") ] ] ~G~g $g~Show(11, 22)",
         "got 11 22",
     );
 }
