@@ -119,7 +119,9 @@ jobs:
           else
             mkdir -p build
             find . -name "*.c" -not -path './zig/*' -print0 | \
-              xargs -0 gcc -Wall -Wextra -O2 -Isrc/module/Os -Isrc/module/Website -Isrc/module/Random -o build/program
+              while IFS= read -r -d '' f; do
+                gcc -Wall -Wextra -O2 -Isrc/module/Os -Isrc/module/Website -Isrc/module/Random -c "$f" -o "build/$(basename "$f" .c).o"
+              done
           fi
 
       - name: Build C++
