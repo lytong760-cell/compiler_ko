@@ -71,9 +71,7 @@ pub const VM = struct {
 
 fn readInputLine(self: *VM) ![]const u8 {
     const reader = try self.stdinReader();
-    std.debug.print("readInputLine: seek={d} end={d} buf_len={d}\n", .{ reader.seek, reader.end, reader.buffer.len });
     const result = try reader.takeDelimiterInclusive('\n');
-    std.debug.print("readInputLine: result len={d}\n", .{result.len});
     return result[0 .. result.len - 1];
 }
 
@@ -1111,18 +1109,14 @@ fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
 
 fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
     const line = try self.readInputLine();
-    std.debug.print("evaluateInput: line=|{s}| len={d} target_name_len={d} target_name=|{s}| target={any}\n", .{ line, line.len, ie.target_name.len, ie.target_name, ie.target });
     if (ie.target_name.len > 0) {
         const name_copy = try self.allocator.dupe(u8, ie.target_name);
         const owned = try self.allocator.dupe(u8, line);
         try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = owned });
-        std.debug.print("evaluateInput: stored {s}={s}\n", .{ ie.target_name, owned });
     }
     if (ie.target) |target_expr| {
         const owned = try self.allocator.dupe(u8, line);
-        std.debug.print("evaluateInput: assignValue target={any} val={s}\n", .{ target_expr, owned });
         try self.assignValue(target_expr, value_mod.Value{ .string = owned });
-        std.debug.print("evaluateInput: assignValue done\n", .{});
     }
     return value_mod.Value{ .string = try self.allocator.dupe(u8, line) };
 }
