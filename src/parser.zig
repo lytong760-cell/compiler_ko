@@ -1145,14 +1145,12 @@ pub const Parser = struct {
         if (self.current() != .lt) return false;
         const peek1 = self.peek(1);
         if (peek1 != .identifier and peek1 != .keyword) return false;
-        // check if followed by > (e.g., <printf>)
         if (self.peek(2) == .gt) return true;
-        // check if followed by (...) and then > (e.g., <encode(`UTF-8`)> or <memory>^(0))
         var i: usize = 2;
         var paren_depth: i32 = 0;
         while (i < 32) {
             const tok = self.peek(i);
-            if (tok == .l_paren) paren_depth += 1;
+            if (tok == .l_paren) { paren_depth += 1; }
             else if (tok == .r_paren) {
                 paren_depth -= 1;
                 if (paren_depth == 0) {
