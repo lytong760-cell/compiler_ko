@@ -9,7 +9,7 @@ test "test_multi_input" {
     const source = "string(\"\")~a string(\"\")~b <input>(a) <input>(b) <printf>^(\"a={a}\\nb={b}\")";
     const input = "first line\\nsecond line\\n";
     // Lex and parse
-    var lx = lexer.Lexer.init(&source);
+    var lx = lexer.Lexer.init(source);
     const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
     var arena = std.heap.AreaAllocator.init(gpa);
@@ -41,7 +41,7 @@ test "test_eof_error" {
     const source = "string(\"\")~a string(\"\")~b <input>(a) <input>(b)";
     const input = "first line\\n";
     // Lex and parse
-    var lx = lexer.Lexer.init(&source);
+    var lx = lexer.Lexer.init(source);
     const tokens = try lx.tokenize(gpa);
     defer gpa.free(tokens);
     var arena = std.heap.AreaAllocator.init(gpa);
