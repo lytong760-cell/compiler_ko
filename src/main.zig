@@ -71,6 +71,7 @@ const COMPLETION_COMMANDS = [_][]const u8{
     "--version",
     "--help",
     "--generate-completion",
+    "--generate-completion", // duplicate for consistency
 };
 
 fn generateBashCompletion() []const u8 {
