@@ -72,7 +72,6 @@ pub const VM = struct {
 fn readInputLine(self: *VM) ![]const u8 {
     const reader = try self.stdinReader();
     const result = try reader.takeDelimiterInclusive('\n');
-    reader.toss(result.len);
     return result[0 .. result.len - 1];
 }
 
