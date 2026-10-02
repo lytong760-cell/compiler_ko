@@ -931,6 +931,7 @@ pub const Parser = struct {
             e.* = .{ .input_expr = ie };
             return ast.Statement{ .expr = e };
         } else if (std.mem.eql(u8, tag, "encode")) {
+            std.debug.print("DBG encode tag current={any} encoding_type={s}\n", .{ self.current(), encoding_type });
             try self.expectCaret();
             try self.expectLParen();
             const expr = try self.parseExpression();
