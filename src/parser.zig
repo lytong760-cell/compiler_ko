@@ -341,7 +341,6 @@ pub const Parser = struct {
         if (self.current() == .lt) {
             _ = self.advance();
             const tag = try self.parseSystemTagName();
-        std.debug.print("DBG parseSystemTagStmt tag={s} current={any}\n", .{ tag, self.current() });
             try self.expectGT();
 
             if (self.current() == .caret) {
@@ -673,7 +672,6 @@ pub const Parser = struct {
         _ = self.advance();
         try self.expectLT();
         const tag = try self.parseSystemTagName();
-        std.debug.print("DBG parseSystemTagStmt tag={s} current={any}\n", .{ tag, self.current() });
         try self.expectGT();
         try self.expectCaret();
         try self.expectLParen();
@@ -1444,7 +1442,6 @@ pub const Parser = struct {
     fn parseSystemTagExpr(self: *Parser) anyerror!*ast.Expr {
         _ = self.advance();
         const tag = try self.parseSystemTagName();
-        std.debug.print("DBG parseSystemTagStmt tag={s} current={any}\n", .{ tag, self.current() });
 
         var args = std.array_list.Managed(ast.Expr).init(self.allocator);
         defer args.deinit();
