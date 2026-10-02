@@ -41,7 +41,7 @@ pub const VM = struct {
             .file_path = duped,
             .current_function = "main",
             .stdin_buf = undefined,
-            .stdin_reader = null,
+            .stdin_reader = std.Io.File.stdin().reader(io, &self.stdin_buf),
         };
     }
 
