@@ -21,6 +21,7 @@ pub const VM = struct {
     file_path: []const u8,
     current_function: []const u8,
     stdin_buf: [4096]u8,
+    stdin_file_reader: ?std.Io.File.Reader,
     stdin_reader: ?std.Io.Reader,
 
     pub fn init(allocator: std.mem.Allocator, io: std.Io, file_path: []const u8) !VM {
@@ -43,6 +44,7 @@ pub const VM = struct {
             .file_path = duped,
             .current_function = "main",
             .stdin_buf = undefined,
+            .stdin_file_reader = null,
             .stdin_reader = null,
         };
     }
