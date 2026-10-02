@@ -69,13 +69,13 @@ pub const VM = struct {
         return &self.stdin_file_reader.?.interface;
     }
 
-fn readInputLine(self: *VM) ![]const u8 {
-    const reader = try self.stdinReader();
-    const result = try reader.takeDelimiterInclusive('\n');
-    return result[0 .. result.len - 1];
-}
-
-const InputError = error{ EndOfInput };
+    fn readInputLine(self: *VM) ![]const u8 {
+        const reader = try self.stdinReader();
+        return reader.takeDelimiterExclusive('\n') catch |err| switch (err) {
+            error.EndOfStream => reader.buffered(),
+            else => return err,
+        };
+    }
 
     fn stdoutWriter(self: *VM) *std.Io.Writer {
         if (self.output_writer) |writer| return writer;
@@ -148,12 +148,9 @@ const InputError = error{ EndOfInput };
                 self.dispatchCatchBlocks(program, idx) catch {};
                 continue;
             }
-self.executeStatement(stmt) catch |err| {
-    std.debug.print("executeStatement catch: {any}\n", .{err});
-    const err_type = VM.zigErrorToKoType(err);
-    std.debug.print("err_type={s} err_name={s}\n", .{ err_type, @errorName(err) });
-    self.raiseError(err_type, @errorName(err));
-};
+            self.executeStatement(stmt) catch |err| {
+                self.raiseError(VM.zigErrorToKoType(err), @errorName(err));
+            };
         }
         if (self.has_error) {
             return error.RuntimeError;
@@ -481,22 +478,22 @@ self.executeStatement(stmt) catch |err| {
         try self.executeStatement(stmt);
     }
 
-fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
-    switch (target.*) {
-        .identifier => |name| {
-            if (self.current_scope.variables.get(name)) |_| {
-                const gop = try self.current_scope.variables.getOrPut(name);
-                gop.value_ptr.*.deinit(self.allocator);
-                gop.value_ptr.* = val;
-            } else if (self.global_scope.variables.get(name)) |_| {
-                const gop = try self.global_scope.variables.getOrPut(name);
-                gop.value_ptr.*.deinit(self.allocator);
-                gop.value_ptr.* = val;
-            } else {
-                const name_copy = try self.allocator.dupe(u8, name);
-                try self.current_scope.variables.put(name_copy, val);
-            }
-        },
+    fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
+        switch (target.*) {
+            .identifier => |name| {
+                if (self.current_scope.variables.get(name)) |_| {
+                    const gop = try self.current_scope.variables.getOrPut(name);
+                    gop.value_ptr.*.deinit(self.allocator);
+                    gop.value_ptr.* = val;
+                } else if (self.global_scope.variables.get(name)) |_| {
+                    const gop = try self.global_scope.variables.getOrPut(name);
+                    gop.value_ptr.*.deinit(self.allocator);
+                    gop.value_ptr.* = val;
+                } else {
+                    const name_copy = try self.allocator.dupe(u8, name);
+                    try self.current_scope.variables.put(name_copy, val);
+                }
+            },
             .member_access => |ma| {
                 switch (ma.object.*) {
                     .identifier => |name| {
@@ -595,16 +592,15 @@ fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
         }
     }
 
-fn zigErrorToKoType(err: anyerror) []const u8 {
-    return switch (err) {
-        error.DivideByZero => "DivideByZeroError",
-        error.OverflowError => "OverflowError",
-        error.TypeError => "TypeError",
-        error.UndefinedVariable => "NameError",
-        error.EndOfInput => "InputError",
-        else => "RuntimeError",
-    };
-}
+    fn zigErrorToKoType(err: anyerror) []const u8 {
+        return switch (err) {
+            error.DivideByZero => "DivideByZeroError",
+            error.OverflowError => "OverflowError",
+            error.TypeError => "TypeError",
+            error.UndefinedVariable => "NameError",
+            else => "RuntimeError",
+        };
+    }
 
     fn raiseError(self: *VM, err_type: []const u8, message: []const u8) void {
         self.has_error = true;
@@ -1108,22 +1104,19 @@ fn zigErrorToKoType(err: anyerror) []const u8 {
         return value_mod.Value{ .null = {} };
     }
 
-fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
-    const line = self.readInputLine() catch |err| switch (err) {
-        error.EndOfStream => return error.EndOfInput,
-        else => |e| return e,
-    };
-    if (ie.target_name.len > 0) {
-        const name_copy = try self.allocator.dupe(u8, ie.target_name);
-        const owned = try self.allocator.dupe(u8, line);
-        try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = owned });
+    fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
+        const line = try self.readInputLine();
+        if (ie.target_name.len > 0) {
+            const name_copy = try self.allocator.dupe(u8, ie.target_name);
+            const owned = try self.allocator.dupe(u8, line);
+            try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = owned });
+        }
+        if (ie.target) |target_expr| {
+            const owned = try self.allocator.dupe(u8, line);
+            try self.assignValue(target_expr, value_mod.Value{ .string = owned });
+        }
+        return value_mod.Value{ .string = try self.allocator.dupe(u8, line) };
     }
-    if (ie.target) |target_expr| {
-        const owned = try self.allocator.dupe(u8, line);
-        try self.assignValue(target_expr, value_mod.Value{ .string = owned });
-    }
-    return value_mod.Value{ .string = try self.allocator.dupe(u8, line) };
-}
 
     fn evaluateNow(self: *VM, ne: *ast.NowExpr) !value_mod.Value {
         const val = try self.evaluateExpression(ne.expr);
