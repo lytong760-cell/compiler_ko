@@ -22,12 +22,12 @@ test "test_multi_input" {
     // Set up VM
     var out_buf: [4096]u8 = undefined;
     var out: std.Io.Writer = .fixed(&out_buf);
-    var vm = try vm.VM.init(gpa, std.testing.io, "test.ko");
-    defer vm.deinit();
-    vm.setOutputWriter(&out);
-    vm.setInputBuffer(input);
+    var virtual_machine = try vm.VM.init(gpa, std.testing.io, "test.ko");
+    defer virtual_machine.deinit();
+    virtual_machine.setOutputWriter(&out);
+    virtual_machine.setInputBuffer(input);
     // Execute
-    try vm.execute(program);
+    try virtual_machine.execute(program);
     const got = out.buffered();
     const expected = "a=first line\\nb=second line";
     if (!std.mem.eql(u8, got, expected)) {
@@ -54,16 +54,16 @@ test "test_eof_error" {
     // We don't care about output, so we can use a sinking writer.
     var sink_buffer: [1]u8 = undefined;
     var sink: std.Io.Writer.Discarding = .init(&sink_buffer);
-    var vm = try vm.VM.init(gpa, std.testing.io, "test.ko");
-    defer vm.deinit();
-    vm.setOutputWriter(&sink.writer);
-    vm.setInputBuffer(input);
+    var virtual_machine = try vm.VM.init(gpa, std.testing.io, "test.ko");
+    defer virtual_machine.deinit();
+    virtual_machine.setOutputWriter(&sink.writer);
+    virtual_machine.setInputBuffer(input);
     // We expect an error
-    if (vm.execute(program)) |_| {
+    if (virtual_machine.execute(program)) |_| {
         return error.TestExpectedError;
     }
     // Check that the error type is EOFError
-    if (vm.error_type) |et| {
+    if (virtual_machine.error_type) |et| {
         if (!std.mem.eql(u8, et, "EOFError")) {
             std.debug.print("Expected error type EOFError, got {s}\\n", .{et});
             return error.TestFailed;
