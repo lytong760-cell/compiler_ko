@@ -58,34 +58,46 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         return -1;
     }
 
-    // Tokenize by whitespace (space, tab, newline)
+    // Tokenize by whitespace (space, tab, newline) using strtok_r for safety
     const char *delim = " \t\n";
+    char *saveptr = NULL;
+    char *token = strtok_r(cmd_copy, delim, &saveptr);
+    char **argv = NULL;
     size_t argc = 0;
-    char *token = strtok(cmd_copy, delim);
+    size_t capacity = 0;
+
     while (token) {
+        if (argc >= capacity) {
+            capacity = capacity ? capacity * 2 : 4;
+            char **newargv = realloc(argv, (capacity + 1) * sizeof(char *)); // +1 for NULL terminator
+            if (!newargv) {
+                free(cmd_copy);
+                free(argv);
+                return -1;
+            }
+            argv = newargv;
+        }
+        argv[argc] = token;
         argc++;
-        token = strtok(NULL, delim);
+        token = strtok_r(NULL, delim, &saveptr);
     }
 
     if (argc == 0) {
         free(cmd_copy);
+        free(argv);
         return -1;
     }
 
-    // Allocate argv array
-    char **argv = malloc((argc + 1) * sizeof(char *));
-    if (!argv) {
-        free(cmd_copy);
-        return -1;
-    }
-
-    // Reset string and tokenize again to fill argv
-    token = strtok(cmd_copy, delim);
-    size_t i = 0;
-    while (token) {
-        argv[i] = token;
-        i++;
-        token = strtok(NULL, delim);
+    // Ensure we have space for the NULL terminator
+    if (argc >= capacity) {
+        capacity = argc + 1;
+        char **newargv = realloc(argv, (capacity + 1) * sizeof(char *));
+        if (!newargv) {
+            free(cmd_copy);
+            free(argv);
+            return -1;
+        }
+        argv = newargv;
     }
     argv[argc] = NULL;
 
