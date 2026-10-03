@@ -14,6 +14,7 @@ KoHttpResponse* ko_http_post(const char *url, const char *body, int timeout_ms) 
 }
 
 KoHttpResponse* ko_http_request(const KoHttpRequest *req) {
+    (void)req;
     KoHttpResponse *res = calloc(1, sizeof(KoHttpResponse));
     if (!res) return NULL;
     res->status_code = -1;

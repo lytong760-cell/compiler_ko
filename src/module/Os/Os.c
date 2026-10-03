@@ -55,5 +55,8 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
 }
 
 int ko_list_dir(const char *path, char ***entries, size_t *count) {
+    (void)path;
+    (void)entries;
+    (void)count;
     return 0;
 }
