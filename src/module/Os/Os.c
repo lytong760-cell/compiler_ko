@@ -120,6 +120,8 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         }
     }
 
+    // Debug: after for loop
+    write(STDERR_FILENO, "ko_exec: after for loop\n", 24);
     // Debug: after shell metachar check
     write(STDERR_FILENO, "ko_exec: after shell metachar check\n", 34);
 
