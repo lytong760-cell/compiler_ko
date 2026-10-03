@@ -157,6 +157,8 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
 
     // Parent process
     close(pipefd[1]); // Close write end
+    const char *parent_read_msg = "Parent: about to read from pipe\n";
+    write(STDERR_FILENO, parent_read_msg, strlen(parent_read_msg));
 
     // Read from pipe
     ssize_t total = 0;
@@ -169,6 +171,8 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
     }
     output[total] = '\0';
     close(pipefd[0]);
+    const char *parent_done_msg = "Parent: finished reading\n";
+    write(STDERR_FILENO, parent_done_msg, strlen(parent_done_msg));
 
     // Wait for child with timeout (5 seconds)
     int status;
