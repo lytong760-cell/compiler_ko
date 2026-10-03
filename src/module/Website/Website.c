@@ -39,3 +39,15 @@ char* ko_url_decode(const char *str) {
     memcpy(out, str, len + 1);
     return out;
 }
+
+const char* ko_validate_url(const char *url) {
+    if (!url) return "NULL url";
+    while (*url) {
+        if (*url == ';' || *url == '&' || *url == '|' || *url == '$' || *url == '`')
+            return "dangerous character in URL";
+        if (*url == '.' && url[1] == '.' && url[2] == '/')
+            return "path traversal detected";
+        url++;
+    }
+    return NULL;
+}
