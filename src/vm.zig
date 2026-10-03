@@ -611,7 +611,7 @@ self.executeStatement(stmt) catch |err| {
     fn raiseError(self: *VM, err_type: []const u8, message: []const u8) void {
         self.has_error = true;
         self.error_type = err_type;
-        std.debug.print("[ko-debug] {s}: {s}\n", .{ err_type, message });
+        _ = message;
     }
 
     fn evaluateExpression(self: *VM, expr: *ast.Expr) !value_mod.Value {
