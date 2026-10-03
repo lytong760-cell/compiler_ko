@@ -70,36 +70,38 @@ pub fn build(b: *std.Build) !void {
     };
 
     for (c_modules) |mod| {
-        const mod_module = b.createModule(.{
-            .root_source_file = b.path(mod.source),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-        });
-        mod_module.addIncludePath(b.path(mod.include_dir));
         const lib = b.addLibrary(.{
             .name = mod.name,
-            .root_module = mod_module,
             .linkage = .dynamic,
+            .root_module = b.createModule(.{
+                .target = target,
+                .optimize = optimize,
+                .link_libc = true,
+            }),
         });
+        lib.addIncludePath(b.path(mod.include_dir));
+        lib.addCSourceFiles(.{
+            .files = &.{mod.source},
+            .flags = &.{ "-std=c11", "-fPIC" },
+        });
+        lib.linkLibC();
         b.installArtifact(lib);
     }
 
-    // --- Build Loop.cpp as shared library ---
-    // Loop.cpp có extern "C" (dòng 278) và main() được bảo vệ #ifndef KO_LOOP_NO_MAIN.
-    // Định nghĩa KO_LOOP_NO_MAIN để loại bỏ main(), build .so với symbol ko_loop_*.
-    const loop_module = b.createModule(.{
-        .root_source_file = b.path("src/Loop.cpp"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-        .link_libcpp = true,
-    });
-    loop_module.addCMacro("KO_LOOP_NO_MAIN", "1");
     const loop_lib = b.addLibrary(.{
         .name = "ko_loop",
-        .root_module = loop_module,
         .linkage = .dynamic,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
     });
+    loop_lib.addCMacro("KO_LOOP_NO_MAIN", "1");
+    loop_lib.addCSourceFiles(.{
+        .files = &.{"src/Loop.cpp"},
+        .flags = &.{ "-std=c++17", "-fPIC" },
+    });
+    loop_lib.linkLibCpp();
     b.installArtifact(loop_lib);
 }
