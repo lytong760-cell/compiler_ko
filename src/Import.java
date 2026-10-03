@@ -307,11 +307,11 @@ public class Import {
             pb.directory(extractDir);
             pb.redirectErrorStream(true);
             Process process = pb.start();
-            process.waitFor();
-            
+            String output = readStream(process.getInputStream());
             int exitCode = process.waitFor();
+            
             if (exitCode != 0) {
-                System.out.println("[Import.java] C compilation failed");
+                System.out.println("[Import.java] C compilation failed: " + output);
                 return false;
             }
             
