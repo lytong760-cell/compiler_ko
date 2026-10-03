@@ -9,13 +9,13 @@ const Error = error{
     FloatRangeFailed,
 };
 
-const KoFileExistsFn = *const fn (*const u8) callconv(.C) c_int;
-const KoRandomSeedFn = *const fn (i64) callconv(.C) void;
-const KoRandomIntFn = *const fn () callconv(.C) i64;
-const KoRandomFloatFn = *const fn () callconv(.C) f64;
-const KoRandomBytesFn = *const fn (i64, [*]u8) callconv(.C) void;
-const KoValidateUrlFn = *const fn (*const u8) callconv(.C) ?*const u8;
-const KoUrlEncodeFn = *const fn (*const u8) callconv(.C) ?*const u8;
+const KoFileExistsFn = *const fn (*const u8) callconv(.c) c_int;
+const KoRandomSeedFn = *const fn (i64) callconv(.c) void;
+const KoRandomIntFn = *const fn () callconv(.c) i64;
+const KoRandomFloatFn = *const fn () callconv(.c) f64;
+const KoRandomBytesFn = *const fn (i64, [*]u8) callconv(.c) void;
+const KoValidateUrlFn = *const fn (*const u8) callconv(.c) ?*const u8;
+const KoUrlEncodeFn = *const fn (*const u8) callconv(.c) ?*const u8;
 
 const KoLib = struct {
     fn close(self: *KoLib, allocator: Allocator) void {
@@ -76,7 +76,7 @@ test "ko_loop: resolve trailing symbol ko_loop_reset_registers" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const fn_ptr = try resolveOrFail(a, "zig-out/lib", "libko_loop.so", *const fn (i32) callconv(.C) void, "ko_loop_reset_registers");
+    const fn_ptr = try resolveOrFail(a, "zig-out/lib", "libko_loop.so", *const fn (i32) callconv(.c) void, "ko_loop_reset_registers");
     try std.testing.expect(fn_ptr != null);
 }
 
@@ -87,7 +87,7 @@ test "ko_os: resolve all 9 ko_* symbols" {
 
     const lib_dir = "zig-out/lib";
     const names = [_][]const u8{ "ko_get_env", "ko_set_env", "ko_list_dir", "ko_file_exists", "ko_file_size", "ko_exec", "ko_exit", "ko_get_cwd", "ko_set_cwd" };
-    const FnT = *const fn (*const u8) callconv(.C) ?*anyopaque;
+    const FnT = *const fn (*const u8) callconv(.c) ?*anyopaque;
 
     for (names) |name| {
         const path = try std.fs.path.join(a, &.{ lib_dir, "libko_os.so" });
@@ -124,7 +124,7 @@ test "ko_os: ko_file_size matches stat for existing file" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_file_size = try resolveOrFail(a, "zig-out/lib", "libko_os.so", *const fn (*const u8) callconv(.C) i64, "ko_file_size");
+    const ko_file_size = try resolveOrFail(a, "zig-out/lib", "libko_os.so", *const fn (*const u8) callconv(.c) i64, "ko_file_size");
     const size = ko_file_size("examples/simple.ko");
     try std.testing.expect(size >= 0);
 
@@ -217,7 +217,7 @@ test "ko_website: resolve all 7 ko_* symbols" {
 
     const lib_dir = "zig-out/lib";
     const names = [_][]const u8{ "ko_http_get", "ko_http_post", "ko_http_request", "ko_http_response_free", "ko_url_encode", "ko_url_decode", "ko_validate_url" };
-    const FnT = *const fn (*const u8) callconv(.C) ?*anyopaque;
+    const FnT = *const fn (*const u8) callconv(.c) ?*anyopaque;
 
     for (names) |name| {
         const path = try std.fs.path.join(a, &.{ lib_dir, "libko_website.so" });
@@ -266,7 +266,7 @@ test "ko_loop: resolve all 8 ko_loop_* symbols" {
 
     const lib_dir = "zig-out/lib";
     const names = [_][]const u8{ "ko_loop_engine_create", "ko_loop_engine_destroy", "ko_loop_execute_optimized_loop", "ko_loop_execute_while_loop", "ko_loop_get_stats", "ko_loop_optimize_for", "ko_loop_optimize_while", "ko_loop_reset_registers" };
-    const FnT = *const fn (i32) callconv(.C) ?*anyopaque;
+    const FnT = *const fn (i32) callconv(.c) ?*anyopaque;
 
     for (names) |name| {
         const path = try std.fs.path.join(a, &.{ lib_dir, "libko_loop.so" });
