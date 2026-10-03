@@ -48,13 +48,21 @@ int ko_exit(int code) {
 }
 
 int ko_exec(const char *cmd, char *output, size_t output_size) {
+    // Debug: entry
+    const char *entry_msg = "ko_exec entered\n";
+    write(STDERR_FILENO, entry_msg, strlen(entry_msg));
+
     if (!cmd || !output || output_size == 0) {
+        const char *err_msg = "ko_exec: invalid args\n";
+        write(STDERR_FILENO, err_msg, strlen(err_msg));
         return -1;
     }
 
     // Make a copy of cmd to tokenize
     char *cmd_copy = strdup(cmd);
     if (!cmd_copy) {
+        const char *err_msg = "ko_exec: strdup failed\n";
+        write(STDERR_FILENO, err_msg, strlen(err_msg));
         return -1;
     }
 
@@ -69,6 +77,8 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
 
     if (argc == 0) {
         free(cmd_copy);
+        const char *err_msg = "ko_exec: no tokens\n";
+        write(STDERR_FILENO, err_msg, strlen(err_msg));
         return -1;
     }
 
@@ -76,6 +86,8 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
     char **argv = malloc((argc + 1) * sizeof(char *));
     if (!argv) {
         free(cmd_copy);
+        const char *err_msg = "ko_exec: malloc argv failed\n";
+        write(STDERR_FILENO, err_msg, strlen(err_msg));
         return -1;
     }
 
@@ -97,6 +109,8 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
             if (strchr(shell_metachars, *arg)) {
                 free(cmd_copy);
                 free(argv);
+                const char *err_msg = "ko_exec: shell metachar\n";
+                write(STDERR_FILENO, err_msg, strlen(err_msg));
                 return -1;
             }
         }
@@ -107,6 +121,8 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
     if (pipe(pipefd) == -1) {
         free(cmd_copy);
         free(argv);
+        const char *err_msg = "ko_exec: pipe failed\n";
+        write(STDERR_FILENO, err_msg, strlen(err_msg));
         return -1;
     }
 
@@ -116,6 +132,8 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         free(argv);
         close(pipefd[0]);
         close(pipefd[1]);
+        const char *err_msg = "ko_exec: fork failed\n";
+        write(STDERR_FILENO, err_msg, strlen(err_msg));
         return -1;
     }
 
@@ -173,13 +191,20 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
     free(argv);
 
     if (w == -1) {
+        const char *err_msg = "ko_exec: waitpid failed\n";
+        write(STDERR_FILENO, err_msg, strlen(err_msg));
         return -1;
     }
 
     if (WIFEXITED(status)) {
-        return WEXITSTATUS(status);
+        int exit_status = WEXITSTATUS(status);
+        char exit_msg[32];
+        snprintf(exit_msg, sizeof(exit_msg), "ko_exec: child exited with %d\n", exit_status);
+        write(STDERR_FILENO, exit_msg, strlen(exit_msg));
+        return exit_status;
     } else {
-        // Child terminated by signal
+        const char *err_msg = "ko_exec: child terminated by signal\n";
+        write(STDERR_FILENO, err_msg, strlen(err_msg));
         return -1;
     }
 }
