@@ -90,6 +90,8 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         write(STDERR_FILENO, err_msg, strlen(err_msg));
         return -1;
     }
+    // Debug: after malloc argv
+    write(STDERR_FILENO, "ko_exec: after malloc argv\n", 27);
 
     // Reset string and tokenize again to fill argv
     token = strtok(cmd_copy, delim);

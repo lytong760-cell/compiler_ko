@@ -102,6 +102,8 @@ private:
         bool stopped_by_condition = false;
 
         static std::FILE* f = std::fopen("/tmp/kilo/diag.txt", "a");
+        if (f) std::fprintf(f, "whileLoop START loopId=%s condctx=%p bodyctx=%p max=%lu\n",
+                             /* need loopId — not available; use marker */ "", (void*)rec.condCtx, bodyCtx, maxIterations);
 
         while (i < maxIterations) {
             if (!rec.cond(rec.condCtx)) {
