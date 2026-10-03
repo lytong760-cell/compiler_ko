@@ -25,7 +25,8 @@ const KoValidateUrlFn = *const fn ([*:0]const u8) callconv(.c) ?*const [*:0]cons
 
 test "call ko_file_exists with build.zig" {
     const ko_file_exists = load(KoFileExistsFn, "ko_file_exists") catch return error.CouldNotLoadLibrary;
-    const result = ko_file_exists("build.zig");
+    const path: [*:0]const u8 = "build.zig";
+    const result = ko_file_exists(path);
     try std.testing.expectEqual(@as(c_int, 1), result);
 }
 
