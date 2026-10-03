@@ -340,17 +340,17 @@ public class Import {
                 args.add(f.getAbsolutePath());
             }
             
-            ProcessBuilder pb = new ProcessBuilder(args);
-            pb.directory(extractDir);
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            String output = readStream(process.getInputStream());
-            int exitCode = process.waitFor();
-            
-            if (exitCode != 0) {
-                System.out.println("[Import.java] C compilation failed: " + output);
-                return false;
-            }
+             ProcessBuilder pb = new ProcessBuilder(args);
+             pb.directory(extractDir);
+             pb.redirectErrorStream(true);
+             try (Process process = pb.start()) {
+                 int exitCode = process.waitFor();
+                 String output = readStream(process.getInputStream());
+                 if (exitCode != 0) {
+                     System.out.println("[Import.java] C compilation failed: " + output);
+                     return false;
+                 }
+             }
             
             return true;
         } catch (Exception e) {
@@ -381,16 +381,17 @@ public class Import {
                 args.add(f.getAbsolutePath());
             }
             
-            ProcessBuilder pb = new ProcessBuilder(args);
-            pb.directory(extractDir);
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            int exitCode = process.waitFor();
-            
-            if (exitCode != 0) {
-                System.out.println("[Import.java] C++ compilation failed");
-                return false;
-            }
+             ProcessBuilder pb = new ProcessBuilder(args);
+             pb.directory(extractDir);
+             pb.redirectErrorStream(true);
+             try (Process process = pb.start()) {
+                 int exitCode = process.waitFor();
+                 String output = readStream(process.getInputStream());
+                 if (exitCode != 0) {
+                     System.out.println("[Import.java] C++ compilation failed: " + output);
+                     return false;
+                 }
+             }
             
             return true;
         } catch (Exception e) {
