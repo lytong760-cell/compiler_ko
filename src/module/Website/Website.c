@@ -49,5 +49,9 @@ const char* ko_validate_url(const char *url) {
             return "path traversal detected";
         url++;
     }
+    /* Check for dangerous schemes */
+    if (url[0] == 'f' && url[1] == 'i' && url[2] == 'l' && url[3] == 'e' && url[4] == ':') {
+        return "dangerous scheme: file://";
+    }
     return NULL;
 }
