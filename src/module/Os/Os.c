@@ -66,7 +66,7 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         return -1;
     }
 
-    // Tokenize by whitespace (space, tab, newline)
+    // Tokenize by whitespace (space, tab, newline) to count tokens
     const char *delim = " \t\n";
     size_t argc = 0;
     char *token = strtok(cmd_copy, delim);
@@ -81,6 +81,11 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         write(STDERR_FILENO, err_msg, strlen(err_msg));
         return -1;
     }
+
+    // Debug: print cmd_copy after first tokenization
+    write(STDERR_FILENO, "ko_exec: cmd_copy after first tokenization: ", 42);
+    write(STDERR_FILENO, cmd_copy, strlen(cmd_copy));
+    write(STDERR_FILENO, "\n", 1);
 
     // Allocate argv array
     char **argv = malloc((argc + 1) * sizeof(char *));
