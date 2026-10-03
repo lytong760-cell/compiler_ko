@@ -703,7 +703,7 @@ pub const Parser = struct {
     fn parseInputStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
-        const target_expr = try self.parseExpression();
+        _ = try self.parseExpression();
         try self.expectRParen();
 
         if (self.current() == .equals) {
