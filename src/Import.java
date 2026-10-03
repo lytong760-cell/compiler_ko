@@ -491,19 +491,14 @@ public class Import {
         }
     }
     
-    private void writeModuleManifest(File moduleDir, String alias, String lang) {
-        try {
-            File manifest = new File(moduleDir, "module.json");
-            String json = String.format(
-                "{\"name\":\"%s\",\"version\":\"1.0.0\",\"language\":\"%s\",\"installed_at\":\"%d\"}",
-                alias, lang, System.currentTimeMillis()
-            );
-            try (FileWriter fw = new FileWriter(manifest)) {
-                fw.write(json);
+    private void copyFile(File src, File dest) throws IOException {
+        try (FileInputStream fis = new FileInputStream(src);
+             FileOutputStream fos = new FileOutputStream(dest)) {
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = fis.read(buf)) > 0) {
+                fos.write(buf, 0, n);
             }
-            System.out.println("[Import.java] Module manifest written: " + manifest.getAbsolutePath());
-        } catch (Exception e) {
-            System.out.println("[Import.java] Manifest write failed: " + e.getMessage());
         }
     }
     
