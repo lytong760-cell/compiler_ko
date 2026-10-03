@@ -79,10 +79,9 @@ pub fn build(b: *std.Build) !void {
                 .link_libc = true,
             }),
         });
-        lib.addIncludePath(b.path(mod.include_dir));
         lib.addCSourceFiles(.{
             .files = &.{mod.source},
-            .flags = &.{ "-std=c11", "-fPIC" },
+            .flags = &.{ "-std=c11", "-fPIC", "-I" ++ mod.include_dir },
         });
         lib.linkLibC();
         b.installArtifact(lib);
