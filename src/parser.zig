@@ -1159,7 +1159,7 @@ pub const Parser = struct {
     fn parseRelationalExpr(self: *Parser) anyerror!*ast.Expr {
         var left = try self.parseAdditiveExpr();
         while (true) {
-            if (self.current() == .lt and !self.startsSystemTag()) {
+            if (self.current() == .lt and self.peek(1) == .equals) {
                 _ = self.advance();
                 _ = self.advance();
                 const right = try self.parseAdditiveExpr();
