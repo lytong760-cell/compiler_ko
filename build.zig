@@ -27,9 +27,10 @@ pub fn build(b: *std.Build) !void {
     const run_step = b.step("run", "Run the compiler");
     run_step.dependOn(&run_cmd.step);
 
-    // Collect library artifacts so the test step can depend on them.
-    var libs = std.ArrayList(*std.Build.Step.Compile).init(b.allocator);
-    defer libs.deinit();
+    // Array to hold library compile-step handles, used to order test runs after
+    // libraries are built and installed into zig-out/lib/.
+    var lib_handles: [4]*std.Build.Step.Compile = undefined;
+    var lib_count: usize = 0;
 
     // --- Build C modules as shared libraries ---
     const c_modules = [_]struct { name: []const u8, source: []const u8, include_dir: []const u8 }{
@@ -55,7 +56,8 @@ pub fn build(b: *std.Build) !void {
             .root_module = mod_root,
         });
         b.installArtifact(lib);
-        _ = libs.append(lib) catch @panic("oom");
+        lib_handles[lib_count] = lib;
+        lib_count += 1;
     }
 
     const loop_root = b.createModule(.{
@@ -75,7 +77,8 @@ pub fn build(b: *std.Build) !void {
         .root_module = loop_root,
     });
     b.installArtifact(loop_lib);
-    _ = libs.append(loop_lib) catch @panic("oom");
+    lib_handles[lib_count] = loop_lib;
+    lib_count += 1;
 
     const test_step = b.step("test", "Run all tests");
     const files = [_][]const u8{
