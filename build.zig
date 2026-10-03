@@ -109,8 +109,9 @@ pub fn build(b: *std.Build) !void {
         });
         const test_run = b.addRunArtifact(test_exe);
         // Libraries must be built (and installed to zig-out/lib) before the test runs.
-        for (libs.items) |lib| {
-            test_run.step.dependOn(&lib.step);
+        var i: usize = 0;
+        while (i < lib_count) : (i += 1) {
+            test_run.step.dependOn(&lib_handles[i].step);
         }
         test_step.dependOn(&test_run.step);
     }
