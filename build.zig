@@ -100,6 +100,7 @@ pub fn build(b: *std.Build) !void {
             .root_source_file = b.path(file),
             .target = target,
             .optimize = optimize,
+            .link_libc = true,
             .imports = &.{
                 .{ .name = "src", .module = src_module },
             },
