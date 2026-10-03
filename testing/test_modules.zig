@@ -279,9 +279,7 @@ test "ko_loop: resolve all 8 ko_loop_* symbols" {
         const path_z = try strdup(a, path);
         defer a.free(path_z);
         const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
-        defer begin
-            _ = dlclose(handle);
-        end;
+        defer closeLib(handle);
         const sym = dlsym(handle, try strdup(a, name));
         defer a.free(sym);
         try std.testing.expect(sym != null);
