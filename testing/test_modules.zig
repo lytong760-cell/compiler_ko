@@ -24,32 +24,13 @@ const KoRandomBytesFn = *const fn (i64, [*]u8) callconv(.c) void;
 const KoValidateUrlFn = *const fn (*const u8) callconv(.c) ?*const u8;
 const KoUrlEncodeFn = *const fn (*const u8) callconv(.c) ?*const u8;
 
-const KoLib = struct {
-    fn close(self: *KoLib, allocator: Allocator) void {
-        self.lib.close();
-        allocator.free(self.path);
-    }
-
-    lib: dynamic_library.DynLib,
-    path: []const u8,
-};
-
-fn loadKoLib(allocator: Allocator, lib_dir: []const u8, lib_name: []const u8) Error!KoLib {
+fn dlopenAndLookup(t: type, lib_dir: []const u8, lib_name: []const u8, sym_name: [:0]const u8, allocator: Allocator) !t {
     const path = try std.fs.path.join(allocator, &.{ lib_dir, lib_name });
-    const lib = dynamic_library.DynLib.open(path) catch return error.CouldNotLoadLibrary;
-    return KoLib{ .path = path, .lib = lib };
-}
-
-fn resolveHelper(allocator: Allocator, lib_dir: []const u8, lib_name: []const u8, t: type, sym_name: [:0]const u8) !?t {
-    var lib = try loadKoLib(allocator, lib_dir, lib_name);
-    defer lib.close(allocator);
-    const sym = lib.lib.lookup(t, sym_name);
-    return sym;
-}
-
-fn resolveOrFail(allocator: Allocator, lib_dir: []const u8, lib_name: []const u8, t: type, sym_name: [:0]const u8) !t {
-    const result = resolveHelper(allocator, lib_dir, lib_name, t, sym_name) catch |err| return err;
-    if (result) |v| return v;
+    defer allocator.free(path);
+    const handle = dlopen(path, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+    defer dlclose(handle);
+    const sym = dlsym(handle, sym_name);
+    if (sym) |v| return @ptrCast(v);
     return error.SymbolNotFound;
 }
 
@@ -58,7 +39,7 @@ test "ko_os: resolve trailing symbol ko_set_cwd" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const fn_ptr = try resolveOrFail(a, "zig-out/lib", "libko_os.so", KoFileExistsFn, "ko_set_cwd");
+    const fn_ptr = try dlopenAndLookup(KoFileExistsFn, "zig-out/lib", "libko_os.so", "ko_set_cwd", a);
     try std.testing.expect(fn_ptr != null);
 }
 
@@ -67,7 +48,7 @@ test "ko_random: resolve trailing symbol ko_random_bytes" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const fn_ptr = try resolveOrFail(a, "zig-out/lib", "libko_random.so", KoRandomBytesFn, "ko_random_bytes");
+    const fn_ptr = try dlopenAndLookup(KoRandomBytesFn, "zig-out/lib", "libko_random.so", "ko_random_bytes", a);
     try std.testing.expect(fn_ptr != null);
 }
 
@@ -76,7 +57,7 @@ test "ko_website: resolve trailing symbol ko_validate_url" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const fn_ptr = try resolveOrFail(a, "zig-out/lib", "libko_website.so", KoValidateUrlFn, "ko_validate_url");
+    const fn_ptr = try dlopenAndLookup(KoValidateUrlFn, "zig-out/lib", "libko_website.so", "ko_validate_url", a);
     try std.testing.expect(fn_ptr != null);
 }
 
@@ -85,7 +66,7 @@ test "ko_loop: resolve trailing symbol ko_loop_reset_registers" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const fn_ptr = try resolveOrFail(a, "zig-out/lib", "libko_loop.so", *const fn (i32) callconv(.c) void, "ko_loop_reset_registers");
+    const fn_ptr = try dlopenAndLookup(*const fn (i32) callconv(.c) void, "zig-out/lib", "libko_loop.so", "ko_loop_reset_registers", a);
     try std.testing.expect(fn_ptr != null);
 }
 
@@ -101,10 +82,10 @@ test "ko_os: resolve all 9 ko_* symbols" {
     for (names) |name| {
         const path = try std.fs.path.join(a, &.{ lib_dir, "libko_os.so" });
         defer a.free(path);
-        const lib = dynamic_library.DynLib.open(path) catch return error.CouldNotLoadLibrary;
-        const sym = lib.lookup(FnT, name);
-        try std.testing.expect(sym != null, "symbol '{s}' is NULL", .{name});
-        lib.close();
+        const handle = dlopen(path, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+        defer dlclose(handle);
+        const sym = dlsym(handle, name);
+        try std.testing.expect(sym != null);
     }
 }
 
@@ -113,7 +94,7 @@ test "ko_os: ko_file_exists(true) on existing file" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_file_exists = try resolveOrFail(a, "zig-out/lib", "libko_os.so", KoFileExistsFn, "ko_file_exists");
+    const ko_file_exists = try dlopenAndLookup(KoFileExistsFn, "zig-out/lib", "libko_os.so", "ko_file_exists", a);
     const result = ko_file_exists("examples/simple.ko");
     try std.testing.expectEqual(@as(c_int, 1), result);
 }
@@ -123,7 +104,7 @@ test "ko_os: ko_file_exists(false) on non-existing file" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_file_exists = try resolveOrFail(a, "zig-out/lib", "libko_os.so", KoFileExistsFn, "ko_file_exists");
+    const ko_file_exists = try dlopenAndLookup(KoFileExistsFn, "zig-out/lib", "libko_os.so", "ko_file_exists", a);
     const result = ko_file_exists("nope");
     try std.testing.expectEqual(@as(c_int, 0), result);
 }
@@ -133,14 +114,13 @@ test "ko_os: ko_file_size matches stat for existing file" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_file_size = try resolveOrFail(a, "zig-out/lib", "libko_os.so", *const fn (*const u8) callconv(.c) i64, "ko_file_size");
+    const ko_file_size = try dlopenAndLookup(*const fn (*const u8) callconv(.c) i64, "zig-out/lib", "libko_os.so", "ko_file_size", a);
     const size = ko_file_size("examples/simple.ko");
     try std.testing.expect(size >= 0);
 
     const path = try std.fs.path.join(a, &.{ "examples", "simple.ko" });
     defer a.free(path);
-    const Dir = std.Io.Dir;
-    const stat = Dir.cwd().stat(path) catch return error.OsFileNotFound;
+    const stat = std.Io.Dir.cwd().stat(path) catch return error.OsFileNotFound;
     try std.testing.expectEqual(@as(i64, stat.size), size);
 }
 
@@ -149,8 +129,8 @@ test "ko_random: reproducibility via seed" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_random_seed = try resolveOrFail(a, "zig-out/lib", "libko_random.so", KoRandomSeedFn, "ko_random_seed");
-    const ko_random_int = try resolveOrFail(a, "zig-out/lib", "libko_random.so", KoRandomIntFn, "ko_random_int");
+    const ko_random_seed = try dlopenAndLookup(KoRandomSeedFn, "zig-out/lib", "libko_random.so", "ko_random_seed", a);
+    const ko_random_int = try dlopenAndLookup(KoRandomIntFn, "zig-out/lib", "libko_random.so", "ko_random_int", a);
 
     ko_random_seed(12345);
     const a1 = ko_random_int();
@@ -160,8 +140,8 @@ test "ko_random: reproducibility via seed" {
     const b1 = ko_random_int();
     const b2 = ko_random_int();
 
-    try std.testing.expectEqual(@as(i64, a1), b1, "reproducibility: first value");
-    try std.testing.expectEqual(@as(i64, a2), b2, "reproducibility: second value");
+    try std.testing.expectEqual(a1, b1);
+    try std.testing.expectEqual(a2, b2);
 }
 
 test "ko_random: seed uniqueness produces different sequences" {
@@ -169,14 +149,14 @@ test "ko_random: seed uniqueness produces different sequences" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_random_seed = try resolveOrFail(a, "zig-out/lib", "libko_random.so", KoRandomSeedFn, "ko_random_seed");
-    const ko_random_int = try resolveOrFail(a, "zig-out/lib", "libko_random.so", KoRandomIntFn, "ko_random_int");
+    const ko_random_seed = try dlopenAndLookup(KoRandomSeedFn, "zig-out/lib", "libko_random.so", "ko_random_seed", a);
+    const ko_random_int = try dlopenAndLookup(KoRandomIntFn, "zig-out/lib", "libko_random.so", "ko_random_int", a);
 
     ko_random_seed(0);
     const x1 = ko_random_int();
     ko_random_seed(1);
     const x2 = ko_random_int();
-    try std.testing.expect(x1 != x2, "different seeds should produce different first values");
+    try std.testing.expect(x1 != x2);
 }
 
 test "ko_random: ko_random_float in [0, 1)" {
@@ -184,14 +164,14 @@ test "ko_random: ko_random_float in [0, 1)" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_random_seed = try resolveOrFail(a, "zig-out/lib", "libko_random.so", KoRandomSeedFn, "ko_random_seed");
-    const ko_random_float = try resolveOrFail(a, "zig-out/lib", "libko_random.so", KoRandomFloatFn, "ko_random_float");
+    const ko_random_seed = try dlopenAndLookup(KoRandomSeedFn, "zig-out/lib", "libko_random.so", "ko_random_seed", a);
+    const ko_random_float = try dlopenAndLookup(KoRandomFloatFn, "zig-out/lib", "libko_random.so", "ko_random_float", a);
 
     ko_random_seed(42);
     for (0..100) |_| {
         const f = ko_random_float();
-        try std.testing.expect(f >= 0.0, "ko_random_float must be >= 0");
-        try std.testing.expect(f < 1.0, "ko_random_float must be < 1");
+        try std.testing.expect(f >= 0.0);
+        try std.testing.expect(f < 1.0);
     }
 }
 
@@ -200,11 +180,11 @@ test "ko_random: ko_random_bytes fills buffer" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_random_seed = try resolveOrFail(a, "zig-out/lib", "libko_random.so", KoRandomSeedFn, "ko_random_seed");
-    const ko_random_bytes = try resolveOrFail(a, "zig-out/lib", "libko_random.so", KoRandomBytesFn, "ko_random_bytes");
+    const ko_random_seed = try dlopenAndLookup(KoRandomSeedFn, "zig-out/lib", "libko_random.so", "ko_random_seed", a);
+    const ko_random_bytes = try dlopenAndLookup(KoRandomBytesFn, "zig-out/lib", "libko_random.so", "ko_random_bytes", a);
 
     const len: i64 = 64;
-    const buf = a.alloc(u8, len) catch return error.NoMemory;
+    const buf = a.alloc(u8, @intCast(len)) catch return error.NoMemory;
     defer a.free(buf);
     ko_random_seed(999);
     ko_random_bytes(len, buf.ptr);
@@ -216,7 +196,7 @@ test "ko_random: ko_random_bytes fills buffer" {
             break;
         }
     }
-    try std.testing.expect(!all_zero, "ko_random_bytes should not produce all zeros");
+    try std.testing.expect(!all_zero);
 }
 
 test "ko_website: resolve all 7 ko_* symbols" {
@@ -231,10 +211,10 @@ test "ko_website: resolve all 7 ko_* symbols" {
     for (names) |name| {
         const path = try std.fs.path.join(a, &.{ lib_dir, "libko_website.so" });
         defer a.free(path);
-        const lib = dynamic_library.DynLib.open(path) catch return error.CouldNotLoadLibrary;
-        const sym = lib.lookup(FnT, name);
-        try std.testing.expect(sym != null, "symbol '{s}' is NULL", .{name});
-        lib.close();
+        const handle = dlopen(path, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+        defer dlclose(handle);
+        const sym = dlsym(handle, name);
+        try std.testing.expect(sym != null);
     }
 }
 
@@ -243,9 +223,9 @@ test "ko_website: ko_validate_url rejects dangerous URL" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_validate_url = try resolveOrFail(a, "zig-out/lib", "libko_website.so", KoValidateUrlFn, "ko_validate_url");
+    const ko_validate_url = try dlopenAndLookup(KoValidateUrlFn, "zig-out/lib", "libko_website.so", "ko_validate_url", a);
     const result = ko_validate_url("file:///etc/passwd");
-    try std.testing.expect(result != null, "file:// URLs must be rejected");
+    try std.testing.expect(result != null);
 }
 
 test "ko_website: ko_validate_url accepts safe URL" {
@@ -253,9 +233,9 @@ test "ko_website: ko_validate_url accepts safe URL" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_validate_url = try resolveOrFail(a, "zig-out/lib", "libko_website.so", KoValidateUrlFn, "ko_validate_url");
+    const ko_validate_url = try dlopenAndLookup(KoValidateUrlFn, "zig-out/lib", "libko_website.so", "ko_validate_url", a);
     const result = ko_validate_url("https://example.com/path");
-    try std.testing.expect(result == null, "safe URLs must be accepted");
+    try std.testing.expect(result == null);
 }
 
 test "ko_website: ko_url_encode returns non-null" {
@@ -263,9 +243,9 @@ test "ko_website: ko_url_encode returns non-null" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_url_encode = try resolveOrFail(a, "zig-out/lib", "libko_website.so", KoUrlEncodeFn, "ko_url_encode");
+    const ko_url_encode = try dlopenAndLookup(KoUrlEncodeFn, "zig-out/lib", "libko_website.so", "ko_url_encode", a);
     const result = ko_url_encode("hello world");
-    try std.testing.expect(result != null, "ko_url_encode must not return null");
+    try std.testing.expect(result != null);
 }
 
 test "ko_loop: resolve all 8 ko_loop_* symbols" {
@@ -280,9 +260,9 @@ test "ko_loop: resolve all 8 ko_loop_* symbols" {
     for (names) |name| {
         const path = try std.fs.path.join(a, &.{ lib_dir, "libko_loop.so" });
         defer a.free(path);
-        const lib = dynamic_library.DynLib.open(path) catch return error.CouldNotLoadLibrary;
-        const sym = lib.lookup(FnT, name);
-        try std.testing.expect(sym != null, "symbol '{s}' is NULL", .{name});
-        lib.close();
+        const handle = dlopen(path, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+        defer dlclose(handle);
+        const sym = dlsym(handle, name);
+        try std.testing.expect(sym != null);
     }
 }
