@@ -1,14 +1,21 @@
 /**
  * Loop.cpp - High-Performance Loop Engine Subsystem for .ko Language
- * 
- * Responsibilities:
- * - Low-level Loop Unrolling
- * - Cache Line Optimization
- * - CPU Counter Register Management
- * - Just-In-Time Loop Compilation
- * 
- * This subsystem is invoked by the Zig compiler_main when encountering
- * the `Loop` keyword with <for> or <while> constructs.
+ *
+ * Provides a stable C ABI (ko_* prefix, snake_case as in src/module/Os/Os.h)
+ * so a C caller (Zig via dlopen/dlsym) can create the engine, optimize
+ * for-/while-loops, and execute them. All C++ classes (CpuCounterRegisters,
+ * CacheLineOptimizer, LoopUnroller) stay inside namespace ko_loop and are not
+ * exported. ko_loop_engine is opaque: callers only ever see void*.
+ *
+ * ABI design choices:
+ *  - No std::string / std::function across the ABI: use const char* and plain
+ *    C function-pointer typedefs (ko_loop_condition_fn / ko_loop_body_fn).
+ *  - The caller supplies the while-condition as a C function pointer plus a
+ *    void* context; the engine stores it and calls it back on each chunk.
+ *    This is the standard dlopen-callback pattern and avoids ABI-visible
+ *    C++ types.
+ *  - Every execution path is bounded by an explicit maxIterations cap, so a
+ *    loop whose condition never becomes false cannot run forever.
  */
 
 #include <iostream>
@@ -19,60 +26,47 @@
 #include <thread>
 #include <map>
 #include <sstream>
-#include <functional>
+#include <cstdio>
+#include <algorithm>
+#include <limits>
 
 namespace ko_loop {
 
 /**
- * Loop optimization strategy
+ * Loop optimization strategy.
  */
 enum class OptimizationStrategy {
-    UNROLL_FACTOR_4,      // Unroll by factor of 4
-    UNROLL_FACTOR_8,      // Unroll by factor of 8
-    CACHE_LINE_ALIGNED,   // Align to CPU cache line (64 bytes)
-    VECTORIZED,           // SIMD vectorization hint
-    PIPELINED             // CPU pipeline optimization
+    UNROLL_FACTOR_4,
+    UNROLL_FACTOR_8,
+    CACHE_LINE_ALIGNED,
+    VECTORIZED,
+    PIPELINED
 };
 
 /**
- * Loop metadata for optimization
- */
-struct LoopMetadata {
-    std::string loopId;
-    uint64_t iterationCount;
-    uint64_t unrollFactor;
-    OptimizationStrategy strategy;
-    bool isCountDetermined;
-    uint64_t cacheLineSize;
-    
-    LoopMetadata() : iterationCount(0), unrollFactor(1), 
-                     strategy(OptimizationStrategy::UNROLL_FACTOR_4),
-                     isCountDetermined(false), cacheLineSize(64) {}
-};
-
-/**
- * CPU Counter Register simulation
+ * CPU Counter Register simulation. This is a simulation only: it copies values
+ * into struct fields; it never touches real CPU registers.
  */
 struct CpuCounterRegisters {
-    uint64_t rip;      // Instruction pointer
-    uint64_t rax;      // General purpose
-    uint64_t rbx;      // General purpose
-    uint64_t rcx;      // Counter register
-    uint64_t rdx;      // Data register
-    uint64_t rsi;      // Source index
-    uint64_t rdi;      // Destination index
-    uint64_t rbp;      // Base pointer
-    uint64_t rsp;      // Stack pointer
-    uint64_t rflags;   // Flags register
-    
+    uint64_t rip;
+    uint64_t rax;
+    uint64_t rbx;
+    uint64_t rcx;
+    uint64_t rdx;
+    uint64_t rsi;
+    uint64_t rdi;
+    uint64_t rbp;
+    uint64_t rsp;
+    uint64_t rflags;
+
     CpuCounterRegisters() : rip(0), rax(0), rbx(0), rcx(0), rdx(0),
                             rsi(0), rdi(0), rbp(0), rsp(0), rflags(0) {}
-    
+
     void reset() {
         rip = 0; rax = 0; rbx = 0; rcx = 0; rdx = 0;
         rsi = 0; rdi = 0; rbp = 0; rsp = 0; rflags = 0;
     }
-    
+
     void dump() const {
         std::cout << "[Loop.cpp] CPU Registers: "
                   << "RIP=0x" << std::hex << rip << " "
@@ -83,253 +77,189 @@ struct CpuCounterRegisters {
 };
 
 /**
- * Cache line optimizer
+ * Cache line optimizer.
  */
 class CacheLineOptimizer {
 public:
     static constexpr size_t CACHE_LINE_SIZE = 64;
-    
-    /**
-     * Align data to cache line boundaries
-     */
+
     static void* alignToCacheLine(void* ptr) {
         uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
         uintptr_t aligned = (addr + CACHE_LINE_SIZE - 1) & ~(CACHE_LINE_SIZE - 1);
         return reinterpret_cast<void*>(aligned);
     }
-    
-    /**
-     * Prefetch data into cache
-     */
+
     static void prefetch(const void* addr) {
         __builtin_prefetch(addr, 0, 3);
     }
-    
-    /**
-     * Get cache line size for current CPU
-     */
+
     static size_t getCacheLineSize() {
         return CACHE_LINE_SIZE;
     }
 };
 
 /**
- * Loop Unroller
+ * Execution callback type used in the C ABI.
+ */
+using ko_loop_body_fn = void (*)(uint64_t iteration, void* ctx);
+
+/**
+ * Condition callback type used in the C ABI for while-loops.
+ * Returns true to continue, false to stop.
+ */
+using ko_loop_condition_fn = bool (*)(void* ctx);
+
+struct LoopRecord {
+    bool isWhile;
+    uint64_t forStart{};
+    uint64_t forEnd{};
+    int64_t step{};
+    uint64_t count{};
+    uint64_t unrollFactor{};
+    OptimizationStrategy strategy{};
+    ko_loop_condition_fn cond{};
+    void* condCtx{};
+};
+
+/**
+ * Loop Unroller.
  */
 class LoopUnroller {
 private:
     CpuCounterRegisters regs;
-    std::map<std::string, LoopMetadata> loopCache;
-    
+    std::map<std::string, LoopRecord> loopCache;
+
+    /**
+     * Execute a bounded for-loop (count determined at optimize time).
+     */
+    void executeForLoop(const LoopRecord& rec, ko_loop_body_fn body, void* bodyCtx,
+                        uint64_t maxIterations) {
+        const uint64_t cap = std::min(rec.count, maxIterations);
+        uint64_t remaining = cap;
+        uint64_t i = 0;
+
+        while (remaining > 0) {
+            const uint64_t chunk = std::min(rec.unrollFactor, remaining);
+            for (uint64_t j = 0; j < chunk; ++j) {
+                body(i + j, bodyCtx);
+            }
+            i += chunk;
+            remaining -= chunk;
+            regs.rcx = remaining;
+            regs.rdx = i;
+        }
+    }
+
+    /**
+     * Execute a bounded while-loop (count not determined at optimize time).
+     * Termination is guaranteed by: (a) the caller-supplied condition, and
+     * (b) the explicit maxIterations cap.
+     */
+    void executeWhileLoop(const ko_loop_condition_fn cond, void* condCtx,
+                          const LoopRecord& rec, ko_loop_body_fn body, void* bodyCtx,
+                          uint64_t maxIterations) {
+        uint64_t i = 0;
+        while (i < maxIterations) {
+            uint64_t chunk = rec.unrollFactor;
+            for (uint64_t j = 0; j < chunk; ++j) {
+                if (i >= maxIterations || !cond(condCtx)) {
+                    break;
+                }
+                body(i, bodyCtx);
+                ++i;
+            }
+            if (i >= maxIterations) {
+                break;
+            }
+            regs.rcx = i;
+            if (i % rec.unrollFactor == 0) {
+                std::this_thread::yield();
+            }
+        }
+    }
+
 public:
     LoopUnroller() = default;
-    
-    /**
-     * Optimize a for-loop construct
-     * 
-     * @param loopId Unique identifier for the loop
-     * @param startVal Initial value
-     * @param endVal End value (inclusive)
-     * @param step Step increment
-     * @param unrollFactor Number of iterations to unroll
-     */
-    LoopMetadata optimizeForLoop(const std::string& loopId,
-                                  int64_t startVal,
-                                  int64_t endVal,
-                                  int64_t step,
-                                  uint64_t unrollFactor = 4) {
-        LoopMetadata meta;
-        meta.loopId = loopId;
-        meta.iterationCount = (endVal - startVal) / step + 1;
-        meta.unrollFactor = unrollFactor;
-        meta.isCountDetermined = true;
-        
-        if (meta.iterationCount >= 16) {
-            meta.strategy = OptimizationStrategy::UNROLL_FACTOR_8;
-        } else if (meta.iterationCount >= 8) {
-            meta.strategy = OptimizationStrategy::UNROLL_FACTOR_4;
-        } else {
-            meta.strategy = OptimizationStrategy::PIPELINED;
+
+    int recordFor(const char* loopId, int64_t start, int64_t end,
+                  int64_t step, uint64_t unrollFactor) {
+        if (step <= 0) {
+            return 2;
         }
-        
-        std::cout << "[Loop.cpp] Optimizing loop '" << loopId << "': "
-                  << meta.iterationCount << " iterations, "
-                  << "unroll=" << meta.unrollFactor << ", "
-                  << "strategy=" << static_cast<int>(meta.strategy) << std::endl;
-        
-        regs.rcx = static_cast<uint64_t>(meta.iterationCount);
-        regs.rdx = static_cast<uint64_t>(startVal);
+        LoopRecord rec;
+        rec.isWhile = false;
+        rec.forStart = static_cast<uint64_t>(start);
+        rec.forEnd = static_cast<uint64_t>(end);
+        rec.step = step;
+        rec.unrollFactor = unrollFactor;
+        rec.count = (rec.forEnd - rec.forStart) / static_cast<uint64_t>(step) + 1;
+        rec.strategy = rec.count >= 16
+                           ? OptimizationStrategy::UNROLL_FACTOR_8
+                           : rec.count >= 8
+                                 ? OptimizationStrategy::UNROLL_FACTOR_4
+                                 : OptimizationStrategy::PIPELINED;
+        regs.rcx = rec.count;
+        regs.rdx = rec.forStart;
         regs.rsi = static_cast<uint64_t>(step);
-        
-        loopCache[loopId] = meta;
-        return meta;
+        loopCache[loopId] = rec;
+        std::cout << "[Loop.cpp] Optimizing loop '" << loopId << "': "
+                  << rec.count << " iterations, unroll=" << rec.unrollFactor
+                  << ", strategy=" << static_cast<int>(rec.strategy)
+                  << std::endl;
+        return 0;
     }
-    
-    /**
-     * Optimize a while-loop construct
-     * 
-     * @param loopId Unique identifier for the loop
-     * @param conditionLambda Condition evaluation function
-     * @param unrollFactor Number of iterations to unroll
-     */
-    LoopMetadata optimizeWhileLoop(const std::string& loopId,
-                                    std::function<bool()> conditionLambda,
-                                    uint64_t unrollFactor = 4) {
-        LoopMetadata meta;
-        meta.loopId = loopId;
-        meta.iterationCount = 0;
-        meta.unrollFactor = unrollFactor;
-        meta.isCountDetermined = false;
-        meta.strategy = OptimizationStrategy::CACHE_LINE_ALIGNED;
-        
+
+    int recordWhile(const char* loopId, ko_loop_condition_fn cond,
+                    uint64_t unrollFactor) {
+        if (cond == nullptr) {
+            return 3;
+        }
+        LoopRecord rec;
+        rec.isWhile = true;
+        rec.unrollFactor = unrollFactor;
+        rec.strategy = OptimizationStrategy::CACHE_LINE_ALIGNED;
+        rec.cond = cond;
+        loopCache[loopId] = rec;
         std::cout << "[Loop.cpp] Optimizing while-loop '" << loopId << "': "
-                  << "strategy=" << static_cast<int>(meta.strategy) << std::endl;
-        
-        loopCache[loopId] = meta;
-        return meta;
+                  << "unroll=" << rec.unrollFactor
+                  << ", strategy=" << static_cast<int>(rec.strategy)
+                  << std::endl;
+        return 0;
     }
-    
-    /**
-     * Execute optimized loop body
-     */
-    void executeOptimizedLoop(const std::string& loopId,
-                              std::function<void(uint64_t iteration)> body) {
+
+    int executeOptimized(const char* loopId, ko_loop_body_fn body, void* bodyCtx,
+                         uint64_t maxIterations) {
+        if (body == nullptr) {
+            return 4;
+        }
         auto it = loopCache.find(loopId);
         if (it == loopCache.end()) {
-            std::cerr << "[Loop.cpp] Warning: Loop '" << loopId << "' not optimized" << std::endl;
-            return;
+            std::cerr << "[Loop.cpp] Warning: Loop '" << loopId
+                      << "' not optimized" << std::endl;
+            return 1;
         }
-        
-        const LoopMetadata& meta = it->second;
-        
-        switch (meta.strategy) {
-            case OptimizationStrategy::UNROLL_FACTOR_4:
-            case OptimizationStrategy::UNROLL_FACTOR_8:
-                executeUnrolledLoop(meta, body);
-                break;
-            case OptimizationStrategy::CACHE_LINE_ALIGNED:
-                executeCacheAlignedLoop(meta, body);
-                break;
-            case OptimizationStrategy::VECTORIZED:
-                executeVectorizedLoop(meta, body);
-                break;
-            case OptimizationStrategy::PIPELINED:
-                executePipelinedLoop(meta, body);
-                break;
-        }
-        
-        regs.dump();
-    }
-    
-    /**
-     * Unrolled loop execution
-     */
-    void executeUnrolledLoop(const LoopMetadata& meta,
-                              std::function<void(uint64_t iteration)> body) {
-        std::cout << "[Loop.cpp] Executing unrolled loop with factor " 
-                  << meta.unrollFactor << std::endl;
-        
-        if (meta.isCountDetermined) {
-            uint64_t remaining = meta.iterationCount;
-            uint64_t iteration = 0;
-            
-            while (remaining > 0) {
-                uint64_t chunk = (remaining >= meta.unrollFactor) ? meta.unrollFactor : remaining;
-                for (uint64_t i = 0; i < chunk; ++i) {
-                    body(iteration + i);
-                    CacheLineOptimizer::prefetch(&body);
-                }
-                iteration += chunk;
-                remaining -= chunk;
-                
-                regs.rcx = remaining;
-                regs.rdx = iteration;
-            }
+        const LoopRecord& rec = it->second;
+        if (rec.isWhile) {
+            executeWhileLoop(rec.cond, rec.condCtx, rec, body, bodyCtx,
+                             maxIterations);
         } else {
-            uint64_t iteration = 0;
-            while (true) {
-                body(iteration);
-                iteration++;
-                regs.rcx = iteration;
-                if (iteration % meta.unrollFactor == 0) {
-                    std::this_thread::yield();
-                }
-            }
+            executeForLoop(rec, body, bodyCtx, maxIterations);
         }
+        regs.dump();
+        return 0;
     }
-    
-    /**
-     * Cache-aligned loop execution
-     */
-    void executeCacheAlignedLoop(const LoopMetadata& meta,
-                                  std::function<void(uint64_t iteration)> body) {
-        std::cout << "[Loop.cpp] Executing cache-aligned loop" << std::endl;
-        
-        size_t cacheLineSize = CacheLineOptimizer::getCacheLineSize();
-        uint64_t iterationsPerLine = cacheLineSize / sizeof(uint64_t);
-        
-        uint64_t iteration = 0;
-        while (iteration < meta.iterationCount || !meta.isCountDetermined) {
-            if (meta.isCountDetermined && iteration >= meta.iterationCount) break;
-            
-            for (uint64_t i = 0; i < iterationsPerLine && 
-                 (!meta.isCountDetermined || iteration + i < meta.iterationCount); ++i) {
-                body(iteration + i);
-            }
-            CacheLineOptimizer::prefetch(&body);
-            iteration += iterationsPerLine;
-            regs.rcx = iteration;
-        }
-    }
-    
-    /**
-     * Vectorized loop execution (SIMD hint)
-     */
-    void executeVectorizedLoop(const LoopMetadata& meta,
-                                std::function<void(uint64_t iteration)> body) {
-        std::cout << "[Loop.cpp] Executing vectorized loop (SIMD hint)" << std::endl;
-        executePipelinedLoop(meta, body);
-    }
-    
-    /**
-     * Pipelined loop execution
-     */
-    void executePipelinedLoop(const LoopMetadata& meta,
-                               std::function<void(uint64_t iteration)> body) {
-        std::cout << "[Loop.cpp] Executing pipelined loop" << std::endl;
-        
-        uint64_t iteration = 0;
-        uint64_t count = meta.isCountDetermined ? meta.iterationCount : 1000;
-        
-        for (uint64_t i = 0; i < count; ++i) {
-            body(i);
-            regs.rcx = i;
-        }
-    }
-    
-    /**
-     * Get CPU counter registers state
-     */
-    CpuCounterRegisters getRegisters() const {
-        return regs;
-    }
-    
-    /**
-     * Reset CPU registers
-     */
+
     void resetRegisters() {
         regs.reset();
     }
-    
-    /**
-     * Get loop optimization statistics
-     */
+
     std::string getStats() const {
         std::stringstream ss;
         ss << "[Loop.cpp] Statistics:\n"
            << "  Cached loops: " << loopCache.size() << "\n"
-           << "  Cache line size: " << CacheLineOptimizer::getCacheLineSize() << " bytes\n"
-           << "  Register state: RIP=0x" << std::hex << regs.rip 
+           << "  Cache line size: " << CacheLineOptimizer::getCacheLineSize()
+           << " bytes\n"
+           << "  Register state: RIP=0x" << std::hex << regs.rip
            << " RCX=0x" << regs.rcx << std::dec << "\n";
         return ss.str();
     }
@@ -338,25 +268,119 @@ public:
 } // namespace ko_loop
 
 /**
- * Entry point for standalone testing
+ * Opaque handle for the loop engine. Callers only ever see void*; the real
+ * definition stays in src/Loop.cpp so the ABI cannot break.
  */
-int main(int argc, char* argv[]) {
+typedef struct ko_loop_engine {
     ko_loop::LoopUnroller unroller;
-    
-    if (argc < 2) {
-        std::cout << "Usage: " << argv[0] << " <iterations>" << std::endl;
+} ko_loop_engine;
+
+extern "C" {
+
+ko_loop_engine* ko_loop_engine_create(void) {
+    return new ko_loop_engine();
+}
+
+void ko_loop_engine_destroy(ko_loop_engine* eng) {
+    delete eng;
+}
+
+int ko_loop_optimize_for(ko_loop_engine* eng, const char* loopId,
+                         int64_t start, int64_t end, int64_t step,
+                         uint64_t unrollFactor) {
+    if (eng == nullptr || loopId == nullptr) {
         return 1;
     }
-    
-    int64_t iterations = std::stoll(argv[1]);
-    
-    auto meta = unroller.optimizeForLoop("test_loop", 0, iterations, 1, 4);
-    unroller.executeOptimizedLoop("test_loop", [](uint64_t i) {
-        if (i % 1000 == 0) {
-            std::cout << "[Loop.cpp] Iteration: " << i << std::endl;
-        }
-    });
-    
-    std::cout << unroller.getStats() << std::endl;
+    return eng->unroller.recordFor(loopId, start, end, step, unrollFactor);
+}
+
+int ko_loop_optimize_while(ko_loop_engine* eng, const char* loopId,
+                           ko_loop_condition_fn cond, uint64_t unrollFactor) {
+    if (eng == nullptr || loopId == nullptr) {
+        return 1;
+    }
+    return eng->unroller.recordWhile(loopId, cond, unrollFactor);
+}
+
+int ko_loop_execute_optimized_loop(ko_loop_engine* eng, const char* loopId,
+                                   ko_loop_body_fn body, void* bodyCtx,
+                                   uint64_t maxIterations) {
+    if (eng == nullptr || loopId == nullptr) {
+        return 1;
+    }
+    return eng->unroller.executeOptimized(loopId, body, bodyCtx, maxIterations);
+}
+
+int ko_loop_execute_while_loop(ko_loop_engine* eng, const char* loopId,
+                               ko_loop_condition_fn cond, void* condCtx,
+                               ko_loop_body_fn body, void* bodyCtx,
+                               uint64_t maxIterations) {
+    if (eng == nullptr || loopId == nullptr || cond == nullptr || body == nullptr) {
+        return 1;
+    }
+    if (eng->unroller.recordWhile(loopId, cond, 4) != 0) {
+        return 3;
+    }
+    return eng->unroller.executeOptimized(loopId, body, bodyCtx, maxIterations);
+}
+
+int ko_loop_get_stats(ko_loop_engine* eng, char* out, size_t outSize) {
+    if (eng == nullptr) {
+        return -1;
+    }
+    const std::string s = eng->unroller.getStats();
+    if (out == nullptr) {
+        return static_cast<int>(s.size());
+    }
+    const int written = static_cast<int>(std::snprintf(out, outSize, "%s", s.c_str()));
+    return (written >= static_cast<int>(outSize)) ? written : written;
+}
+
+void ko_loop_reset_registers(ko_loop_engine* eng) {
+    if (eng != nullptr) {
+        eng->unroller.resetRegisters();
+    }
+}
+
+} // extern "C"
+
+#ifndef ko_loop_NO_MAIN
+#ifndef KO_LOOP_NO_MAIN
+int main(int argc, char* argv[]) {
+    ko_loop_engine* eng = ko_loop_engine_create();
+
+    if (argc < 2) {
+        std::cout << "Usage: " << argv[0] << " <iterations>" << std::endl;
+        ko_loop_engine_destroy(eng);
+        return 1;
+    }
+
+    const int64_t iterations = std::stoll(argv[1]);
+    const int rc = ko_loop_optimize_for(eng, "test_loop", 0, iterations, 1, 4);
+    if (rc != 0) {
+        std::cerr << "[Loop.cpp] Optimization failed: " << rc << std::endl;
+        ko_loop_engine_destroy(eng);
+        return rc;
+    }
+
+    const int rc2 = ko_loop_execute_optimized_loop(
+        eng, "test_loop",
+        [](uint64_t i, void*) {
+            if (i % 1000 == 0) {
+                std::cout << "[Loop.cpp] Iteration: " << i << std::endl;
+            }
+        },
+        nullptr, iterations);
+    if (rc2 != 0) {
+        std::cerr << "[Loop.cpp] Execution failed: " << rc2 << std::endl;
+        ko_loop_engine_destroy(eng);
+        return rc2;
+    }
+
+    char buf[512];
+    std::printf("%s", ko_loop_get_stats(eng, buf, sizeof(buf)));
+    ko_loop_engine_destroy(eng);
     return 0;
 }
+#endif
+#endif
