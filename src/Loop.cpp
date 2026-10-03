@@ -301,7 +301,7 @@ int ko_loop_optimize_while(ko_loop_engine* eng, const char* loopId,
     if (eng == nullptr || loopId == nullptr) {
         return 1;
     }
-    return eng->unroller.recordWhile(loopId, cond, unrollFactor);
+    return eng->unroller.recordWhile(loopId, cond, nullptr, unrollFactor);
 }
 
 int ko_loop_execute_optimized_loop(ko_loop_engine* eng, const char* loopId,

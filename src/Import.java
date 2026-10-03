@@ -676,4 +676,71 @@ public class Import {
             return new ImportResult(false, null, null, null, message);
         }
     }
+    
+    public static void main(String[] args) {
+        if (args.length == 0) {
+            System.out.println("Usage: Import <command> [options]");
+            System.out.println("Commands:");
+            System.out.println("  import <module> <alias> <scope> - Import a module");
+            System.out.println("  list - List all available libraries");
+            System.out.println("  search <query> - Search for libraries");
+            System.exit(1);
+        }
+        
+        String command = args[0].toLowerCase();
+        Import importer = new Import();
+        
+        try {
+            switch (command) {
+                case "import":
+                    if (args.length < 4) {
+                        System.err.println("Error: Missing arguments for import command. Usage: import <module> <alias> <scope>");
+                        System.exit(1);
+                    }
+                    ImportResult result = importer.processImport(args[1], args[2], args[3]);
+                    if (result.success) {
+                        System.out.println("Import successful: " + result.alias + " in scope " + result.scopeTag + " from " + result.moduleName);
+                        System.exit(0);
+                    } else {
+                        System.err.println("Error: " + result.errorMessage);
+                        System.exit(1);
+                    }
+                    break;
+                case "list":
+                    String[] libraries = importer.listLibraries();
+                    if (libraries.length == 0) {
+                        System.out.println("No libraries found.");
+                    } else {
+                        System.out.println("Available libraries:");
+                        for (String lib : libraries) {
+                            System.out.println("  - " + lib);
+                        }
+                    }
+                    break;
+                case "search":
+                    if (args.length < 2) {
+                        System.err.println("Error: Missing search query. Usage: search <query>");
+                        System.exit(1);
+                    }
+                    String[] results = importer.searchLibraries(args[1]);
+                    if (results.length == 0) {
+                        System.out.println("No results found for query: " + args[1]);
+                    } else {
+                        System.out.println("Search results for \"" + args[1] + "\":");
+                        for (String result : results) {
+                            System.out.println("  - " + result);
+                        }
+                    }
+                    break;
+                default:
+                    System.err.println("Error: Unknown command: " + command);
+                    System.err.println("Usage: Import <command> [options]");
+                    System.err.println("Commands: import, list, search");
+                    System.exit(1);
+            }
+        } catch (Exception e) {
+            System.err.println("Fatal error: " + e.getMessage());
+            System.exit(1);
+        }
+    }
 }
