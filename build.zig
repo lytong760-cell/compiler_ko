@@ -70,37 +70,38 @@ pub fn build(b: *std.Build) !void {
     };
 
     for (c_modules) |mod| {
-        const lib = b.addLibrary(.{
-            .name = mod.name,
-            .linkage = .dynamic,
-            .root_module = b.createModule(.{
-                .target = target,
-                .optimize = optimize,
-                .link_libc = true,
-            }),
-        });
-        lib.addCSourceFiles(.{
-            .files = &.{mod.source},
-            .flags = &.{ "-std=c11", "-fPIC", "-I" ++ mod.include_dir },
-        });
-        lib.linkLibC();
-        b.installArtifact(lib);
-    }
-
-    const loop_lib = b.addLibrary(.{
-        .name = "ko_loop",
-        .linkage = .dynamic,
-        .root_module = b.createModule(.{
+        const mod_root = b.createModule(.{
             .target = target,
             .optimize = optimize,
             .link_libc = true,
-        }),
+        });
+        mod_root.addIncludePath(b.path(mod.include_dir));
+        mod_root.addCSourceFiles(.{
+            .files = &.{mod.source},
+            .flags = &.{ "-std=c11", "-fPIC" },
+        });
+        const lib = b.addLibrary(.{
+            .name = mod.name,
+            .linkage = .dynamic,
+            .root_module = mod_root,
+        });
+        b.installArtifact(lib);
+    }
+
+    const loop_root = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
     });
-    loop_lib.addCMacro("KO_LOOP_NO_MAIN", "1");
-    loop_lib.addCSourceFiles(.{
+    loop_root.addCMacro("KO_LOOP_NO_MAIN", "1");
+    loop_root.addCSourceFiles(.{
         .files = &.{"src/Loop.cpp"},
         .flags = &.{ "-std=c++17", "-fPIC" },
     });
-    loop_lib.linkLibCpp();
+    const loop_lib = b.addLibrary(.{
+        .name = "ko_loop",
+        .linkage = .dynamic,
+        .root_module = loop_root,
+    });
     b.installArtifact(loop_lib);
 }
