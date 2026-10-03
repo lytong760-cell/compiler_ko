@@ -156,7 +156,7 @@ public class Import {
             pb.directory(tempDir);
             pb.redirectErrorStream(true);
             pb.redirectOutput(logFile);
-            try (Process process = pb.start()) {
+            Process process = pb.start(); {
                 int exitCode = process.waitFor();
                 String output = readFile(logFile);
                 if (exitCode != 0) {
@@ -302,7 +302,7 @@ public class Import {
              ProcessBuilder pb = new ProcessBuilder(args);
              pb.directory(extractDir);
              pb.redirectErrorStream(true);
-             try (Process process = pb.start()) {
+             Process process = pb.start(); {
                  int exitCode = process.waitFor();
                  String output = readStream(process.getInputStream());
                  if (exitCode != 0) {
@@ -343,7 +343,7 @@ public class Import {
              ProcessBuilder pb = new ProcessBuilder(args);
              pb.directory(extractDir);
              pb.redirectErrorStream(true);
-             try (Process process = pb.start()) {
+             Process process = pb.start(); {
                  int exitCode = process.waitFor();
                  String output = readStream(process.getInputStream());
                  if (exitCode != 0) {
@@ -384,7 +384,7 @@ public class Import {
              ProcessBuilder pb = new ProcessBuilder(args);
              pb.directory(extractDir);
              pb.redirectErrorStream(true);
-             try (Process process = pb.start()) {
+             Process process = pb.start(); {
                  int exitCode = process.waitFor();
                  String output = readStream(process.getInputStream());
                  if (exitCode != 0) {
@@ -410,7 +410,7 @@ public class Import {
                  ProcessBuilder pb = new ProcessBuilder("npm", "install");
                  pb.directory(extractDir);
                  pb.redirectErrorStream(true);
-                 try (Process process = pb.start()) {
+                 Process process = pb.start(); {
                      int npmExitCode = process.waitFor();
                      if (npmExitCode != 0) {
                          System.out.println("[Import.java] npm install exited with code: " + npmExitCode);
