@@ -42,10 +42,11 @@ public class Import {
                 return ImportResult.error("No valid .zip package found in repository: " + githubUrl);
             }
             
-            boolean compiled = compileAndLink(zipFile, alias);
-            cleanup(repoDir);
+             boolean compiled = compileAndLink(zipFile, alias);
+             cleanup(repoDir);
+             cleanup(tempDir);
             
-            if (!compiled) {
+             if (!compiled) {
                 return ImportResult.error("Failed to compile/link module: " + moduleName);
             }
             
@@ -433,12 +434,18 @@ public class Import {
             File outputLib = new File(moduleDir, "lib" + alias + ".so");
             List<File> zigFiles = new ArrayList<>();
             collectFiles(extractDir, ".zig", zigFiles);
-            
+
             if (zigFiles.isEmpty()) {
                 System.out.println("[Import.java] No .zig files found for Zig compilation");
                 return false;
             }
-            
+
+            File entryFile = findZigEntryPoint(zigFiles);
+            if (entryFile == null) {
+                System.out.println("[Import.java] No Zig entry point found (no main.zig or pub fn main)");
+                return false;
+            }
+
             List<String> args = new ArrayList<>();
             args.add("zig");
             args.add("build-lib");
@@ -447,26 +454,43 @@ public class Import {
             args.add("ReleaseFast");
             args.add("-o");
             args.add(outputLib.getAbsolutePath());
-            for (File f : zigFiles) {
-                args.add(f.getAbsolutePath());
-            }
-            
+            args.add(entryFile.getAbsolutePath());
+
             ProcessBuilder pb = new ProcessBuilder(args);
             pb.directory(extractDir);
             pb.redirectErrorStream(true);
             Process process = pb.start();
             int exitCode = process.waitFor();
-            
+
             if (exitCode != 0) {
                 System.out.println("[Import.java] Zig compilation failed");
                 return false;
             }
-            
+
             return true;
         } catch (Exception e) {
             System.out.println("[Import.java] Zig compile exception: " + e.getMessage());
             return false;
         }
+    }
+
+    private File findZigEntryPoint(List<File> zigFiles) {
+        for (File f : zigFiles) {
+            if (f.getName().equals("main.zig")) {
+                return f;
+            }
+        }
+        for (File f : zigFiles) {
+            try {
+                String content = new String(java.nio.file.Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
+                if (content.contains("pub fn main")) {
+                    return f;
+                }
+            } catch (IOException e) {
+                // skip
+            }
+        }
+        return null;
     }
     
     private boolean compileKo(File extractDir, String alias) {
