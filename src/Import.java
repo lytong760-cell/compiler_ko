@@ -60,7 +60,14 @@ public class Import {
     private String queryRegistry(String moduleName) {
         System.out.println("[Import.java] Querying registry for: " + moduleName);
         try {
-            String urlStr = FIRESTORE_BASE + "/libraries/" + URLEncoder.encode(moduleName, "UTF-8") + "?key=" + API_KEY;
+            String apiKey = API_KEY;
+            if (apiKey == null || apiKey.isEmpty()) {
+                System.out.println("[Import.java] Warning: KO_FIRESTORE_API_KEY environment variable is not set. Using registry without API key.");
+            }
+            String urlStr = FIRESTORE_BASE + "/libraries/" + URLEncoder.encode(moduleName, "UTF-8");
+            if (apiKey != null && !apiKey.isEmpty()) {
+                urlStr += "?key=" + apiKey;
+            }
             URL url = new URL(urlStr);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
@@ -145,15 +152,15 @@ public class Import {
             pb.directory(tempDir);
             pb.redirectErrorStream(true);
             Process process = pb.start();
-            
-            String output = readStream(process.getInputStream());
             int exitCode = process.waitFor();
             
             if (exitCode != 0) {
+                String output = readStream(process.getInputStream());
                 System.out.println("[Import.java] Git clone failed: " + output);
                 return null;
             }
             
+            String output = readStream(process.getInputStream());
             System.out.println("[Import.java] Clone successful: " + repoDir.getAbsolutePath());
             return repoDir;
         } catch (Exception e) {

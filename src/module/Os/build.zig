@@ -11,6 +11,7 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = null,
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
     module.addCSourceFiles(.{
         .files = &.{ "Os.c" },
@@ -23,6 +24,5 @@ pub fn build(b: *std.Build) !void {
         .linkage = .dynamic,
     });
 
-    lib.linkLibC();
     b.installArtifact(lib);
 }
