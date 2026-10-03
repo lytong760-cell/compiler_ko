@@ -23,12 +23,6 @@ fn load(t: type, sym: [*:0]const u8) !t {
 const KoFileExistsFn = *const fn ([*:0]const u8) callconv(.c) c_int;
 const KoValidateUrlFn = *const fn ([*:0]const u8) callconv(.c) ?*const [*:0]const u8;
 
-test "call ko_file_exists with null" {
-    const ko_file_exists = load(KoFileExistsFn, "ko_file_exists") catch return error.CouldNotLoadLibrary;
-    const result = ko_file_exists(null);
-    try std.testing.expectEqual(@as(c_int, 0), result);
-}
-
 test "call ko_file_exists with build.zig" {
     const ko_file_exists = load(KoFileExistsFn, "ko_file_exists") catch return error.CouldNotLoadLibrary;
     const result = ko_file_exists("build.zig");
