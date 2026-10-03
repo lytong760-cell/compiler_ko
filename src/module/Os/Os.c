@@ -156,7 +156,9 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
     }
 
     // Parent process
-    close(pipefd[1]); // Close write end
+    write(STDERR_FILENO, "Parent: before close write end\n", 31);
+    close(pipefd[1]);
+    write(STDERR_FILENO, "Parent: after close write end\n", 30);
     const char *parent_read_msg = "Parent: about to read from pipe\n";
     write(STDERR_FILENO, parent_read_msg, strlen(parent_read_msg));
 
