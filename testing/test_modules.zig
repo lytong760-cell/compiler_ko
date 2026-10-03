@@ -34,9 +34,7 @@ fn dlopenAndLookup(t: type, lib_dir: []const u8, lib_name: []const u8, sym_name:
     const path_z = try strdup(allocator, path);
     defer allocator.free(path_z);
     const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
-    defer begin
-        _ = dlclose(handle);
-    end;
+    defer closeLib(handle);
     const sym = dlsym(handle, sym_name);
     if (sym) |v| return @ptrCast(v);
     return error.SymbolNotFound;
