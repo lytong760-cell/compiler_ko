@@ -23,15 +23,14 @@ fn load(t: type, sym: [*:0]const u8) !t {
 test "dlopen works" {
     const handle = dlopen("zig-out/lib/libko_os.so", RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
     defer closeLib(handle);
-    try std.testing.expect(handle != null);
 }
 
 test "dlsym resolves ko_file_exists" {
     const handle = dlopen("zig-out/lib/libko_os.so", RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
     defer closeLib(handle);
     const sym = dlsym(handle, "ko_file_exists");
-    try std.testing.expect(sym != null);
-    const addr = @intFromPtr(@ptrCast(sym.?));
+    if (sym == null) return error.SymbolNotFound;
+    const addr = @intFromPtr(@as(*anyopaque, @ptrCast(sym.?)));
     try std.testing.expect(addr > 0);
 }
 
@@ -39,9 +38,9 @@ test "call ko_list_dir (args unused, returns -1)" {
     const KoListDirFn = *const fn (*const u8, ***u8, *usize) callconv(.c) c_int;
     const ko_list_dir = load(KoListDirFn, "ko_list_dir") catch return error.CouldNotLoadLibrary;
     const path: [*:0]const u8 = "zig-out/lib";
-    const entries: ***u8 = null;
+    var entries: ***u8 = @ptrCast(@as(*anyopaque, null));
     var count: usize = 0;
-    const result = ko_list_dir(path, entries, @ptrCast(&count));
+    const result = ko_list_dir(path, entries, @as(*usize, @ptrCast(&count)));
     try std.testing.expectEqual(@as(c_int, -1), result);
 }
 
