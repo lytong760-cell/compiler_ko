@@ -727,8 +727,8 @@ public class Import {
                         System.out.println("No results found for query: " + args[1]);
                     } else {
                         System.out.println("Search results for \"" + args[1] + "\":");
-                        for (String result : results) {
-                            System.out.println("  - " + result);
+                        for (String lib : results) {
+                            System.out.println("  - " + lib);
                         }
                     }
                     break;
