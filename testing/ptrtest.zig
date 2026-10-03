@@ -54,7 +54,7 @@ fn load(t: type, sym: [*:0]const u8, handle: ?*anyopaque) !t {
     defer closeLib(handle);
     const sym_val = dlsym(handle, sym);
     if (sym_val == null) return error.SymbolNotFound;
-    return @ptrCast(sym_val.?);
+    return @as(t, @ptrCast(sym_val.?));
 }
 
 test "E: generic load helper" {
