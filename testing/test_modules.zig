@@ -1,5 +1,5 @@
 const std = @import("std");
-const dynamic_library = std.dynamic_library;
+const dynamic_library = @import("dynamic_library");
 const Allocator = std.mem.Allocator;
 
 const Error = error{
