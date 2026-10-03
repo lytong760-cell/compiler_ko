@@ -98,10 +98,11 @@ public class Import {
     
     public String[] listLibraries() {
         System.out.println("[Import.java] Listing all libraries from Module Store...");
+        HttpURLConnection conn = null;
         try {
             String urlStr = FIRESTORE_BASE + ":runQuery?key=" + API_KEY;
             URL url = new URL(urlStr);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("POST");
             conn.setRequestProperty("Content-Type", "application/json");
             conn.setDoOutput(true);
@@ -121,14 +122,14 @@ public class Import {
             }
             
             String response = readStream(conn.getInputStream());
-            conn.disconnect();
-            
             List<String> libs = new ArrayList<>();
             extractLibraryNames(response, libs);
             return libs.toArray(new String[0]);
         } catch (Exception e) {
             System.out.println("[Import.java] List libraries failed: " + e.getMessage());
             return new String[0];
+        } finally {
+            if (conn != null) conn.disconnect();
         }
     }
     

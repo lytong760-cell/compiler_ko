@@ -240,7 +240,7 @@ int ko_loop_optimize_for(ko_loop_engine* eng, const char* loopId,
 }
 
 int ko_loop_optimize_while(ko_loop_engine* eng, const char* loopId,
-                           ko_loop_condition_fn cond, void* condCtx,
+                           ko_loop::ko_loop_condition_fn cond, void* condCtx,
                            uint64_t unrollFactor) {
     if (eng == nullptr || loopId == nullptr || cond == nullptr) {
         return 1;
@@ -249,7 +249,7 @@ int ko_loop_optimize_while(ko_loop_engine* eng, const char* loopId,
 }
 
 int ko_loop_execute_optimized_loop(ko_loop_engine* eng, const char* loopId,
-                                   ko_loop_body_fn body, void* bodyCtx,
+                                   ko_loop::ko_loop_body_fn body, void* bodyCtx,
                                    uint64_t maxIterations) {
     if (eng == nullptr || loopId == nullptr || body == nullptr) {
         return 1;
@@ -258,8 +258,8 @@ int ko_loop_execute_optimized_loop(ko_loop_engine* eng, const char* loopId,
 }
 
 int ko_loop_execute_while_loop(ko_loop_engine* eng, const char* loopId,
-                               ko_loop_condition_fn cond,
-                               ko_loop_body_fn body, void* bodyCtx,
+                               ko_loop::ko_loop_condition_fn cond,
+                               ko_loop::ko_loop_body_fn body, void* bodyCtx,
                                uint64_t maxIterations) {
     if (eng == nullptr || loopId == nullptr || cond == nullptr || body == nullptr) {
         return 1;
