@@ -171,29 +171,14 @@ public class Import {
     
     private File inspectAndExtractZip(File repoDir) {
         System.out.println("[Import.java] Inspecting repository for .zip package...");
-        File[] files = repoDir.listFiles();
-        if (files == null) {
-            return null;
-        }
-        
-        File zipFile = null;
-        for (File f : files) {
-            if (f.isFile() && f.getName().toLowerCase().endsWith(".zip")) {
-                zipFile = f;
-                break;
-            }
-        }
+        File zipFile = findZipRecursive(repoDir);
         
         if (zipFile == null) {
             System.out.println("[Import.java] No .zip file found in repository.");
             return null;
         }
         
-        for (File f : files) {
-            if (!f.equals(zipFile)) {
-                deleteRecursive(f);
-            }
-        }
+        deleteNonZipFilesRecursive(repoDir, zipFile);
         
         System.out.println("[Import.java] Found .zip package: " + zipFile.getName());
         return zipFile;
