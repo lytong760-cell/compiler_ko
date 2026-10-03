@@ -41,7 +41,9 @@ fn resolveHelper(allocator: Allocator, lib_dir: []const u8, lib_name: []const u8
 }
 
 fn resolveOrFail(allocator: Allocator, lib_dir: []const u8, lib_name: []const u8, t: type, sym_name: [:0]const u8) !t {
-    return resolveHelper(allocator, lib_dir, lib_name, t, sym_name) orelse error.SymbolNotFound;
+    const result = resolveHelper(allocator, lib_dir, lib_name, t, sym_name) catch |err| return err;
+    if (result) |v| return v;
+    return error.SymbolNotFound;
 }
 
 test "ko_os: resolve trailing symbol ko_set_cwd" {
