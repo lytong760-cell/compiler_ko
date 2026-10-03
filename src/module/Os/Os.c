@@ -125,8 +125,11 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         dup2(pipefd[1], STDOUT_FILENO); // Redirect stdout to pipe
         close(pipefd[1]); // Close the duplicate write end
 
+        // Debug: write to stderr to see if we get here
+        dprintf(STDERR_FILENO, "Child: about to execvp %s\n", argv[0]);
         execvp(argv[0], argv);
         // If execvp fails
+        dprintf(STDERR_FILENO, "Child: execvp failed\n");
         _exit(127);
     }
 
