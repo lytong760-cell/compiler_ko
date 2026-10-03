@@ -156,16 +156,15 @@ public class Import {
             pb.directory(tempDir);
             pb.redirectErrorStream(true);
             pb.redirectOutput(logFile);
-            Process process = pb.start();
-            int exitCode = process.waitFor();
-
-            String output = readFile(logFile);
-
-            if (exitCode != 0) {
-                System.out.println("[Import.java] Git clone failed: " + output);
-                return null;
+            try (Process process = pb.start()) {
+                int exitCode = process.waitFor();
+                String output = readFile(logFile);
+                if (exitCode != 0) {
+                    System.out.println("[Import.java] Git clone failed: " + output);
+                    return null;
+                }
             }
-
+            
             System.out.println("[Import.java] Clone successful: " + repoDir.getAbsolutePath());
             return repoDir;
         } catch (Exception e) {
@@ -233,11 +232,12 @@ public class Import {
             File moduleDir = new File(libraryDir, alias);
             moduleDir.mkdirs();
             
-            ProcessBuilder unzipPb = new ProcessBuilder("unzip", "-q", zipFile.getAbsolutePath(), "-d", extractDir.getAbsolutePath());
-            unzipPb.directory(tempDir);
-            unzipPb.redirectErrorStream(true);
-            Process unzipProcess = unzipPb.start();
-            unzipProcess.waitFor();
+             ProcessBuilder unzipPb = new ProcessBuilder("unzip", "-q", zipFile.getAbsolutePath(), "-d", extractDir.getAbsolutePath());
+             unzipPb.directory(tempDir);
+             unzipPb.redirectErrorStream(true);
+             try (Process unzipProcess = unzipPb.start()) {
+                 unzipProcess.waitFor();
+             }
             
             String lang = detectLanguage(extractDir);
             System.out.println("[Import.java] Detected language: " + lang);
