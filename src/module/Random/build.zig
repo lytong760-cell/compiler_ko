@@ -4,13 +4,20 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addSharedLibrary(.{
-        .name = "ko_random",
-        .root_source_file = b.path("src/module/Random/Random.c"),
+    const mod_root = b.createModule(.{
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
-    lib.linkLibC();
-    lib.addIncludePath(b.path("src/module/Random"));
+    mod_root.addIncludePath(b.path("."));
+    mod_root.addCSourceFiles(.{
+        .files = &.{"Random.c"},
+        .flags = &.{ "-std=gnu11", "-fPIC", "-D_GNU_SOURCE" },
+    });
+    const lib = b.addLibrary(.{
+        .name = "ko_random",
+        .linkage = .dynamic,
+        .root_module = mod_root,
+    });
     b.installArtifact(lib);
 }
