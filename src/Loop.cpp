@@ -137,8 +137,6 @@ private:
         const uint64_t cap = std::min(rec.count, maxIterations);
         uint64_t remaining = cap;
         uint64_t i = 0;
-        std::cout << "[Loop.cpp] executeForLoop: count=" << rec.count
-                  << " cap=" << cap << " remaining=" << remaining << std::endl;
 
         while (remaining > 0) {
             const uint64_t chunk = std::min(rec.unrollFactor, remaining);
