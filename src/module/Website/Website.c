@@ -42,12 +42,13 @@ char* ko_url_decode(const char *str) {
 
 const char* ko_validate_url(const char *url) {
     if (!url) return "NULL url";
-    while (*url) {
-        if (*url == ';' || *url == '&' || *url == '|' || *url == '$' || *url == '`')
+    const char *p = url;
+    while (*p) {
+        if (*p == ';' || *p == '&' || *p == '|' || *p == '$' || *p == '`')
             return "dangerous character in URL";
-        if (*url == '.' && url[1] == '.' && url[2] == '/')
+        if (*p == '.' && p[1] == '.' && p[2] == '/')
             return "path traversal detected";
-        url++;
+        p++;
     }
     /* Check for dangerous schemes */
     if (url[0] == 'f' && url[1] == 'i' && url[2] == 'l' && url[3] == 'e' && url[4] == ':') {
