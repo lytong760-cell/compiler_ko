@@ -420,6 +420,11 @@ public class Import {
             List<File> zigFiles = new ArrayList<>();
             collectFiles(extractDir, ".zig", zigFiles);
             
+            if (zigFiles.isEmpty()) {
+                System.out.println("[Import.java] No .zig files found for Zig compilation");
+                return false;
+            }
+            
             List<String> args = new ArrayList<>();
             args.add("zig");
             args.add("build-lib");

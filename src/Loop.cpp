@@ -210,7 +210,7 @@ public:
     }
 
     int recordWhile(const char* loopId, ko_loop_condition_fn cond,
-                    uint64_t unrollFactor) {
+                    void* condCtx, uint64_t unrollFactor) {
         if (cond == nullptr) {
             return 3;
         }
@@ -219,6 +219,7 @@ public:
         rec.unrollFactor = unrollFactor;
         rec.strategy = OptimizationStrategy::CACHE_LINE_ALIGNED;
         rec.cond = cond;
+        rec.condCtx = condCtx;
         loopCache[loopId] = rec;
         std::cout << "[Loop.cpp] Optimizing while-loop '" << loopId << "': "
                   << "unroll=" << rec.unrollFactor
@@ -313,16 +314,16 @@ int ko_loop_execute_optimized_loop(ko_loop_engine* eng, const char* loopId,
 }
 
 int ko_loop_execute_while_loop(ko_loop_engine* eng, const char* loopId,
-                               ko_loop::ko_loop_condition_fn cond,
-                               ko_loop::ko_loop_body_fn body,
+                               ko_loop::ko_loop_condition_fn cond, void* condCtx,
+                               ko_loop::ko_loop_body_fn body, void* bodyCtx,
                                uint64_t maxIterations) {
     if (eng == nullptr || loopId == nullptr || cond == nullptr || body == nullptr) {
         return 1;
     }
-    if (eng->unroller.recordWhile(loopId, cond, 4) != 0) {
+    if (eng->unroller.recordWhile(loopId, cond, bodyCtx, 4) != 0) {
         return 3;
     }
-    return eng->unroller.executeOptimized(loopId, body, nullptr, maxIterations);
+    return eng->unroller.executeOptimized(loopId, body, bodyCtx, maxIterations);
 }
 
 int ko_loop_get_stats(ko_loop_engine* eng, char* out, size_t outSize) {
