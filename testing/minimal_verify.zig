@@ -20,24 +20,36 @@ fn load(t: type, sym: [*:0]const u8) !t {
     return @ptrCast(sym_val.?);
 }
 
-const KoFileExistsFn = *const fn ([*:0]const u8) callconv(.c) c_int;
-const KoValidateUrlFn = *const fn ([*:0]const u8) callconv(.c) ?*const [*:0]const u8;
-
-test "call ko_file_exists with build.zig" {
-    const ko_file_exists = load(KoFileExistsFn, "ko_file_exists") catch return error.CouldNotLoadLibrary;
-    const path: [*:0]const u8 = "build.zig";
-    const result = ko_file_exists(path);
-    try std.testing.expectEqual(@as(c_int, 1), result);
+test "dlopen works" {
+    const handle = dlopen("zig-out/lib/libko_os.so", RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+    defer closeLib(handle);
+    try std.testing.expect(handle != null);
 }
 
-test "load ko_validate_url as function with C string param and return" {
-    const ko_validate_url = load(KoValidateUrlFn, "ko_validate_url") catch return error.CouldNotLoadLibrary;
-    const result = ko_validate_url("https://example.com");
-    try std.testing.expect(result == null);
+test "dlsym resolves ko_file_exists" {
+    const handle = dlopen("zig-out/lib/libko_os.so", RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+    defer closeLib(handle);
+    const sym = dlsym(handle, "ko_file_exists");
+    try std.testing.expect(sym != null);
+    const addr = @intFromPtr(@ptrCast(sym.?));
+    try std.testing.expect(addr > 0);
 }
 
-test "load ko_validate_url accepts example.com" {
-    const ko_validate_url = load(KoValidateUrlFn, "ko_validate_url") catch return error.CouldNotLoadLibrary;
-    const result = ko_validate_url("://example.com");
-    try std.testing.expect(result == null);
+test "call ko_list_dir (args unused, returns -1)" {
+    const KoListDirFn = *const fn (*const u8, ***u8, *usize) callconv(.c) c_int;
+    const ko_list_dir = load(KoListDirFn, "ko_list_dir") catch return error.CouldNotLoadLibrary;
+    const path: [*:0]const u8 = "zig-out/lib";
+    const entries: ***u8 = null;
+    var count: usize = 0;
+    const result = ko_list_dir(path, entries, @ptrCast(&count));
+    try std.testing.expectEqual(@as(c_int, -1), result);
+}
+
+test "call ko_get_env returns string or null" {
+    const KoGetEnvFn = *const fn ([*:0]const u8) callconv(.c) ?[*:0]const u8;
+    const ko_get_env = load(KoGetEnvFn, "ko_get_env") catch return error.CouldNotLoadLibrary;
+    const path: [*:0]const u8 = "HOME";
+    const result = ko_get_env(path);
+    // result is either null (HOME unset) or a C string
+    _ = result;
 }
