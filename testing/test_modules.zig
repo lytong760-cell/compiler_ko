@@ -18,13 +18,12 @@ const KoValidateUrlFn = *const fn (*const u8) callconv(.C) ?*const u8;
 const KoUrlEncodeFn = *const fn (*const u8) callconv(.C) ?*const u8;
 
 const KoLib = struct {
-    lib: dynamic_library.DynLib,
-
     fn close(self: *KoLib, allocator: Allocator) void {
         self.lib.close();
         allocator.free(self.path);
     }
 
+    lib: dynamic_library.DynLib,
     path: []const u8,
 };
 
