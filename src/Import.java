@@ -7,7 +7,6 @@ import java.nio.file.*;
 
 public class Import {
     
-    private static final String REGISTRY_URL = "https://ko-studio.ai.studio";
     private static final String FIRESTORE_BASE = "https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents";
     private static final String API_KEY = System.getenv("KO_FIRESTORE_API_KEY");
     
