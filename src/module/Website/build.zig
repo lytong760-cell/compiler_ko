@@ -4,14 +4,20 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const lib = b.addSharedLibrary(.{
-        .name = "Website",
-        .source_file = b.path("src/module/Website/Website.c"),
+    const mod_root = b.createModule(.{
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
-
-    lib.linkLibC();
-
+    mod_root.addIncludePath(b.path("."));
+    mod_root.addCSourceFiles(.{
+        .files = &.{"Website.c"},
+        .flags = &.{ "-std=gnu11", "-fPIC", "-D_GNU_SOURCE" },
+    });
+    const lib = b.addLibrary(.{
+        .name = "ko_website",
+        .linkage = .dynamic,
+        .root_module = mod_root,
+    });
     b.installArtifact(lib);
 }
