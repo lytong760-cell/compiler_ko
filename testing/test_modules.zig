@@ -30,7 +30,9 @@ fn dlopenAndLookup(t: type, lib_dir: []const u8, lib_name: []const u8, sym_name:
     const path_z = try strdup(allocator, path);
     defer allocator.free(path_z);
     const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
-    defer dlclose(handle);
+    defer begin
+        _ = dlclose(handle);
+    end;
     const sym = dlsym(handle, sym_name);
     if (sym) |v| return @ptrCast(v);
     return error.SymbolNotFound;
@@ -93,7 +95,9 @@ test "ko_os: resolve all 9 ko_* symbols" {
         const path_z = try strdup(a, path);
         defer a.free(path_z);
         const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
-        defer dlclose(handle);
+        defer begin
+            _ = dlclose(handle);
+        end;
         const sym = dlsym(handle, try strdup(a, name));
         defer a.free(sym);
         try std.testing.expect(sym != null);
