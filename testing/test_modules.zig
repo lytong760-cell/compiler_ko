@@ -11,6 +11,14 @@ const Error = error{
     ExpectedSymbolFound,
 };
 
+const KoFileExistsFn = *const fn (*const u8) callconv(.C) c_int;
+const KoRandomSeedFn = *const fn (i64) callconv(.C) void;
+const KoRandomIntFn = *const fn () callconv(.C) i64;
+const KoRandomFloatFn = *const fn () callconv(.C) f64;
+const KoRandomBytesFn = *const fn (i64, [*]u8) callconv(.C) void;
+const KoValidateUrlFn = *const fn (*const u8) callconv(.C) ?*const u8;
+const KoUrlEncodeFn = *const fn (*const u8) callconv(.C) ?*const u8;
+
 const KoLib = struct {
     name: []const u8,
     lib: dynamic_library.DynLib,
@@ -19,22 +27,7 @@ const KoLib = struct {
         self.lib.close();
         allocator.free(self.name);
     }
-
-    fn resolve[T](self: *const KoLib, name: [:0]const u8) Error!T {
-        const sym = self.lib.lookup(T, name);
-        if (sym) |s| return s;
-        return error.SymbolNotFound;
-    }
 };
-
-const KoFileExistsFn = *const fn (*const u8) callconv(.C) c_int;
-const KoRandomSeedFn = *const fn (i64) callconv(.C) void;
-const KoRandomIntFn = *const fn () callconv(.C) i64;
-const KoRandomFloatFn = *const fn () callconv(.C) f64;
-const KoRandomBytesFn = *const fn (i64, [*]u8) callconv(.C) void;
-const KoValidateUrlFn = *const fn (*const u8) callconv(.C) ?*const u8;
-const KoUrlEncodeFn = *const fn (*const u8) callconv(.C) ?*const u8;
-const KoResponseFreeFn = *const fn (*anyopaque) callconv(.C) void;
 
 fn loadKoLib(allocator: Allocator, lib_name: []const u8) Error!KoLib {
     const path = try std.fs.path.join(allocator, &.{ "zig-out/lib", lib_name });
@@ -43,10 +36,15 @@ fn loadKoLib(allocator: Allocator, lib_name: []const u8) Error!KoLib {
     return KoLib{ .name = lib_name, .lib = lib };
 }
 
-fn resolveKoLib[T](allocator: Allocator, lib_name: []const u8, sym_name: [:0]const u8) !T {
+fn resolveHelper(allocator: Allocator, lib_name: []const u8, t: type, sym_name: [:0]const u8) !?t {
     var lib = try loadKoLib(allocator, lib_name);
     defer lib.close(allocator);
-    return try lib.resolve(T, sym_name);
+    const sym = lib.lib.lookup(t, sym_name);
+    return sym;
+}
+
+fn resolveOrFail(allocator: Allocator, lib_name: []const u8, t: type, sym_name: [:0]const u8) !t {
+    return resolveHelper(allocator, lib_name, t, sym_name) orelse error.SymbolNotFound;
 }
 
 test "ko_os: resolve trailing symbol ko_set_cwd" {
@@ -54,7 +52,7 @@ test "ko_os: resolve trailing symbol ko_set_cwd" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const fn_ptr = try resolveKoLib(KoFileExistsFn, a, "libko_os.so", "ko_set_cwd");
+    const fn_ptr = try resolveOrFail(a, "libko_os.so", KoFileExistsFn, "ko_set_cwd");
     try std.testing.expect(fn_ptr != null);
 }
 
@@ -63,7 +61,7 @@ test "ko_random: resolve trailing symbol ko_random_bytes" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const fn_ptr = try resolveKoLib(KoRandomBytesFn, a, "libko_random.so", "ko_random_bytes");
+    const fn_ptr = try resolveOrFail(a, "libko_random.so", KoRandomBytesFn, "ko_random_bytes");
     try std.testing.expect(fn_ptr != null);
 }
 
@@ -72,7 +70,7 @@ test "ko_website: resolve trailing symbol ko_validate_url" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const fn_ptr = try resolveKoLib(KoValidateUrlFn, a, "libko_website.so", "ko_validate_url");
+    const fn_ptr = try resolveOrFail(a, "libko_website.so", KoValidateUrlFn, "ko_validate_url");
     try std.testing.expect(fn_ptr != null);
 }
 
@@ -81,7 +79,7 @@ test "ko_loop: resolve trailing symbol ko_loop_reset_registers" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const fn_ptr = try resolveKoLib(*const fn (i32) callconv(.C) void, a, "libko_loop.so", "ko_loop_reset_registers");
+    const fn_ptr = try resolveOrFail(a, "libko_loop.so", *const fn (i32) callconv(.C) void, "ko_loop_reset_registers");
     try std.testing.expect(fn_ptr != null);
 }
 
@@ -108,7 +106,7 @@ test "ko_os: ko_file_exists(true) on existing file" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const ko_file_exists = try resolveKoLib(KoFileExistsFn, a, "libko_os.so", "ko_file_exists");
+    const ko_file_exists = try resolveOrFail(a, "libko_os.so", KoFileExistsFn, "ko_file_exists");
     const result = ko_file_exists("examples/simple.ko");
     try std.testing.expectEqual(@as(c_int, 1), result);
 }
@@ -118,7 +116,7 @@ test "ko_os: ko_file_exists(false) on non-existing file" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const ko_file_exists = try resolveKoLib(KoFileExistsFn, a, "libko_os.so", "ko_file_exists");
+    const ko_file_exists = try resolveOrFail(a, "libko_os.so", KoFileExistsFn, "ko_file_exists");
     const result = ko_file_exists("nope");
     try std.testing.expectEqual(@as(c_int, 0), result);
 }
@@ -128,11 +126,11 @@ test "ko_os: ko_file_size matches stat for existing file" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const ko_file_size = try resolveKoLib(*const fn (*const u8) callconv(.C) i64, a, "libko_os.so", "ko_file_size");
+    const ko_file_size = try resolveOrFail(a, "libko_os.so", *const fn (*const u8) callconv(.C) i64, "ko_file_size");
     const size = ko_file_size("examples/simple.ko");
     try std.testing.expect(size >= 0);
 
-    const Dir = std.fs.Dir;
+    const Dir = std.Io.Dir;
     const path = try std.fs.path.join(a, &.{ "examples", "simple.ko" });
     defer a.free(path);
     const stat = Dir.cwd().stat(path) catch return error.OsFileNotFound;
@@ -144,8 +142,8 @@ test "ko_random: reproducibility via seed" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const ko_random_seed = try resolveKoLib(KoRandomSeedFn, a, "libko_random.so", "ko_random_seed");
-    const ko_random_int = try resolveKoLib(KoRandomIntFn, a, "libko_random.so", "ko_random_int");
+    const ko_random_seed = try resolveOrFail(a, "libko_random.so", KoRandomSeedFn, "ko_random_seed");
+    const ko_random_int = try resolveOrFail(a, "libko_random.so", KoRandomIntFn, "ko_random_int");
 
     ko_random_seed(12345);
     const a1 = ko_random_int();
@@ -164,8 +162,8 @@ test "ko_random: seed uniqueness produces different sequences" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const ko_random_seed = try resolveKoLib(KoRandomSeedFn, a, "libko_random.so", "ko_random_seed");
-    const ko_random_int = try resolveKoLib(KoRandomIntFn, a, "libko_random.so", "ko_random_int");
+    const ko_random_seed = try resolveOrFail(a, "libko_random.so", KoRandomSeedFn, "ko_random_seed");
+    const ko_random_int = try resolveOrFail(a, "libko_random.so", KoRandomIntFn, "ko_random_int");
 
     ko_random_seed(0);
     const x1 = ko_random_int();
@@ -179,8 +177,8 @@ test "ko_random: ko_random_float in [0, 1)" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const ko_random_seed = try resolveKoLib(KoRandomSeedFn, a, "libko_random.so", "ko_random_seed");
-    const ko_random_float = try resolveKoLib(KoRandomFloatFn, a, "libko_random.so", "ko_random_float");
+    const ko_random_seed = try resolveOrFail(a, "libko_random.so", KoRandomSeedFn, "ko_random_seed");
+    const ko_random_float = try resolveOrFail(a, "libko_random.so", KoRandomFloatFn, "ko_random_float");
 
     ko_random_seed(42);
     for (0..100) |_| {
@@ -195,8 +193,8 @@ test "ko_random: ko_random_bytes fills buffer" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const ko_random_seed = try resolveKoLib(KoRandomSeedFn, a, "libko_random.so", "ko_random_seed");
-    const ko_random_bytes = try resolveKoLib(KoRandomBytesFn, a, "libko_random.so", "ko_random_bytes");
+    const ko_random_seed = try resolveOrFail(a, "libko_random.so", KoRandomSeedFn, "ko_random_seed");
+    const ko_random_bytes = try resolveOrFail(a, "libko_random.so", KoRandomBytesFn, "ko_random_bytes");
 
     const len: i64 = 64;
     var buf = a.alloc(u8, len) catch return error.NoMemory;
@@ -237,7 +235,7 @@ test "ko_website: ko_validate_url rejects dangerous URL" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const ko_validate_url = try resolveKoLib(KoValidateUrlFn, a, "libko_website.so", "ko_validate_url");
+    const ko_validate_url = try resolveOrFail(a, "libko_website.so", KoValidateUrlFn, "ko_validate_url");
     const result = ko_validate_url("file:///etc/passwd");
     try std.testing.expect(result != null, "file:// URLs must be rejected");
 }
@@ -247,7 +245,7 @@ test "ko_website: ko_validate_url accepts safe URL" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const ko_validate_url = try resolveKoLib(KoValidateUrlFn, a, "libko_website.so", "ko_validate_url");
+    const ko_validate_url = try resolveOrFail(a, "libko_website.so", KoValidateUrlFn, "ko_validate_url");
     const result = ko_validate_url("https://example.com/path");
     try std.testing.expect(result == null, "safe URLs must be accepted");
 }
@@ -257,7 +255,7 @@ test "ko_website: ko_url_encode returns non-null" {
     defer arena.deinit();
     const a = arena.allocator;
 
-    const ko_url_encode = try resolveKoLib(KoUrlEncodeFn, a, "libko_website.so", "ko_url_encode");
+    const ko_url_encode = try resolveOrFail(a, "libko_website.so", KoUrlEncodeFn, "ko_url_encode");
     const result = ko_url_encode("hello world");
     try std.testing.expect(result != null, "ko_url_encode must not return null");
 }
