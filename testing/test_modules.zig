@@ -86,14 +86,16 @@ test "ko_os: resolve all 9 ko_* symbols" {
 
     const lib_dir = "zig-out/lib";
     const names = [_][]const u8{ "ko_get_env", "ko_set_env", "ko_list_dir", "ko_file_exists", "ko_file_size", "ko_exec", "ko_exit", "ko_get_cwd", "ko_set_cwd" };
-    const FnT = *const fn (*const u8) callconv(.c) ?*anyopaque;
 
     for (names) |name| {
         const path = try std.fs.path.join(a, &.{ lib_dir, "libko_os.so" });
         defer a.free(path);
-        const handle = dlopen(path, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+        const path_z = try strdup(a, path);
+        defer a.free(path_z);
+        const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
         defer dlclose(handle);
-        const sym = dlsym(handle, name);
+        const sym = dlsym(handle, try strdup(a, name));
+        defer a.free(sym);
         try std.testing.expect(sym != null);
     }
 }
