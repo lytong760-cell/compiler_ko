@@ -29,7 +29,7 @@ const KoLib = struct {
 
 fn loadKoLib(allocator: Allocator, lib_dir: []const u8, lib_name: []const u8) Error!KoLib {
     const path = try std.fs.path.join(allocator, &.{ lib_dir, lib_name });
-    var lib = dynamic_library.DynLib.open(path) catch return error.CouldNotLoadLibrary;
+    const lib = dynamic_library.DynLib.open(path) catch return error.CouldNotLoadLibrary;
     return KoLib{ .path = path, .lib = lib };
 }
 
@@ -197,7 +197,7 @@ test "ko_random: ko_random_bytes fills buffer" {
     const ko_random_bytes = try resolveOrFail(a, "zig-out/lib", "libko_random.so", KoRandomBytesFn, "ko_random_bytes");
 
     const len: i64 = 64;
-    var buf = a.alloc(u8, len) catch return error.NoMemory;
+    const buf = a.alloc(u8, len) catch return error.NoMemory;
     defer a.free(buf);
     ko_random_seed(999);
     ko_random_bytes(len, buf.ptr);
