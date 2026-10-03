@@ -7,15 +7,20 @@ pub fn build(b: *std.Build) !void {
     const enable = b.option(bool, "enable-os", "Enable Os module") orelse true;
     _ = enable;
 
-    const lib = b.addLibrary(.{
-        .name = "Os",
-        .target = target,
-        .optimize = optimize,
-        .kind = .shared,
+    const module = b.createModule(.{
+        .root_source_file = null,
+    });
+    module.addCSourceFiles(.{
+        .files = &.{ "Os.c" },
+        .flags = &.{ "-fPIC" },
     });
 
-    lib.addCSourceFiles(&.{ "Os.c" }, &.{ "-fPIC" });
-    lib.linkLibC();
+    const lib = b.addLibrary(.{
+        .name = "Os",
+        .root_module = module,
+        .linkage = .shared,
+    });
 
+    lib.linkLibC();
     b.installArtifact(lib);
 }
