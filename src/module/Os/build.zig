@@ -7,22 +7,20 @@ pub fn build(b: *std.Build) !void {
     const enable = b.option(bool, "enable-os", "Enable Os module") orelse true;
     _ = enable;
 
-    const module = b.createModule(.{
-        .root_source_file = null,
+    const mod_root = b.createModule(.{
         .target = target,
         .optimize = optimize,
         .link_libc = true,
     });
-    module.addCSourceFiles(.{
-        .files = &.{ "Os.c" },
-        .flags = &.{ "-fPIC" },
+    mod_root.addIncludePath(b.path("."));
+    mod_root.addCSourceFiles(.{
+        .files = &.{"Os.c"},
+        .flags = &.{ "-std=gnu11", "-fPIC", "-D_GNU_SOURCE" },
     });
-
     const lib = b.addLibrary(.{
-        .name = "Os",
-        .root_module = module,
+        .name = "ko_os",
         .linkage = .dynamic,
+        .root_module = mod_root,
     });
-
     b.installArtifact(lib);
 }
