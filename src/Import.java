@@ -235,7 +235,7 @@ public class Import {
              ProcessBuilder unzipPb = new ProcessBuilder("unzip", "-q", zipFile.getAbsolutePath(), "-d", extractDir.getAbsolutePath());
              unzipPb.directory(tempDir);
              unzipPb.redirectErrorStream(true);
-             try (Process unzipProcess = unzipPb.start()) {
+             Process unzipProcess = unzipPb.start(); {
                  unzipProcess.waitFor();
              }
             
