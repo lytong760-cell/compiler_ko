@@ -123,6 +123,10 @@ private:
                 std::this_thread::yield();
             }
         }
+        if ((i / 1000) % 1000 == 0) {
+            std::FILE* f = std::fopen("/tmp/kilo/diag.txt", "a");
+            if (f) { std::fprintf(f, "i=%lu condctx=%p\n", (unsigned long)i, (void*)rec.condCtx); std::fclose(f); }
+        }
         return stopped_by_condition;
     }
 

@@ -126,10 +126,14 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         close(pipefd[1]); // Close the duplicate write end
 
         // Debug: write to stderr to see if we get here
-        dprintf(STDERR_FILENO, "Child: about to execvp %s\n", argv[0]);
+        const char *msg1 = "Child: about to execvp ";
+        write(STDERR_FILENO, msg1, strlen(msg1));
+        write(STDERR_FILENO, argv[0], strlen(argv[0]));
+        write(STDERR_FILENO, "\n", 1);
         execvp(argv[0], argv);
         // If execvp fails
-        dprintf(STDERR_FILENO, "Child: execvp failed\n");
+        const char *msg2 = "Child: execvp failed\n";
+        write(STDERR_FILENO, msg2, strlen(msg2));
         _exit(127);
     }
 
