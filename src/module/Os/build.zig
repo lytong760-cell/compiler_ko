@@ -7,10 +7,11 @@ pub fn build(b: *std.Build) !void {
     const enable = b.option(bool, "enable-os", "Enable Os module") orelse true;
     _ = enable;
 
-    const lib = b.addSharedLibrary(.{
+    const lib = b.addLibrary(.{
         .name = "Os",
         .target = target,
         .optimize = optimize,
+        .kind = .shared,
     });
 
     lib.addCSourceFiles(&.{ "Os.c" }, &.{ "-fPIC" });

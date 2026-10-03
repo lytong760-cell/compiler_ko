@@ -385,6 +385,11 @@ public class Import {
             List<File> zigFiles = new ArrayList<>();
             collectFiles(extractDir, ".zig", zigFiles);
             
+            if (zigFiles.isEmpty()) {
+                System.out.println("[Import.java] No .zig files found for Zig compilation");
+                return false;
+            }
+            
             List<String> args = new ArrayList<>();
             args.add("zig");
             args.add("build-lib");
@@ -502,13 +507,37 @@ public class Import {
         }
     }
     
-    private void copyFile(File src, File dest) throws IOException {
-        try (FileInputStream fis = new FileInputStream(src);
-             FileOutputStream fos = new FileOutputStream(dest)) {
-            byte[] buf = new byte[8192];
-            int n;
-            while ((n = fis.read(buf)) > 0) {
-                fos.write(buf, 0, n);
+    private File findZipRecursive(File dir) {
+        File[] files = dir.listFiles();
+        if (files == null) return null;
+        
+        File zipFile = null;
+        for (File f : files) {
+            if (f.isFile() && f.getName().toLowerCase().endsWith(".zip")) {
+                if (zipFile == null) {
+                    zipFile = f;
+                }
+            } else if (f.isDirectory()) {
+                File found = findZipRecursive(f);
+                if (found != null) {
+                    if (zipFile == null) {
+                        zipFile = found;
+                    }
+                }
+            }
+        }
+        return zipFile;
+    }
+    
+    private void deleteNonZipFilesRecursive(File dir, File preserveFile) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        
+        for (File f : files) {
+            if (f.isDirectory()) {
+                deleteNonZipFilesRecursive(f, preserveFile);
+            } else if (!f.equals(preserveFile)) {
+                deleteRecursive(f);
             }
         }
     }
