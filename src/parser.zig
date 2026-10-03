@@ -925,7 +925,7 @@ pub const Parser = struct {
                 return ast.Statement{ .expr = e };
             }
             const ie = try self.allocator.create(ast.InputExpr);
-            ie.* = ast.InputExpr{ .target = target_expr, .target_name = "" };
+            ie.* = ast.InputExpr{ .target = null, .target_name = "" };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .input_expr = ie };
             return ast.Statement{ .expr = e };
