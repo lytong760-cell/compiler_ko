@@ -406,16 +406,17 @@ public class Import {
             moduleDir.mkdirs();
             
             File packageJson = new File(extractDir, "package.json");
-            if (packageJson.exists()) {
-                ProcessBuilder pb = new ProcessBuilder("npm", "install");
-                pb.directory(extractDir);
-                pb.redirectErrorStream(true);
-                Process process = pb.start();
-                int npmExitCode = process.waitFor();
-                if (npmExitCode != 0) {
-                    System.out.println("[Import.java] npm install exited with code: " + npmExitCode);
-                }
-            }
+             if (packageJson.exists()) {
+                 ProcessBuilder pb = new ProcessBuilder("npm", "install");
+                 pb.directory(extractDir);
+                 pb.redirectErrorStream(true);
+                 try (Process process = pb.start()) {
+                     int npmExitCode = process.waitFor();
+                     if (npmExitCode != 0) {
+                         System.out.println("[Import.java] npm install exited with code: " + npmExitCode);
+                     }
+                 }
+             }
             
             File mainFile = findMainFile(extractDir, ".js");
             if (mainFile == null) {

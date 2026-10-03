@@ -6,6 +6,45 @@
 #include <sys/wait.h>
 #include <signal.h>
 
+const char* ko_get_env(const char *name) {
+    return getenv(name);
+}
+
+int ko_set_env(const char *name, const char *value) {
+    return setenv(name, value, 1);
+}
+
+int ko_file_exists(const char *path) {
+    if (!path) return 0;
+    struct stat st;
+    return stat(path, &st) == 0;
+}
+
+int64_t ko_file_size(const char *path) {
+    if (!path) return -1;
+    struct stat st;
+    if (stat(path, &st) != 0) return -1;
+    return (int64_t)st.st_size;
+}
+
+const char* ko_get_cwd(void) {
+    static char buf[1024];
+    if (getcwd(buf, sizeof(buf)) != NULL) {
+        return buf;
+    }
+    return NULL;
+}
+
+int ko_set_cwd(const char *path) {
+    if (!path) return -1;
+    return chdir(path) == 0 ? 0 : -1;
+}
+
+int ko_exit(int code) {
+    exit(code);
+    return 0;
+}
+
 int ko_exec(const char *cmd, char *output, size_t output_size) {
     if (!cmd || !output || output_size == 0) {
         return -1;
@@ -134,4 +173,11 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         // Child terminated by signal
         return -1;
     }
+}
+
+int ko_list_dir(const char *path, char ***entries, size_t *count) {
+    (void)path;
+    (void)entries;
+    (void)count;
+    return -1; // Not implemented
 }
