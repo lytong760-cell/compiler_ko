@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <sys/stat.h>
+#include <time.h>
 
 const char* ko_get_env(const char *name) {
     return getenv(name);
