@@ -148,19 +148,21 @@ public class Import {
             File repoDir = new File(tempDir, "repo_" + System.currentTimeMillis());
             repoDir.mkdirs();
             
+            File logFile = new File(tempDir, "clone_" + System.currentTimeMillis() + ".log");
             ProcessBuilder pb = new ProcessBuilder("git", "clone", githubUrl, repoDir.getAbsolutePath());
             pb.directory(tempDir);
             pb.redirectErrorStream(true);
+            pb.redirectOutput(logFile);
             Process process = pb.start();
             int exitCode = process.waitFor();
-            
+
+            String output = readFile(logFile);
+
             if (exitCode != 0) {
-                String output = readStream(process.getInputStream());
                 System.out.println("[Import.java] Git clone failed: " + output);
                 return null;
             }
-            
-            String output = readStream(process.getInputStream());
+
             System.out.println("[Import.java] Clone successful: " + repoDir.getAbsolutePath());
             return repoDir;
         } catch (Exception e) {
