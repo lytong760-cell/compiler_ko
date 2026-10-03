@@ -78,7 +78,7 @@ pub fn build(b: *std.Build) !void {
         mod_root.addIncludePath(b.path(mod.include_dir));
         mod_root.addCSourceFiles(.{
             .files = &.{mod.source},
-            .flags = &.{ "-std=c11", "-fPIC" },
+            .flags = &.{ "-std=gnu11", "-fPIC", "-D_GNU_SOURCE" },
         });
         const lib = b.addLibrary(.{
             .name = mod.name,
@@ -92,6 +92,7 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
         .link_libc = true,
+        .link_libcpp = true,
     });
     loop_root.addCMacro("KO_LOOP_NO_MAIN", "1");
     loop_root.addCSourceFiles(.{
