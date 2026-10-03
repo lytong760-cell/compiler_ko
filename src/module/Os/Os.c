@@ -97,6 +97,7 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
     token = strtok(cmd_copy, delim);
     size_t i = 0;
     while (token) {
+        write(STDERR_FILENO, "ko_exec: in while loop\n", 24);
         argv[i] = token;
         i++;
         token = strtok(NULL, delim);
@@ -106,6 +107,7 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
     // Check for shell metacharacters in each token
     const char *shell_metachars = "&;|$`><!";
     for (size_t j = 0; j < argc; j++) {
+        write(STDERR_FILENO, "ko_exec: in for loop\n", 22);
         const char *arg = argv[j];
         for (; *arg; arg++) {
             if (strchr(shell_metachars, *arg)) {
