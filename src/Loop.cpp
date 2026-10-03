@@ -322,7 +322,7 @@ int ko_loop_execute_while_loop(ko_loop_engine* eng, const char* loopId,
     if (eng->unroller.recordWhile(loopId, cond, 4) != 0) {
         return 3;
     }
-    return eng->unroller.executeOptimized(loopId, body, bodyCtx, maxIterations);
+    return eng->unroller.executeOptimized(loopId, body, nullptr, maxIterations);
 }
 
 int ko_loop_get_stats(ko_loop_engine* eng, char* out, size_t outSize) {
