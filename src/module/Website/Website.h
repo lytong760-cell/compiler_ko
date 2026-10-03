@@ -24,4 +24,4 @@ KoHttpResponse* ko_http_request(const KoHttpRequest *req);
 void ko_http_response_free(KoHttpResponse *res);
 const char* ko_url_encode(const char *str);
 char* ko_url_decode(const char *str);
-#endif
+const char* ko_validate_url(const char *url);
