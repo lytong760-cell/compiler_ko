@@ -24,6 +24,10 @@ const KoRandomBytesFn = *const fn (i64, [*]u8) callconv(.c) void;
 const KoValidateUrlFn = *const fn (*const u8) callconv(.c) ?*const u8;
 const KoUrlEncodeFn = *const fn (*const u8) callconv(.c) ?*const u8;
 
+fn closeLib(handle: ?*anyopaque) void {
+    _ = dlclose(handle);
+}
+
 fn dlopenAndLookup(t: type, lib_dir: []const u8, lib_name: []const u8, sym_name: [:0]const u8, allocator: Allocator) !t {
     const path = try std.fs.path.join(allocator, &.{ lib_dir, lib_name });
     defer allocator.free(path);
