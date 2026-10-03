@@ -102,7 +102,7 @@ private:
         bool stopped_by_condition = false;
 
         while (i < maxIterations) {
-            if (!rec.cond(bodyCtx)) {
+            if (!rec.cond(rec.condCtx)) {
                 stopped_by_condition = true;
                 break;
             }
@@ -111,7 +111,7 @@ private:
                 if (i >= maxIterations) {
                     break;
                 }
-                if (!rec.cond(bodyCtx)) {
+                if (!rec.cond(rec.condCtx)) {
                     stopped_by_condition = true;
                     break;
                 }
