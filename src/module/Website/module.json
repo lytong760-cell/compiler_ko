@@ -6,10 +6,10 @@
   "main": "Website.c",
   "headers": ["Website.h"],
   "exports": [
-    {"name": "ko_http_get", "type": "function", "args": [{"name": "url", "type": "string"}, {"name": "timeout", "type": "int"}]},
-    {"name": "ko_http_post", "type": "function", "args": [{"name": "url", "type": "string"}, {"name": "body", "type": "string"}, {"name": "timeout", "type": "int"}]},
-    {"name": "ko_http_request", "type": "function", "args": [{"name": "req", "type": "reference", "base": "KoHttpRequest"}]},
-    {"name": "ko_http_response_free", "type": "function", "args": [{"name": "res", "type": "reference", "base": "KoHttpResponse"}]},
+    {"name": "ko_http_get", "type": "string", "args": [{"name": "url", "type": "string"}, {"name": "timeout", "type": "int"}]},
+    {"name": "ko_http_post", "type": "string", "args": [{"name": "url", "type": "string"}, {"name": "body", "type": "string"}, {"name": "timeout", "type": "int"}]},
+    {"name": "ko_http_request", "type": "string", "args": [{"name": "req", "type": "string"}, {"name": "timeout", "type": "int"}]},
+    {"name": "ko_http_response_free", "type": "string", "args": [{"name": "res", "type": "string"}]},
     {"name": "ko_url_encode", "type": "string", "args": [{"name": "str", "type": "string"}]},
     {"name": "ko_url_decode", "type": "string", "args": [{"name": "str", "type": "string"}]}
   ],
