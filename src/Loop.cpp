@@ -106,19 +106,8 @@ private:
                 stopped_by_condition = true;
                 break;
             }
-            uint64_t chunk = rec.unrollFactor;
-            for (uint64_t j = 0; j < chunk; ++j) {
-                if (i >= maxIterations) {
-                    break;
-                }
-                if (!rec.cond(rec.condCtx)) {
-                    stopped_by_condition = true;
-                    break;
-                }
-                body(i, bodyCtx);
-                ++i;
-            }
-            regs.rcx = i;
+            body(i, bodyCtx);
+            ++i;
             if (i % rec.unrollFactor == 0) {
                 std::this_thread::yield();
             }
