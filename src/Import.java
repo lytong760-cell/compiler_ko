@@ -648,7 +648,7 @@ public class Import {
         if (valueStart >= json.length()) return "";
         
         if (json.charAt(valueStart) == '"') {
-            int endQuote = json.indexOf('"', valueStart + 1);
+            int endQuote = findUnescapedQuote(json, valueStart + 1);
             if (endQuote == -1) return "";
             return json.substring(valueStart + 1, endQuote);
         } else if (json.charAt(valueStart) == '{') {
@@ -658,6 +658,23 @@ public class Import {
         }
         
         return "";
+    }
+    
+    private int findUnescapedQuote(String json, int start) {
+        for (int i = start; i < json.length(); i++) {
+            if (json.charAt(i) == '"') {
+                int backslashCount = 0;
+                int j = i - 1;
+                while (j >= 0 && json.charAt(j) == '\\') {
+                    backslashCount++;
+                    j--;
+                }
+                if (backslashCount % 2 == 0) {
+                    return i;
+                }
+            }
+        }
+        return -1;
     }
     
     private void extractLibraryNames(String json, List<String> result) {
