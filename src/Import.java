@@ -60,14 +60,7 @@ public class Import {
     private String queryRegistry(String moduleName) {
         System.out.println("[Import.java] Querying registry for: " + moduleName);
         try {
-            String apiKey = API_KEY;
-            if (apiKey == null || apiKey.isEmpty()) {
-                System.out.println("[Import.java] Warning: KO_FIRESTORE_API_KEY environment variable is not set. Using registry without API key.");
-            }
-            String urlStr = FIRESTORE_BASE + "/libraries/" + URLEncoder.encode(moduleName, "UTF-8");
-            if (apiKey != null && !apiKey.isEmpty()) {
-                urlStr += "?key=" + apiKey;
-            }
+            String urlStr = FIRESTORE_BASE + "/libraries/" + URLEncoder.encode(moduleName, "UTF-8") + "?key=" + API_KEY;
             URL url = new URL(urlStr);
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
@@ -152,15 +145,15 @@ public class Import {
             pb.directory(tempDir);
             pb.redirectErrorStream(true);
             Process process = pb.start();
+            
+            String output = readStream(process.getInputStream());
             int exitCode = process.waitFor();
             
             if (exitCode != 0) {
-                String output = readStream(process.getInputStream());
                 System.out.println("[Import.java] Git clone failed: " + output);
                 return null;
             }
             
-            String output = readStream(process.getInputStream());
             System.out.println("[Import.java] Clone successful: " + repoDir.getAbsolutePath());
             return repoDir;
         } catch (Exception e) {
@@ -171,14 +164,29 @@ public class Import {
     
     private File inspectAndExtractZip(File repoDir) {
         System.out.println("[Import.java] Inspecting repository for .zip package...");
-        File zipFile = findZipRecursive(repoDir);
+        File[] files = repoDir.listFiles();
+        if (files == null) {
+            return null;
+        }
+        
+        File zipFile = null;
+        for (File f : files) {
+            if (f.isFile() && f.getName().toLowerCase().endsWith(".zip")) {
+                zipFile = f;
+                break;
+            }
+        }
         
         if (zipFile == null) {
             System.out.println("[Import.java] No .zip file found in repository.");
             return null;
         }
         
-        deleteNonZipFilesRecursive(repoDir, zipFile);
+        for (File f : files) {
+            if (!f.equals(zipFile)) {
+                deleteRecursive(f);
+            }
+        }
         
         System.out.println("[Import.java] Found .zip package: " + zipFile.getName());
         return zipFile;
@@ -299,11 +307,11 @@ public class Import {
             pb.directory(extractDir);
             pb.redirectErrorStream(true);
             Process process = pb.start();
-            String output = readStream(process.getInputStream());
-            int exitCode = process.waitFor();
+            process.waitFor();
             
+            int exitCode = process.waitFor();
             if (exitCode != 0) {
-                System.out.println("[Import.java] C compilation failed: " + output);
+                System.out.println("[Import.java] C compilation failed");
                 return false;
             }
             
@@ -384,11 +392,6 @@ public class Import {
             File outputLib = new File(moduleDir, "lib" + alias + ".so");
             List<File> zigFiles = new ArrayList<>();
             collectFiles(extractDir, ".zig", zigFiles);
-            
-            if (zigFiles.isEmpty()) {
-                System.out.println("[Import.java] No .zig files found for Zig compilation");
-                return false;
-            }
             
             List<String> args = new ArrayList<>();
             args.add("zig");
@@ -491,6 +494,22 @@ public class Import {
         }
     }
     
+    private void writeModuleManifest(File moduleDir, String alias, String lang) {
+        try {
+            File manifest = new File(moduleDir, "module.json");
+            String json = String.format(
+                "{\"name\":\"%s\",\"version\":\"1.0.0\",\"language\":\"%s\",\"installed_at\":\"%d\"}",
+                alias, lang, System.currentTimeMillis()
+            );
+            try (FileWriter fw = new FileWriter(manifest)) {
+                fw.write(json);
+            }
+            System.out.println("[Import.java] Module manifest written: " + manifest.getAbsolutePath());
+        } catch (Exception e) {
+            System.out.println("[Import.java] Manifest write failed: " + e.getMessage());
+        }
+    }
+    
     private void copyFile(File src, File dest) throws IOException {
         try (FileInputStream fis = new FileInputStream(src);
              FileOutputStream fos = new FileOutputStream(dest)) {
@@ -498,41 +517,6 @@ public class Import {
             int n;
             while ((n = fis.read(buf)) > 0) {
                 fos.write(buf, 0, n);
-            }
-        }
-    }
-    
-    private File findZipRecursive(File dir) {
-        File[] files = dir.listFiles();
-        if (files == null) return null;
-        
-        File zipFile = null;
-        for (File f : files) {
-            if (f.isFile() && f.getName().toLowerCase().endsWith(".zip")) {
-                if (zipFile == null) {
-                    zipFile = f;
-                }
-            } else if (f.isDirectory()) {
-                File found = findZipRecursive(f);
-                if (found != null) {
-                    if (zipFile == null) {
-                        zipFile = found;
-                    }
-                }
-            }
-        }
-        return zipFile;
-    }
-    
-    private void deleteNonZipFilesRecursive(File dir, File preserveFile) {
-        File[] files = dir.listFiles();
-        if (files == null) return;
-        
-        for (File f : files) {
-            if (f.isDirectory()) {
-                deleteNonZipFilesRecursive(f, preserveFile);
-            } else if (!f.equals(preserveFile)) {
-                deleteRecursive(f);
             }
         }
     }
@@ -659,80 +643,5 @@ public class Import {
         public static ImportResult error(String message) {
             return new ImportResult(false, null, null, null, message);
         }
-    private String detectLanguage(File extractDir) {
-        File[] files = extractDir.listFiles();
-        if (files == null) return "unknown";
-        
-        for (File f : files) {
-            if (f.isFile()) {
-                String name = f.getName().toLowerCase();
-                if (name.endsWith(".java")) return "java";
-                if (name.endsWith(".lua")) return "lua";
-                if (name.endsWith(".py")) return "python";
-                if (name.endsWith(".c")) return "c";
-                if (name.endsWith(".cpp")) return "cpp";
-                if (name.endsWith(".js")) return "nodejs";
-                if (name.endsWith(".ko")) return "ko";
-                if (name.endsWith(".zig")) return "zig";
-            } else if (f.isDirectory()) {
-                String lang = detectLanguage(f);
-                if (!lang.equals("unknown")) return lang;
-            }
-        }
-        return "unknown";
     }
-    
-    private File findMainFile(File dir, String extension) {
-        File[] files = dir.listFiles();
-        if (files == null) return null;
-        
-        for (File f : files) {
-            if (f.isFile() && f.getName().toLowerCase().endsWith(extension)) {
-                return f;
-            } else if (f.isDirectory()) {
-                File found = findMainFile(f, extension);
-                if (found != null) return found;
-            }
-        }
-        return null;
-    }
-    
-    private void collectFiles(File dir, String extension, List<File> result) {
-        File[] files = dir.listFiles();
-        if (files == null) return;
-        
-        for (File f : files) {
-            if (f.isFile() && f.getName().toLowerCase().endsWith(extension)) {
-                result.add(f);
-            } else if (f.isDirectory()) {
-                collectFiles(f, extension, result);
-            }
-        }
-    }
-    
-    private void writeModuleManifest(File moduleDir, String alias, String lang) {
-        try {
-            File manifest = new File(moduleDir, "module.json");
-            String json = String.format(
-                "{\"name\":\"%s\",\"version\":\"1.0.0\",\"language\":\"%s\",\"installed_at\":\"%d\"}",
-                alias, lang, System.currentTimeMillis()
-            );
-            try (FileWriter fw = new FileWriter(manifest)) {
-                fw.write(json);
-            }
-            System.out.println("[Import.java] Module manifest written: " + manifest.getAbsolutePath());
-        } catch (Exception e) {
-            System.out.println("[Import.java] Manifest write failed: " + e.getMessage());
-        }
-    }
-    
-    private void copyFile(File src, File dest) throws IOException {
-        try (FileInputStream fis = new FileInputStream(src);
-             FileOutputStream fos = new FileOutputStream(dest)) {
-            byte[] buf = new byte[8192];
-            int n;
-            while ((n = fis.read(buf)) > 0) {
-                fos.write(buf, 0, n);
-            }
-        }
-    }
+}

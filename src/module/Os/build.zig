@@ -9,6 +9,8 @@ pub fn build(b: *std.Build) !void {
 
     const module = b.createModule(.{
         .root_source_file = null,
+        .target = target,
+        .optimize = optimize,
     });
     module.addCSourceFiles(.{
         .files = &.{ "Os.c" },
@@ -18,7 +20,7 @@ pub fn build(b: *std.Build) !void {
     const lib = b.addLibrary(.{
         .name = "Os",
         .root_module = module,
-        .linkage = .shared,
+        .linkage = .dynamic,
     });
 
     lib.linkLibC();
