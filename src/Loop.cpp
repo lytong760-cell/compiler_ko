@@ -184,21 +184,16 @@ public:
 
     int executeOptimized(const char* loopId, ko_loop_body_fn body,
                          void* bodyCtx, uint64_t maxIterations) {
-        std::FILE* f = std::fopen("/tmp/kilo/diag.txt", "a");
-        if (f) { std::fprintf(f, "execOpt START loopId=%s\n", loopId); std::fclose(f); }
         if (body == nullptr) {
             return 4;
         }
         auto it = loopCache.find(loopId);
-        if (f) { std::fprintf(f, "execOpt found=%d\n", it != loopCache.end()); std::fclose(f); }
         if (it == loopCache.end()) {
             std::cerr << "[Loop.cpp] Warning: Loop '" << loopId
                       << "' not optimized" << std::endl;
             return 1;
         }
         const LoopRecord& rec = it->second;
-        if (f) { std::fprintf(f, "execOpt rec.isWhile=%d unroll=%lu strategy=%d\n",
-                              rec.isWhile, rec.unrollFactor, (int)rec.strategy); std::fclose(f); }
         if (rec.isWhile) {
             if (!executeWhileLoop(rec, body, bodyCtx, maxIterations)) {
                 return 5; /* ERR_LOOP_MAX_ITERATIONS_REACHED */
