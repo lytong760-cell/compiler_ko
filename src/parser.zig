@@ -898,7 +898,7 @@ pub const Parser = struct {
             return error.UnexpectedToken;
         } else if (std.mem.eql(u8, tag, "input")) {
             try self.expectLParen();
-            _ = try self.parseExpression();
+            const target_expr = try self.parseExpression();
             try self.expectRParen();
             if (self.current() == .amp_equals) {
                 _ = self.advance();
@@ -926,7 +926,8 @@ pub const Parser = struct {
                 return ast.Statement{ .expr = e };
             }
             const ie = try self.allocator.create(ast.InputExpr);
-            ie.* = ast.InputExpr{ .target = null, .target_name = "" };
+            const assignable = target_expr.* == .identifier;
+            ie.* = ast.InputExpr{ .target = if (assignable) target_expr else null, .target_name = "" };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .input_expr = ie };
             return ast.Statement{ .expr = e };
