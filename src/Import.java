@@ -659,72 +659,80 @@ public class Import {
         public static ImportResult error(String message) {
             return new ImportResult(false, null, null, null, message);
         }
+    private String detectLanguage(File extractDir) {
+        File[] files = extractDir.listFiles();
+        if (files == null) return "unknown";
+        
+        for (File f : files) {
+            if (f.isFile()) {
+                String name = f.getName().toLowerCase();
+                if (name.endsWith(".java")) return "java";
+                if (name.endsWith(".lua")) return "lua";
+                if (name.endsWith(".py")) return "python";
+                if (name.endsWith(".c")) return "c";
+                if (name.endsWith(".cpp")) return "cpp";
+                if (name.endsWith(".js")) return "nodejs";
+                if (name.endsWith(".ko")) return "ko";
+                if (name.endsWith(".zig")) return "zig";
+            } else if (f.isDirectory()) {
+                String lang = detectLanguage(f);
+                if (!lang.equals("unknown")) return lang;
+            }
+        }
+        return "unknown";
     }
     
-    public static void main(String[] args) {
-        if (args.length == 0) {
-            System.out.println("Usage: Import <command> [options]");
-            System.out.println("Commands:");
-            System.out.println("  import <module> <alias> <scope> - Import a module");
-            System.out.println("  list - List all available libraries");
-            System.out.println("  search <query> - Search for libraries");
-            System.exit(1);
-        }
+    private File findMainFile(File dir, String extension) {
+        File[] files = dir.listFiles();
+        if (files == null) return null;
         
-        String command = args[0].toLowerCase();
-        Import importer = new Import();
-        
-        try {
-            switch (command) {
-                case "import":
-                    if (args.length < 4) {
-                        System.err.println("Error: Missing arguments for import command. Usage: import <module> <alias> <scope>");
-                        System.exit(1);
-                    }
-                    ImportResult result = importer.processImport(args[1], args[2], args[3]);
-                    if (result.success) {
-                        System.out.println("Import successful: " + result.alias + " in scope " + result.scopeTag + " from " + result.moduleName);
-                        System.exit(0);
-                    } else {
-                        System.err.println("Error: " + result.errorMessage);
-                        System.exit(1);
-                    }
-                    break;
-                case "list":
-                    String[] libraries = importer.listLibraries();
-                    if (libraries.length == 0) {
-                        System.out.println("No libraries found.");
-                    } else {
-                        System.out.println("Available libraries:");
-                        for (String lib : libraries) {
-                            System.out.println("  - " + lib);
-                        }
-                    }
-                    break;
-                case "search":
-                    if (args.length < 2) {
-                        System.err.println("Error: Missing search query. Usage: search <query>");
-                        System.exit(1);
-                    }
-                    String[] results = importer.searchLibraries(args[1]);
-                    if (results.length == 0) {
-                        System.out.println("No results found for query: " + args[1]);
-                    } else {
-                        System.out.println("Search results for \"" + args[1] + "\":");
-                        for (String result : results) {
-                            System.out.println("  - " + result);
-                        }
-                    }
-                    break;
-                default:
-                    System.err.println("Error: Unknown command: " + command);
-                    System.err.println("Usage: Import <command> [options]");
-                    System.err.println("Commands: import, list, search");
-                    System.exit(1);
+        for (File f : files) {
+            if (f.isFile() && f.getName().toLowerCase().endsWith(extension)) {
+                return f;
+            } else if (f.isDirectory()) {
+                File found = findMainFile(f, extension);
+                if (found != null) return found;
             }
-        } catch (Exception e) {
-            System.err.println("Fatal error: " + e.getMessage());
-            System.exit(1);
+        }
+        return null;
+    }
+    
+    private void collectFiles(File dir, String extension, List<File> result) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        
+        for (File f : files) {
+            if (f.isFile() && f.getName().toLowerCase().endsWith(extension)) {
+                result.add(f);
+            } else if (f.isDirectory()) {
+                collectFiles(f, extension, result);
+            }
         }
     }
-}
+    
+    private void writeModuleManifest(File moduleDir, String alias, String lang) {
+        try {
+            File manifest = new File(moduleDir, "module.json");
+            String json = String.format(
+                "{\"name\":\"%s\",\"version\":\"1.0.0\",\"language\":\"%s\",\"installed_at\":\"%d\"}",
+                alias, lang, System.currentTimeMillis()
+            );
+            try (FileWriter fw = new FileWriter(manifest)) {
+                fw.write(json);
+            }
+            System.out.println("[Import.java] Module manifest written: " + manifest.getAbsolutePath());
+        } catch (Exception e) {
+            System.out.println("[Import.java] Manifest write failed: " + e.getMessage());
+        }
+    }
+    
+    private void copyFile(File src, File dest) throws IOException {
+        try (FileInputStream fis = new FileInputStream(src);
+             FileOutputStream fos = new FileOutputStream(dest)) {
+            byte[] buf = new byte[8192];
+            int n;
+            while ((n = fis.read(buf)) > 0) {
+                fos.write(buf, 0, n);
+            }
+        }
+    }

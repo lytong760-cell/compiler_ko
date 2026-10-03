@@ -14,7 +14,7 @@ int64_t ko_random_int(void) {
 }
 
 double ko_random_float(void) {
-    return (double)ko_random_int() / ((double)((1ULL << 32) - 1));
+    return (double)ko_random_int() / (double)(1ULL << 32);
 }
 
 void ko_random_seed(int64_t seed) {
