@@ -121,10 +121,10 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         int len = snprintf(j_str, sizeof(j_str), "%zu", j);
         write(STDERR_FILENO, j_str, len);
         write(STDERR_FILENO, "] = '", 4);
-        // Write up to 10 characters of the string
-        for (size_t k = 0; k < 10 && arg[k] != '\0'; k++) {
-            write(STDERR_FILENO, &arg[k], 1);
-        }
+        // Write the pointer value in hex
+        char ptr_str[32];
+        snprintf(ptr_str, sizeof(ptr_str), "%p", (void*)arg);
+        write(STDERR_FILENO, ptr_str, strlen(ptr_str));
         write(STDERR_FILENO, "'\n", 2);
         for (; *arg; arg++) {
             write(STDERR_FILENO, "ko_exec: inner loop char: ", 27);
