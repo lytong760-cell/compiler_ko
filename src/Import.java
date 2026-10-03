@@ -321,6 +321,11 @@ public class Import {
             List<File> cFiles = new ArrayList<>();
             collectFiles(extractDir, ".c", cFiles);
             
+            if (cFiles.isEmpty()) {
+                System.out.println("[Import.java] No .c files found for C compilation");
+                return false;
+            }
+            
             List<String> args = new ArrayList<>();
             args.add("gcc");
             args.add("-shared");
@@ -356,6 +361,11 @@ public class Import {
             File outputLib = new File(moduleDir, "lib" + alias + ".so");
             List<File> cppFiles = new ArrayList<>();
             collectFiles(extractDir, ".cpp", cppFiles);
+            
+            if (cppFiles.isEmpty()) {
+                System.out.println("[Import.java] No .cpp files found for C++ compilation");
+                return false;
+            }
             
             List<String> args = new ArrayList<>();
             args.add("g++");
