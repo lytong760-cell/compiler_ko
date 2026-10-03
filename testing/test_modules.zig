@@ -9,11 +9,11 @@ const dlsym = @as(*const fn (handle: ?*anyopaque, sym: [*:0]const u8) callconv(.
 const dlclose = @as(*const fn (handle: ?*anyopaque) callconv(.c) i32, @ptrCast(&dl.dlclose));
 const RTLD_LAZY: i32 = 1;
 
+const Allocator = std.mem.Allocator;
+
 const Error = error{
     CouldNotLoadLibrary,
     SymbolNotFound,
-    ReproducibilityFailed,
-    FloatRangeFailed,
 };
 
 const KoFileExistsFn = *const fn (*const u8) callconv(.c) c_int;
