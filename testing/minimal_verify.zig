@@ -38,7 +38,7 @@ test "call ko_list_dir (args unused, returns -1)" {
     const KoListDirFn = *const fn (*const u8, ***u8, *usize) callconv(.c) c_int;
     const ko_list_dir = load(KoListDirFn, "ko_list_dir") catch return error.CouldNotLoadLibrary;
     const path: [*:0]const u8 = "zig-out/lib";
-    var entries: ***u8 = @ptrCast(@as(*anyopaque, null));
+    const entries: ***u8 = @ptrCast(@as(?*anyopaque, null) orelse unreachable);
     var count: usize = 0;
     const result = ko_list_dir(path, entries, @as(*usize, @ptrCast(&count)));
     try std.testing.expectEqual(@as(c_int, -1), result);
