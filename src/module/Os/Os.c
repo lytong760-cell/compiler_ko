@@ -120,6 +120,7 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
                 return -1;
             }
         }
+        write(STDERR_FILENO, "ko_exec: after inner loop\n", 26);
         j++;
     }
     write(STDERR_FILENO, "ko_exec: after for loop\n", 24);
