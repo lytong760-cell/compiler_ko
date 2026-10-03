@@ -27,11 +27,20 @@ const KoUrlEncodeFn = *const fn (*const u8) callconv(.c) ?*const u8;
 fn dlopenAndLookup(t: type, lib_dir: []const u8, lib_name: []const u8, sym_name: [:0]const u8, allocator: Allocator) !t {
     const path = try std.fs.path.join(allocator, &.{ lib_dir, lib_name });
     defer allocator.free(path);
-    const handle = dlopen(path, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+    const path_z = try strdup(allocator, path);
+    defer allocator.free(path_z);
+    const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
     defer dlclose(handle);
     const sym = dlsym(handle, sym_name);
     if (sym) |v| return @ptrCast(v);
     return error.SymbolNotFound;
+}
+
+fn strdup(allocator: Allocator, s: []const u8) ![:0]const u8 {
+    const out = try allocator.alloc(u8, s.len + 1);
+    @memcpy(out[0..s.len], s);
+    out[s.len] = 0;
+    return out[0..s.len :0];
 }
 
 test "ko_os: resolve trailing symbol ko_set_cwd" {
