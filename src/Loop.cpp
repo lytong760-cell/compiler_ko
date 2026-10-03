@@ -123,17 +123,8 @@ private:
                 std::this_thread::yield();
             }
         }
-        if ((i / 1000) % 1000 == 0) {
-            std::FILE* f = std::fopen("/tmp/kilo/diag.txt", "a");
-            if (f) { std::fprintf(f, "i=%lu condctx=%p\n", (unsigned long)i, (void*)rec.condCtx); std::fclose(f); }
-        }
         return stopped_by_condition;
     }
-
-    int executeOptimized(const char* loopId, ko_loop_body_fn body,
-                         void* bodyCtx, uint64_t maxIterations) {
-        std::FILE* f = std::fopen("/tmp/kilo/diag.txt", "a");
-        if (f) { std::fprintf(f, "executeOptimized called loopId=%s body=%p bodyCtx=%p\n", loopId, (void*)body, bodyCtx); std::fclose(f); }
 
 public:
     LoopUnroller() = default;
