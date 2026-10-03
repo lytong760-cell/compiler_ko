@@ -116,6 +116,9 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         }
     }
 
+    // Debug: after shell metachar check
+    write(STDERR_FILENO, "ko_exec: after shell metachar check\n", 34);
+
     // Create pipe for child's stdout
     int pipefd[2];
     if (pipe(pipefd) == -1) {
