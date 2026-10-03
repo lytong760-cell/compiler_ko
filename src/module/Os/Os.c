@@ -111,6 +111,16 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
     while (j < argc) {
         write(STDERR_FILENO, "ko_exec: in for loop\n", 22);
         const char *arg = argv[j];
+        write(STDERR_FILENO, "ko_exec: argv[", 14);
+        char j_str[16];
+        int len = snprintf(j_str, sizeof(j_str), "%zu", j);
+        write(STDERR_FILENO, j_str, len);
+        write(STDERR_FILENO, "] = '", 4);
+        // Write up to 10 characters of the string
+        for (size_t k = 0; k < 10 && arg[k] != '\0'; k++) {
+            write(STDERR_FILENO, &arg[k], 1);
+        }
+        write(STDERR_FILENO, "'\n", 2);
         for (; *arg; arg++) {
             write(STDERR_FILENO, "ko_exec: inner loop char: ", 27);
             char c = *arg;
