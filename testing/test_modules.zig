@@ -217,14 +217,16 @@ test "ko_website: resolve all 7 ko_* symbols" {
 
     const lib_dir = "zig-out/lib";
     const names = [_][]const u8{ "ko_http_get", "ko_http_post", "ko_http_request", "ko_http_response_free", "ko_url_encode", "ko_url_decode", "ko_validate_url" };
-    const FnT = *const fn (*const u8) callconv(.c) ?*anyopaque;
 
     for (names) |name| {
         const path = try std.fs.path.join(a, &.{ lib_dir, "libko_website.so" });
         defer a.free(path);
-        const handle = dlopen(path, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+        const path_z = try strdup(a, path);
+        defer a.free(path_z);
+        const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
         defer dlclose(handle);
-        const sym = dlsym(handle, name);
+        const sym = dlsym(handle, try strdup(a, name));
+        defer a.free(sym);
         try std.testing.expect(sym != null);
     }
 }
