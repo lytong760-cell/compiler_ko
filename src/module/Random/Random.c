@@ -21,8 +21,11 @@ void ko_random_seed(int64_t seed) {
     current_seed = (uint64_t)seed;
 }
 
-void ko_random_bytes(uint8_t *buf, size_t len) {
-    for (size_t i = 0; i < len; i++) {
+void ko_random_bytes(int64_t length, uint8_t *buf) {
+    if (length <= 0) {
+        return;
+    }
+    for (int64_t i = 0; i < length; i++) {
         buf[i] = (uint8_t)(ko_random_int() & 0xFF);
     }
 }

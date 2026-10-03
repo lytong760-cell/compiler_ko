@@ -9,7 +9,7 @@
     {"name": "random_int", "type": "int", "returns": "int"},
     {"name": "random_float", "type": "freal", "returns": "freal"},
     {"name": "random_seed", "type": "void", "args": [{"name": "seed", "type": "int"}]},
-    {"name": "random_bytes", "type": "bytes", "args": [{"name": "length", "type": "int"}]}
+    {"name": "random_bytes", "type": "void", "returns": "void", "args": [{"name": "length", "type": "int"}]}
   ],
   "builtin": true,
   "compiler": "main.zig"
