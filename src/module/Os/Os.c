@@ -112,6 +112,10 @@ int ko_exec(const char *cmd, char *output, size_t output_size) {
         write(STDERR_FILENO, "ko_exec: in for loop\n", 22);
         const char *arg = argv[j];
         for (; *arg; arg++) {
+            write(STDERR_FILENO, "ko_exec: inner loop char: ", 27);
+            char c = *arg;
+            write(STDERR_FILENO, &c, 1);
+            write(STDERR_FILENO, "\n", 1);
             if (strchr(shell_metachars, *arg)) {
                 free(cmd_copy);
                 free(argv);
