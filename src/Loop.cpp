@@ -101,10 +101,6 @@ private:
         uint64_t i = 0;
         bool stopped_by_condition = false;
 
-        static std::FILE* f = std::fopen("/tmp/kilo/diag.txt", "a");
-        if (f) std::fprintf(f, "whileLoop START loopId=%s condctx=%p bodyctx=%p max=%lu\n",
-                             /* need loopId — not available; use marker */ "", (void*)rec.condCtx, bodyCtx, maxIterations);
-
         while (i < maxIterations) {
             if (!rec.cond(rec.condCtx)) {
                 stopped_by_condition = true;
@@ -127,8 +123,6 @@ private:
                 std::this_thread::yield();
             }
         }
-        if (f) { std::fprintf(f, "while done i=%lu stopped=%d condctx=%p bodyctx=%p\n",
-                   (unsigned long)i, stopped_by_condition, (void*)rec.condCtx, bodyCtx); std::fclose(f); f = nullptr; }
         return stopped_by_condition;
     }
 
