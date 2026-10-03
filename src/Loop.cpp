@@ -1,40 +1,29 @@
 /**
  * Loop.cpp - High-Performance Loop Engine Subsystem for .ko Language
  *
- * Provides a stable C ABI (ko_* prefix, snake_case as in src/module/Os/Os.h)
- * so a C caller (Zig via dlopen/dlsym) can create the engine, optimize
- * for-/while-loops, and execute them. All C++ classes (CpuCounterRegisters,
- * CacheLineOptimizer, LoopUnroller) stay inside namespace ko_loop and are not
- * exported. ko_loop_engine is opaque: callers only ever see void*.
+ * Stable C ABI (ko_* prefix, snake_case). All C++ classes stay inside
+ * namespace ko_loop and are not exported; ko_loop_engine is opaque (void*).
  *
- * ABI design choices:
- *  - No std::string / std::function across the ABI: use const char* and plain
- *    C function-pointer typedefs (ko_loop_condition_fn / ko_loop_body_fn).
- *  - The caller supplies the while-condition as a C function pointer plus a
- *    void* context; the engine stores it and calls it back on each chunk.
- *    This is the standard dlopen-callback pattern and avoids ABI-visible
- *    C++ types.
- *  - Every execution path is bounded by an explicit maxIterations cap, so a
- *    loop whose condition never becomes false cannot run forever.
+ * ABI choices: no std::string / std::function across the boundary; the caller
+ * supplies while-loop conditions as a plain C function pointer plus a void*
+ * context, and every execution path is bounded by an explicit maxIterations
+ * cap so a condition that never becomes false returns an error instead of
+ * hanging.
  */
 
 #include <iostream>
-#include <vector>
-#include <string>
 #include <cstdint>
-#include <chrono>
-#include <thread>
-#include <map>
-#include <sstream>
 #include <cstdio>
-#include <algorithm>
-#include <limits>
+#include <cstdlib>
+#include <map>
+#include <thread>
+#include <sstream>
 
 namespace ko_loop {
 
-/**
- * Loop optimization strategy.
- */
+using ko_loop_body_fn = void (*)(uint64_t iteration, void* ctx);
+using ko_loop_condition_fn = bool (*)(void* ctx);
+
 enum class OptimizationStrategy {
     UNROLL_FACTOR_4,
     UNROLL_FACTOR_8,
@@ -43,24 +32,13 @@ enum class OptimizationStrategy {
     PIPELINED
 };
 
-/**
- * CPU Counter Register simulation. This is a simulation only: it copies values
- * into struct fields; it never touches real CPU registers.
- */
 struct CpuCounterRegisters {
-    uint64_t rip;
-    uint64_t rax;
-    uint64_t rbx;
-    uint64_t rcx;
-    uint64_t rdx;
-    uint64_t rsi;
-    uint64_t rdi;
-    uint64_t rbp;
-    uint64_t rsp;
-    uint64_t rflags;
+    uint64_t rip, rax, rbx, rcx, rdx;
+    uint64_t rsi, rdi, rbp, rsp, rflags;
 
-    CpuCounterRegisters() : rip(0), rax(0), rbx(0), rcx(0), rdx(0),
-                            rsi(0), rdi(0), rbp(0), rsp(0), rflags(0) {}
+    CpuCounterRegisters()
+        : rip(0), rax(0), rbx(0), rcx(0), rdx(0), rsi(0), rdi(0), rbp(0),
+          rsp(0), rflags(0) {}
 
     void reset() {
         rip = 0; rax = 0; rbx = 0; rcx = 0; rdx = 0;
@@ -76,64 +54,26 @@ struct CpuCounterRegisters {
     }
 };
 
-/**
- * Cache line optimizer.
- */
-class CacheLineOptimizer {
-public:
-    static constexpr size_t CACHE_LINE_SIZE = 64;
-
-    static void* alignToCacheLine(void* ptr) {
-        uintptr_t addr = reinterpret_cast<uintptr_t>(ptr);
-        uintptr_t aligned = (addr + CACHE_LINE_SIZE - 1) & ~(CACHE_LINE_SIZE - 1);
-        return reinterpret_cast<void*>(aligned);
-    }
-
-    static void prefetch(const void* addr) {
-        __builtin_prefetch(addr, 0, 3);
-    }
-
-    static size_t getCacheLineSize() {
-        return CACHE_LINE_SIZE;
-    }
-};
-
-/**
- * Execution callback type used in the C ABI.
- */
-using ko_loop_body_fn = void (*)(uint64_t iteration, void* ctx);
-
-/**
- * Condition callback type used in the C ABI for while-loops.
- * Returns true to continue, false to stop.
- */
-using ko_loop_condition_fn = bool (*)(void* ctx);
-
 struct LoopRecord {
     bool isWhile;
-    uint64_t forStart{};
-    uint64_t forEnd{};
+    uint64_t forStart{}, forEnd{}, count{}, unrollFactor{};
     int64_t step{};
-    uint64_t count{};
-    uint64_t unrollFactor{};
     OptimizationStrategy strategy{};
     ko_loop_condition_fn cond{};
     void* condCtx{};
 };
 
-/**
- * Loop Unroller.
- */
 class LoopUnroller {
 private:
     CpuCounterRegisters regs;
     std::map<std::string, LoopRecord> loopCache;
 
     /**
-     * Execute a bounded for-loop (count determined at optimize time).
+     * Execute a bounded for-loop whose iteration count is known at optimize
+     * time. Termination is guaranteed by the explicit count cap.
      */
-    void executeForLoop(const LoopRecord& rec, ko_loop_body_fn body, void* bodyCtx,
-                        uint64_t maxIterations) {
+    void executeForLoop(const LoopRecord& rec, ko_loop_body_fn body,
+                        void* bodyCtx, uint64_t maxIterations) {
         const uint64_t cap = std::min(rec.count, maxIterations);
         uint64_t remaining = cap;
         uint64_t i = 0;
@@ -152,18 +92,27 @@ private:
     }
 
     /**
-     * Execute a bounded while-loop (count not determined at optimize time).
-     * Termination is guaranteed by: (a) the caller-supplied condition, and
-     * (b) the explicit maxIterations cap.
+     * Execute a bounded while-loop (count not known at optimize time).
+     * The caller-supplied condition decides termination. The maxIterations
+     * cap guarantees exit even if the condition never returns false.
      */
-    void executeWhileLoop(const ko_loop_condition_fn cond, void* condCtx,
-                          const LoopRecord& rec, ko_loop_body_fn body, void* bodyCtx,
-                          uint64_t maxIterations) {
+    bool executeWhileLoop(const LoopRecord& rec, ko_loop_body_fn body,
+                          void* bodyCtx, uint64_t maxIterations) {
         uint64_t i = 0;
-        while (i < maxIterations && cond(condCtx)) {
+        bool stopped_by_condition = false;
+
+        while (i < maxIterations) {
+            if (!rec.cond(bodyCtx)) {
+                stopped_by_condition = true;
+                break;
+            }
             uint64_t chunk = rec.unrollFactor;
             for (uint64_t j = 0; j < chunk; ++j) {
-                if (i >= maxIterations || !cond(condCtx)) {
+                if (i >= maxIterations) {
+                    break;
+                }
+                if (!rec.cond(bodyCtx)) {
+                    stopped_by_condition = true;
                     break;
                 }
                 body(i, bodyCtx);
@@ -174,6 +123,7 @@ private:
                 std::this_thread::yield();
             }
         }
+        return stopped_by_condition;
     }
 
 public:
@@ -226,8 +176,8 @@ public:
         return 0;
     }
 
-    int executeOptimized(const char* loopId, ko_loop_body_fn body, void* bodyCtx,
-                         uint64_t maxIterations) {
+    int executeOptimized(const char* loopId, ko_loop_body_fn body,
+                         void* bodyCtx, uint64_t maxIterations) {
         if (body == nullptr) {
             return 4;
         }
@@ -239,8 +189,9 @@ public:
         }
         const LoopRecord& rec = it->second;
         if (rec.isWhile) {
-            executeWhileLoop(rec.cond, rec.condCtx, rec, body, bodyCtx,
-                             maxIterations);
+            if (!executeWhileLoop(rec, body, bodyCtx, maxIterations)) {
+                return 5; /* ERR_LOOP_MAX_ITERATIONS_REACHED */
+            }
         } else {
             executeForLoop(rec, body, bodyCtx, maxIterations);
         }
@@ -266,10 +217,6 @@ public:
 
 } // namespace ko_loop
 
-/**
- * Opaque handle for the loop engine. Callers only ever see void*; the real
- * definition stays in src/Loop.cpp so the ABI cannot break.
- */
 typedef struct ko_loop_engine {
     ko_loop::LoopUnroller unroller;
 } ko_loop_engine;
@@ -294,27 +241,27 @@ int ko_loop_optimize_for(ko_loop_engine* eng, const char* loopId,
 }
 
 int ko_loop_optimize_while(ko_loop_engine* eng, const char* loopId,
-                           ko_loop::ko_loop_condition_fn cond,
+                           ko_loop_condition_fn cond, void* condCtx,
                            uint64_t unrollFactor) {
-    if (eng == nullptr || loopId == nullptr) {
+    if (eng == nullptr || loopId == nullptr || cond == nullptr) {
         return 1;
     }
-    return eng->unroller.recordWhile(loopId, cond, nullptr, unrollFactor);
+    return eng->unroller.recordWhile(loopId, cond, condCtx, unrollFactor);
 }
 
 int ko_loop_execute_optimized_loop(ko_loop_engine* eng, const char* loopId,
-                                   ko_loop::ko_loop_body_fn body, void* bodyCtx,
+                                   ko_loop_condition_fn body, void* bodyCtx,
                                    uint64_t maxIterations) {
-    if (eng == nullptr || loopId == nullptr) {
+    if (eng == nullptr || loopId == nullptr || body == nullptr) {
         return 1;
     }
     return eng->unroller.executeOptimized(loopId, body, bodyCtx, maxIterations);
 }
 
 int ko_loop_execute_while_loop(ko_loop_engine* eng, const char* loopId,
-                               ko_loop::ko_loop_condition_fn cond,
-                               ko_loop::ko_loop_body_fn body,
-                               void* bodyCtx, uint64_t maxIterations) {
+                               ko_loop_condition_fn cond,
+                               ko_loop_condition_fn body, void* bodyCtx,
+                               uint64_t maxIterations) {
     if (eng == nullptr || loopId == nullptr || cond == nullptr || body == nullptr) {
         return 1;
     }
@@ -333,7 +280,7 @@ int ko_loop_get_stats(ko_loop_engine* eng, char* out, size_t outSize) {
         return static_cast<int>(s.size());
     }
     const int written = static_cast<int>(std::snprintf(out, outSize, "%s", s.c_str()));
-    return (written >= static_cast<int>(outSize)) ? written : written;
+    return written;
 }
 
 void ko_loop_reset_registers(ko_loop_engine* eng) {
@@ -378,7 +325,8 @@ int main(int argc, char* argv[]) {
     }
 
     char buf[512];
-    std::printf("%s", ko_loop_get_stats(eng, buf, sizeof(buf)));
+    ko_loop_get_stats(eng, buf, sizeof(buf));
+    std::printf("%s", buf);
     ko_loop_engine_destroy(eng);
     return 0;
 }

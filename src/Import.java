@@ -406,7 +406,10 @@ public class Import {
                 pb.directory(extractDir);
                 pb.redirectErrorStream(true);
                 Process process = pb.start();
-                process.waitFor();
+                int npmExitCode = process.waitFor();
+                if (npmExitCode != 0) {
+                    System.out.println("[Import.java] npm install exited with code: " + npmExitCode);
+                }
             }
             
             File mainFile = findMainFile(extractDir, ".js");
