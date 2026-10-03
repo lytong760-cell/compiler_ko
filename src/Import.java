@@ -171,32 +171,52 @@ public class Import {
     
     private File inspectAndExtractZip(File repoDir) {
         System.out.println("[Import.java] Inspecting repository for .zip package...");
-        File[] files = repoDir.listFiles();
-        if (files == null) {
-            return null;
-        }
-        
-        File zipFile = null;
-        for (File f : files) {
-            if (f.isFile() && f.getName().toLowerCase().endsWith(".zip")) {
-                zipFile = f;
-                break;
-            }
-        }
+        File zipFile = findZipRecursive(repoDir);
         
         if (zipFile == null) {
             System.out.println("[Import.java] No .zip file found in repository.");
             return null;
         }
         
-        for (File f : files) {
-            if (!f.equals(zipFile)) {
-                deleteRecursive(f);
-            }
-        }
+        deleteNonZipFilesRecursive(repoDir, zipFile);
         
         System.out.println("[Import.java] Found .zip package: " + zipFile.getName());
         return zipFile;
+    }
+    
+    private File findZipRecursive(File dir) {
+        File[] files = dir.listFiles();
+        if (files == null) return null;
+        
+        File zipFile = null;
+        for (File f : files) {
+            if (f.isFile() && f.getName().toLowerCase().endsWith(".zip")) {
+                if (zipFile == null) {
+                    zipFile = f;
+                }
+            } else if (f.isDirectory()) {
+                File found = findZipRecursive(f);
+                if (found != null) {
+                    if (zipFile == null) {
+                        zipFile = found;
+                    }
+                }
+            }
+        }
+        return zipFile;
+    }
+    
+    private void deleteNonZipFilesRecursive(File dir, File preserveFile) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        
+        for (File f : files) {
+            if (f.isDirectory()) {
+                deleteNonZipFilesRecursive(f, preserveFile);
+            } else if (!f.equals(preserveFile)) {
+                deleteRecursive(f);
+            }
+        }
     }
     
     private boolean compileAndLink(File zipFile, String alias) {
