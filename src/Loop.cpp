@@ -162,10 +162,13 @@ private:
                           const LoopRecord& rec, ko_loop_body_fn body, void* bodyCtx,
                           uint64_t maxIterations) {
         uint64_t i = 0;
+        std::cout << "[Loop.cpp] executeWhileLoop: cond=" << (void*)cond
+                  << " condCtx=" << condCtx << std::endl;
         while (i < maxIterations) {
             uint64_t chunk = rec.unrollFactor;
             for (uint64_t j = 0; j < chunk; ++j) {
-                if (i >= maxIterations || !cond(condCtx)) {
+                bool go = (i < maxIterations) && cond(condCtx);
+                if (!go) {
                     break;
                 }
                 body(i, bodyCtx);
