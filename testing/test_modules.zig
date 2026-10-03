@@ -268,14 +268,16 @@ test "ko_loop: resolve all 8 ko_loop_* symbols" {
 
     const lib_dir = "zig-out/lib";
     const names = [_][]const u8{ "ko_loop_engine_create", "ko_loop_engine_destroy", "ko_loop_execute_optimized_loop", "ko_loop_execute_while_loop", "ko_loop_get_stats", "ko_loop_optimize_for", "ko_loop_optimize_while", "ko_loop_reset_registers" };
-    const FnT = *const fn (i32) callconv(.c) ?*anyopaque;
 
     for (names) |name| {
         const path = try std.fs.path.join(a, &.{ lib_dir, "libko_loop.so" });
         defer a.free(path);
-        const handle = dlopen(path, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+        const path_z = try strdup(a, path);
+        defer a.free(path_z);
+        const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
         defer dlclose(handle);
-        const sym = dlsym(handle, name);
+        const sym = dlsym(handle, try strdup(a, name));
+        defer a.free(sym);
         try std.testing.expect(sym != null);
     }
 }
