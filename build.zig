@@ -58,39 +58,48 @@ pub fn build(b: *std.Build) !void {
     }
 
     // --- Build C modules as shared libraries ---
-    // Chúng ta build trực tiếp từ root build.zig thay vì dùng addSubdirectory
-    // vì: (1) src/module/*/build.zig đang được agent khác viết lại cho Zig 0.16,
+    // Build trực tiếp từ root build.zig thay vì addSubdirectory vì:
+    // (1) src/module/*/build.zig dùng addSharedLibrary (API không tồn tại trong Zig 0.16),
     // (2) chúng có guard b.graph.root_options.path.source.path không chuẩn,
     // (3) chúng tạo step "run"/"test" trùng với root.
+    // Zig 0.16 dùng b.addLibrary(.{ .linkage = .dynamic }) + b.createModule().
     const c_modules = [_]struct { name: []const u8, source: []const u8, include_dir: []const u8 }{
-        .{ .name = "ko_os", .source = "src/module/Os/Os.c", .include_dir = "src/module/Os" },
-        .{ .name = "ko_random", .source = "src/module/Random/Random.c", .include_dir = "src/module/Random" },
+        .{ .name = "ko_os",      .source = "src/module/Os/Os.c",      .include_dir = "src/module/Os" },
+        .{ .name = "ko_random",  .source = "src/module/Random/Random.c",  .include_dir = "src/module/Random" },
         .{ .name = "ko_website", .source = "src/module/Website/Website.c", .include_dir = "src/module/Website" },
     };
 
     for (c_modules) |mod| {
-        const lib = b.addSharedLibrary(.{
-            .name = mod.name,
+        const mod_module = b.createModule(.{
             .root_source_file = b.path(mod.source),
             .target = target,
             .optimize = optimize,
+            .link_libc = true,
         });
-        lib.linkLibC();
-        lib.addIncludePath(b.path(mod.include_dir));
+        mod_module.addIncludePath(b.path(mod.include_dir));
+        const lib = b.addLibrary(.{
+            .name = mod.name,
+            .root_module = mod_module,
+            .linkage = .dynamic,
+        });
         b.installArtifact(lib);
     }
 
     // --- Build Loop.cpp as shared library ---
-    // Loop.cpp đã có extern "C" (dòng 278) và main() được bảo vệ bởi #ifndef KO_LOOP_NO_MAIN.
-    // Định nghĩa KO_LOOP_NO_MAIN để loại bỏ main(), build thành .so với symbol ko_loop_*.
-    const loop_lib = b.addSharedLibrary(.{
-        .name = "ko_loop",
+    // Loop.cpp có extern "C" (dòng 278) và main() được bảo vệ #ifndef KO_LOOP_NO_MAIN.
+    // Định nghĩa KO_LOOP_NO_MAIN để loại bỏ main(), build .so với symbol ko_loop_*.
+    const loop_module = b.createModule(.{
         .root_source_file = b.path("src/Loop.cpp"),
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
+        .link_libcpp = true,
     });
-    loop_lib.linkLibCpp();
-    loop_lib.linkLibC();
-    loop_lib.root_module.addCMacro("KO_LOOP_NO_MAIN", "1");
+    loop_module.addCMacro("KO_LOOP_NO_MAIN", "1");
+    const loop_lib = b.addLibrary(.{
+        .name = "ko_loop",
+        .root_module = loop_module,
+        .linkage = .dynamic,
+    });
     b.installArtifact(loop_lib);
 }
