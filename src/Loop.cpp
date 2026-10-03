@@ -207,8 +207,7 @@ public:
         std::stringstream ss;
         ss << "[Loop.cpp] Statistics:\n"
            << "  Cached loops: " << loopCache.size() << "\n"
-           << "  Cache line size: " << CacheLineOptimizer::getCacheLineSize()
-           << " bytes\n"
+           << "  Cache line size: " << 64 << " bytes\n"
            << "  Register state: RIP=0x" << std::hex << regs.rip
            << " RCX=0x" << regs.rcx << std::dec << "\n";
         return ss.str();

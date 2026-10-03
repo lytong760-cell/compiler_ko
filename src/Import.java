@@ -59,6 +59,7 @@ public class Import {
     
     private String queryRegistry(String moduleName) {
         System.out.println("[Import.java] Querying registry for: " + moduleName);
+        HttpURLConnection conn = null;
         try {
             String apiKey = API_KEY;
             if (apiKey == null || apiKey.isEmpty()) {
@@ -69,7 +70,7 @@ public class Import {
                 urlStr += "?key=" + apiKey;
             }
             URL url = new URL(urlStr);
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn = (HttpURLConnection) url.openConnection();
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(10000);
             conn.setReadTimeout(10000);
@@ -86,11 +87,12 @@ public class Import {
                 githubUrl = extractJsonField(response, "githubUrl");
             }
             
-            conn.disconnect();
             return githubUrl.isEmpty() ? null : githubUrl;
         } catch (Exception e) {
             System.out.println("[Import.java] Registry query failed: " + e.getMessage());
             return null;
+        } finally {
+            if (conn != null) conn.disconnect();
         }
     }
     
@@ -687,7 +689,7 @@ public class Import {
             }
             
             if (valueStart < json.length() && json.charAt(valueStart) == '"') {
-                int endQuote = json.indexOf('"', valueStart + 1);
+                int endQuote = findUnescapedQuote(json, valueStart + 1);
                 if (endQuote != -1) {
                     String fullName = json.substring(valueStart + 1, endQuote);
                     int lastSlash = fullName.lastIndexOf('/');
