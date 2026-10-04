@@ -2,10 +2,10 @@ const std = @import("std");
 
 fn runCheckSymbols(lib_path: [:0]const u8, sym_name: [:0]const u8) !void {
     const check_exe = "zig-out/bin/check_symbols";
-    const result = std.process.Child.run(.{
+    const result = std.process.run(.{
+        .allocator = std.testing.allocator,
+        .io = std.testing.io,
         .argv = &[_][]const u8{ check_exe, lib_path, sym_name },
-        .stderr = .Ignore,
-        .stdout = .Ignore,
     }) catch |err| {
         std.debug.print("Failed to run check_symbols: {}\n", .{err});
         return error.CouldNotExecuteCheck;
