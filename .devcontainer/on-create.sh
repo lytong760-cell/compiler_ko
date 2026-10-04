@@ -141,6 +141,44 @@ if [ -z "${GITHUB_MCP_TOKEN:-}" ]; then
   log "GITHUB_MCP_TOKEN chưa được set — MCP 'github' sẽ không hoạt động"
 fi
 
+# ---------------------------------------------------------------- MCP server
+# Cấu hình MCP nằm trong /root/.config/kilo/kilo.jsonc (được mount từ host).
+# Ở đây chỉ cài dependency cho các MCP server chạy local.
+#   - chrome-devtools  : local, npx chrome-devtools-mcp  -> cần Chrome ở
+#                        /opt/chrome-for-testing/chrome (KHÔNG có sẵn, xem bên dưới)
+#   - camofox-browser  : local, npx @askjo/camofox-browser-mcp
+#   - github           : remote, https://api.githubcopilot.com/mcp/
+#                        cần GITHUB_MCP_TOKEN trong môi trường
+MCP_PACKAGES=(
+  "chrome-devtools-mcp@latest"
+  "@askjo/camofox-browser-mcp"
+)
+
+log "cài dependency cho MCP server"
+for pkg in "${MCP_PACKAGES[@]}"; do
+  if npm ls -g --depth=0 "${pkg%@*}" >/dev/null 2>&1; then
+    log "  $pkg — đã có"
+  else
+    # Pre-cache để MCP khởi động nhanh, không cần tải lúc chạy.
+    if npm install -g "$pkg" >/dev/null 2>&1; then
+      log "  $pkg — OK"
+    else
+      log "  $pkg — cài lỗi, MCP sẽ tải lúc chạy"
+    fi
+  fi
+done
+
+# Chrome cho chrome-devtools-mcp. Đặt đúng đường dẫn kilo.jsonc trỏ tới.
+CHROME_PATH="/opt/chrome-for-testing/chrome"
+if [ -x "$CHROME_PATH" ]; then
+  log "chrome: $("$CHROME_PATH" --version 2>/dev/null || echo 'có')"
+elif command -v google-chrome >/dev/null 2>&1; then
+  log "chrome: dùng $(google-chrome --version 2>/dev/null) — cần sửa --executablePath trong kilo.jsonc"
+else
+  log "chrome: CHƯA CÀI — MCP 'chrome-devtools' sẽ không chạy được"
+  log "  cài bằng: npx @puppeteer/browsers install chrome@stable --path /opt/chrome-for-testing"
+fi
+
 # ---------------------------------------------------------------- Kiểm tra
 cd "$(dirname "$0")/.." || exit 1
 log "zig build"
@@ -168,11 +206,15 @@ cat <<'EOF'
 === Gói npm toàn cục ===
   npm ls -g --depth=0
 
+=== MCP server (cấu hình trong /root/.config/kilo/kilo.jsonc) ===
+  chrome-devtools   local    -> cần Chrome tại /opt/chrome-for-testing/chrome
+  camofox-browser   local    -> npx @askjo/camofox-browser-mcp
+  github            remote   -> cần GITHUB_MCP_TOKEN
+
 === Config Kilo (mount từ host) ===
   /root/.config/kilo/kilo.jsonc   -- quyền + MCP server
-  /root/.config/kilo/agents/      -- agent định nghĩa sẵn
+  /root/.config/kilo/agents/      -- 69 agent
   /root/.config/kilo/skills/      -- 338 skill
-  Biến môi trường cần cho MCP github: GITHUB_MCP_TOKEN
 
 === Kiểm tra nhanh ===
   cd /workspaces/compiler_ko
