@@ -27,13 +27,8 @@ fn lookup(comptime T: type, lib_path: [:0]const u8, sym_name: [:0]const u8) !T {
     const lib = try std.DynLib.open(lib_path);
     defer lib.close();
 
-    var func_ptr: *T = undefined;
-    if (lib.lookup(T, sym_name)) |result| {
-        func_ptr = result;
-        return func_ptr;
-    } else {
-        return error.SymbolNotFound;
-    }
+    const func_ptr = lib.lookup(T, sym_name) orelse return error.SymbolNotFound;
+    return func_ptr.*;
 }
 
 test "ko_os: ko_file_exists(true) on existing file" {
