@@ -21,13 +21,13 @@ fn runCheckSymbols(lib_path: [:0]const u8, sym_name: [:0]const u8) !void {
     }
 }
 
-fn lookup(t: type, lib_name: [:0]const u8, sym_name: [:0]const u8) !t {
+fn lookup(comptime T: type, lib_name: [:0]const u8, sym_name: [:0]const u8) !T {
     try runCheckSymbols(lib_name, sym_name);
     
     const lib = try std.DynLib.open(lib_name);
     defer lib.close();
 
-    const sym = lib.lookup(t, sym_name) orelse return error.SymbolNotFound;
+    const sym = lib.lookup(T, sym_name) orelse return error.SymbolNotFound;
     return @ptrCast(sym);
 }
 
