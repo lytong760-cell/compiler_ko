@@ -86,7 +86,7 @@ const test_step = b.step("test", "Run all tests");
         "testing/test_3600.zig",
         "testing/test_lexer_extended.zig",
         "testing/test_parser_extended.zig",
-        "testing/test_modules_fixed.zig",
+        "testing/simpler_solution.zig",
     };
 
     const src_module = b.createModule(.{
