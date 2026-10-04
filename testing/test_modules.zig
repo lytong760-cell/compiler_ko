@@ -133,9 +133,7 @@ test "ko_os: ko_file_size matches stat for existing file" {
     const size = ko_file_size.?("examples/simple.ko");
     try std.testing.expect(size >= 0);
 
-    const path = try std.fs.path.join(a, &.{ "examples", "simple.ko" });
-    defer a.free(path);
-    const stat = std.Io.Dir.cwd().stat(path) catch return error.OsFileNotFound;
+    const stat = std.Io.Dir.cwd().statFile(std.testing.io, "examples/simple.ko", .{}) catch return error.OsFileNotFound;
     try std.testing.expectEqual(@as(i64, stat.size), size);
 }
 
