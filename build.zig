@@ -80,6 +80,16 @@ pub fn build(b: *std.Build) !void {
     lib_handles[lib_count] = loop_lib;
     lib_count += 1;
 
+    const check_symbols = b.addExecutable(.{
+        .name = "check_symbols",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("testing/check_symbols.c"),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
+    });
+
     const test_step = b.step("test", "Run all tests");
     const files = [_][]const u8{
         // "testing/test_harness.zig",
