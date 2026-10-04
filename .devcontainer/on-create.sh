@@ -92,6 +92,30 @@ if ! command -v bun >/dev/null 2>&1 || [ "$(bun --version 2>/dev/null || true)" 
 fi
 log "bun   -> $(bun --version 2>/dev/null || echo 'n/a')"
 
+# ---------------------------------------------------------------- Gói npm toàn cục
+# compiler_ko KHÔNG có JavaScript (0 file .js/.ts, không package.json), nên đây là
+# công cụ dùng chung cho môi trường dev, không phải phụ thuộc của repo.
+# Sửa danh sách dưới đây nếu cần thêm/bớt.
+NPM_GLOBAL_PACKAGES=(
+  "typescript"      # tsc — trình biên dịch TypeScript
+  "prettier"        # formatter
+  "eslint"          # linter
+  "tsx"             # chạy TypeScript trực tiếp không cần build
+)
+
+log "cài gói npm toàn cục: ${NPM_GLOBAL_PACKAGES[*]}"
+for pkg in "${NPM_GLOBAL_PACKAGES[@]}"; do
+  if npm ls -g --depth=0 "$pkg" >/dev/null 2>&1; then
+    log "  $pkg — đã có, giữ nguyên"
+  else
+    if npm install -g "$pkg"; then
+      log "  $pkg — OK"
+    else
+      log "  $pkg — CÀI LỖI, bỏ qua"
+    fi
+  fi
+done
+
 # ---------------------------------------------------------------- Kiểm tra
 cd "$(dirname "$0")/.." || exit 1
 log "zig build"
@@ -114,6 +138,9 @@ cat <<'EOF'
   pnpm, yarn (qua corepack)
   bun      1.4.2
   docker, gh (qua devcontainer features)
+
+=== Gói npm toàn cục ===
+  npm ls -g --depth=0
 
 === Kiểm tra nhanh ===
   cd /workspaces/compiler_ko
