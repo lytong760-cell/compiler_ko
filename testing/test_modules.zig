@@ -4,11 +4,6 @@ const dl = @cImport({
     @cInclude("dlfcn.h");
 });
 
-const dlopen = @as(*const fn (path: [*:0]const u8, mode: i32) callconv(.c) ?*anyopaque, @ptrCast(&dl.dlopen));
-const dlsym = @as(*const fn (handle: ?*anyopaque, sym: [*:0]const u8) callconv(.c) ?*anyopaque, @ptrCast(&dl.dlsym));
-const dlclose = @as(*const fn (handle: ?*anyopaque) callconv(.c) i32, @ptrCast(&dl.dlclose));
-const RTLD_LAZY: i32 = 1;
-
 const Allocator = std.mem.Allocator;
 
 const Error = error{
@@ -22,22 +17,17 @@ const KoRandomIntFn = ?*const fn () callconv(.c) i64;
 const KoRandomFloatFn = ?*const fn () callconv(.c) f64;
 const KoRandomBytesFn = ?*const fn (i64, [*]u8) callconv(.c) void;
 const KoValidateUrlFn = ?*const fn ([*:0]const u8) callconv(.c) ?*const u8;
-const KoUrlEncodeFn = ?*const fn ([*:0]const u8) callconv(.c) ?*const u8;
 
-fn closeLib(handle: ?*anyopaque) void {
-    _ = dlclose(handle);
+fn lookup(t: type, lib_name: [:0]const u8, sym_name: [:0]const u8) !t {
+    const handle = dl.dlopen(lib_name, dl.RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+    const sym = dl.dlsym(handle, sym_name) orelse return error.SymbolNotFound;
+    return @ptrCast(sym);
 }
 
-fn dlopenAndLookup(t: type, lib_dir: []const u8, lib_name: []const u8, sym_name: [:0]const u8, allocator: Allocator) !t {
-    const path = try std.fs.path.join(allocator, &.{ lib_dir, lib_name });
-    defer allocator.free(path);
-    const path_z = try strdup(allocator, path);
-    defer allocator.free(path_z);
-    const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
-    defer closeLib(handle);
-    const sym = dlsym(handle, sym_name);
-    if (sym) |v| return @ptrCast(v);
-    return error.SymbolNotFound;
+fn lookupOpt(t: type, lib_name: [:0]const u8, sym_name: [:0]const u8) !t {
+    const handle = dl.dlopen(lib_name, dl.RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
+    const sym = dl.dlsym(handle, sym_name) orelse return error.SymbolNotFound;
+    return @ptrCast(sym);
 }
 
 fn strdup(allocator: Allocator, s: []const u8) ![:0]const u8 {
