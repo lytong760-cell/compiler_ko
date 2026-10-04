@@ -91,7 +91,7 @@ When writing, refactoring, or generating code blocks within the `/workspaces/com
 ### 3.1 Global Execution Anti-Patterns (Forbidden Tasks)
 1. **NEVER** write raw `malloc`/`free` calls inside the C++ layer. Use memory arenas or standard object lifetime templates.
 2. **NEVER** suppress errors inside Zig loops via empty `_ = catch {}` blocks; all panic paths must trace down through explicit logging pipelines.
-3. **NEVER** generate code modifications without reviewing the latest target output blocks defined in `/root/.config/kilo/CHECKPOINT.md`.
+3. **NEVER** generate code modifications without reviewing the latest target output blocks defined in `CHECKPOINTS.md` (repo root).
 
 alway  use VietNamese
 
