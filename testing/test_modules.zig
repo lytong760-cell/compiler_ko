@@ -16,13 +16,13 @@ const Error = error{
     SymbolNotFound,
 };
 
-const KoFileExistsFn = *const fn (*const u8) callconv(.c) c_int;
-const KoRandomSeedFn = *const fn (i64) callconv(.c) void;
-const KoRandomIntFn = *const fn () callconv(.c) i64;
-const KoRandomFloatFn = *const fn () callconv(.c) f64;
-const KoRandomBytesFn = *const fn (i64, [*]u8) callconv(.c) void;
-const KoValidateUrlFn = *const fn (*const u8) callconv(.c) ?*const u8;
-const KoUrlEncodeFn = *const fn (*const u8) callconv(.c) ?*const u8;
+const KoFileExistsFn = ?*const fn (*const u8) callconv(.c) c_int;
+const KoRandomSeedFn = ?*const fn (i64) callconv(.c) void;
+const KoRandomIntFn = ?*const fn () callconv(.c) i64;
+const KoRandomFloatFn = ?*const fn () callconv(.c) f64;
+const KoRandomBytesFn = ?*const fn (i64, [*]u8) callconv(.c) void;
+const KoValidateUrlFn = ?*const fn (*const u8) callconv(.c) ?*const u8;
+const KoUrlEncodeFn = ?*const fn (*const u8) callconv(.c) ?*const u8;
 
 fn closeLib(handle: ?*anyopaque) void {
     _ = dlclose(handle);
