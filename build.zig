@@ -80,7 +80,7 @@ pub fn build(b: *std.Build) !void {
     lib_handles[lib_count] = loop_lib;
     lib_count += 1;
 
-    const test_step = b.step("test", "Run all tests");
+const test_step = b.step("test", "Run all tests");
     const files = [_][]const u8{
         // "testing/test_harness.zig",
         "testing/test_3600.zig",

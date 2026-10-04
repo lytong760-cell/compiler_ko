@@ -1,3 +1,5 @@
+#!/usr/bin/env zig
+
 const std = @import("std");
 
 fn runCheckSymbols(lib_path: [:0]const u8, sym_name: [:0]const u8) !void {
@@ -21,24 +23,26 @@ fn runCheckSymbols(lib_path: [:0]const u8, sym_name: [:0]const u8) !void {
     }
 }
 
-fn lookup(comptime T: type, lib_path: [:0]const u8, sym_name: [:0]const u8) !T {
-    try runCheckSymbols(lib_path, sym_name);
+fn lookup(t: type, lib_name: [:0]const u8, sym_name: [:0]const u8) !t {
+    try runCheckSymbols(lib_name, sym_name);
     
-    const lib = try std.DynLib.open(lib_path);
+    const lib = try std.DynLib.open(lib_name);
     defer lib.close();
 
-    const func_ptr = lib.lookup(T, sym_name) orelse return error.SymbolNotFound;
-    return func_ptr.*;
+    const func_ptr = lib.lookup(t, sym_name) orelse return error.SymbolNotFound;
+    return @ptrCast(t, func_ptr);
 }
 
 test "ko_os: ko_file_exists(true) on existing file" {
-    const ko_file_exists = try lookup(?*const fn ([*:0]const u8) callconv(.c) c_int, "zig-out/lib/libko_os.so", "ko_file_exists");
+    const KoFileExistsFn = ?*const fn ([*:0]const u8) callconv(.c) c_int;
+    const ko_file_exists = try lookup(KoFileExistsFn, "zig-out/lib/libko_os.so", "ko_file_exists");
     const result = ko_file_exists.?("examples/simple.ko");
     try std.testing.expectEqual(@as(c_int, 1), result);
 }
 
 test "ko_os: ko_file_exists(false) on non-existing file" {
-    const ko_file_exists = try lookup(?*const fn ([*:0]const u8) callconv(.c) c_int, "zig-out/lib/libko_os.so", "ko_file_exists");
+    const KoFileExistsFn = ?*const fn ([*:0]const u8) callconv(.c) c_int;
+    const ko_file_exists = try lookup(KoFileExistsFn, "zig-out/lib/libko_os.so", "ko_file_exists");
     const result = ko_file_exists.?("nope");
     try std.testing.expectEqual(@as(c_int, 0), result);
 }
@@ -53,8 +57,10 @@ test "ko_os: ko_file_size matches stat for existing file" {
 }
 
 test "ko_random: reproducibility via seed" {
-    const ko_random_seed = try lookup(?*const fn (i64) callconv(.c) void, "zig-out/lib/libko_random.so", "ko_random_seed");
-    const ko_random_int = try lookup(?*const fn () callconv(.c) i64, "zig-out/lib/libko_random.so", "ko_random_int");
+    const KoRandomSeedFn = ?*const fn (i64) callconv(.c) void;
+    const KoRandomIntFn = ?*const fn () callconv(.c) i64;
+    const ko_random_seed = try lookup(KoRandomSeedFn, "zig-out/lib/libko_random.so", "ko_random_seed");
+    const ko_random_int = try lookup(KoRandomIntFn, "zig-out/lib/libko_random.so", "ko_random_int");
 
     ko_random_seed.?(12345);
     const a1 = ko_random_int.?();
@@ -69,8 +75,10 @@ test "ko_random: reproducibility via seed" {
 }
 
 test "ko_random: seed uniqueness produces different sequences" {
-    const ko_random_seed = try lookup(?*const fn (i64) callconv(.c) void, "zig-out/lib/libko_random.so", "ko_random_seed");
-    const ko_random_int = try lookup(?*const fn () callconv(.c) i64, "zig-out/lib/libko_random.so", "ko_random_int");
+    const KoRandomSeedFn = ?*const fn (i64) callconv(.c) void;
+    const KoRandomIntFn = ?*const fn () callconv(.c) i64;
+    const ko_random_seed = try lookup(KoRandomSeedFn, "zig-out/lib/libko_random.so", "ko_random_seed");
+    const ko_random_int = try lookup(KoRandomIntFn, "zig-out/lib/libko_random.so", "ko_random_int");
 
     ko_random_seed.?(0);
     const x1 = ko_random_int.?();
@@ -80,8 +88,10 @@ test "ko_random: seed uniqueness produces different sequences" {
 }
 
 test "ko_random: ko_random_float in [0, 1)" {
-    const ko_random_seed = try lookup(?*const fn (i64) callconv(.c) void, "zig-out/lib/libko_random.so", "ko_random_seed");
-    const ko_random_float = try lookup(?*const fn () callconv(.c) f64, "zig-out/lib/libko_random.so", "ko_random_float");
+    const KoRandomSeedFn = ?*const fn (i64) callconv(.c) void;
+    const KoRandomFloatFn = ?*const fn () callconv(.c) f64;
+    const ko_random_seed = try lookup(KoRandomSeedFn, "zig-out/lib/libko_random.so", "ko_random_seed");
+    const ko_random_float = try lookup(KoRandomFloatFn, "zig-out/lib/libko_random.so", "ko_random_float");
 
     ko_random_seed.?(42);
     for (0..100) |_| {
@@ -92,8 +102,10 @@ test "ko_random: ko_random_float in [0, 1)" {
 }
 
 test "ko_random: ko_random_bytes fills buffer" {
-    const ko_random_seed = try lookup(?*const fn (i64) callconv(.c) void, "zig-out/lib/libko_random.so", "ko_random_seed");
-    const ko_random_bytes = try lookup(?*const fn (i64, [*]u8) callconv(.c) void, "zig-out/lib/libko_random.so", "ko_random_bytes");
+    const KoRandomSeedFn = ?*const fn (i64) callconv(.c) void;
+    const KoRandomBytesFn = ?*const fn (i64, [*]u8) callconv(.c) void;
+    const ko_random_seed = try lookup(KoRandomSeedFn, "zig-out/lib/libko_random.so", "ko_random_seed");
+    const ko_random_bytes = try lookup(KoRandomBytesFn, "zig-out/lib/libko_random.so", "ko_random_bytes");
 
     const len: i64 = 64;
     const buf = std.testing.allocator.alloc(u8, @intCast(len)) catch return error.NoMemory;
@@ -112,24 +124,27 @@ test "ko_random: ko_random_bytes fills buffer" {
 }
 
 test "ko_website: ko_validate_url rejects dangerous URL" {
-    const ko_validate_url = try lookup(?*const fn ([*:0]const u8) callconv(.c) ?*const u8, "zig-out/lib/libko_website.so", "ko_validate_url");
+    const KoValidateUrlFn = ?*const fn ([*:0]const u8) callconv(.c) ?*const u8;
+    const ko_validate_url = try lookup(KoValidateUrlFn, "zig-out/lib/libko_website.so", "ko_validate_url");
     const result = ko_validate_url.?("file:///etc/passwd");
     try std.testing.expect(result != null);
 }
 
 test "ko_website: ko_validate_url accepts safe URL" {
-    const ko_validate_url = try lookup(?*const fn ([*:0]const u8) callconv(.c) ?*const u8, "zig-out/lib/libko_website.so", "ko_validate_url");
+    const KoValidateUrlFn = ?*const fn ([*:0]const u8) callconv(.c) ?*const u8;
+    const ko_validate_url = try lookup(KoValidateUrlFn, "zig-out/lib/libko_website.so", "ko_validate_url");
     const result = ko_validate_url.?("https://example.com/path");
     try std.testing.expect(result == null);
 }
 
 test "ko_website: ko_url_encode returns non-null" {
-    const ko_url_encode = try lookup(?*const fn ([*:0]const u8) callconv(.c) ?*const u8, "zig-out/lib/libko_website.so", "ko_url_encode");
+    const KoUrlEncodeFn = ?*const fn ([*:0]const u8) callconv(.c) ?*const u8;
+    const ko_url_encode = try lookup(KoUrlEncodeFn, "zig-out/lib/libko_website.so", "ko_url_encode");
     const result = ko_url_encode.?("hello world");
     try std.testing.expect(result != null);
 }
 
 test "ko_loop: resolve ko_loop_optimize_for" {
-    const f = try lookup(?*const fn (?*anyopaque, [*:0]const u8, i64, i64, i64, u64) callconv(.c) c_int, "zig-out/lib/libko_loop.so", "ko_loop_optimize_for");
-    try std.testing.expect(f != null);
+    const ko_loop_optimize_for = try lookup(?*const fn (?*anyopaque, [*:0]const u8, i64, i64, i64, u64) callconv(.c) c_int, "zig-out/lib/libko_loop.so", "ko_loop_optimize_for");
+    try std.testing.expect(ko_loop_optimize_for != null);
 }
