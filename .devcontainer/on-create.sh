@@ -116,6 +116,31 @@ for pkg in "${NPM_GLOBAL_PACKAGES[@]}"; do
   fi
 done
 
+# ---------------------------------------------------------------- Kilo CLI
+# Bản thân agent đang chạy bằng @kilocode/cli — devcontainer phải có để dùng lại
+# cùng CLI, cùng agent và skill.
+KILO_CLI_VERSION="7.8.3"
+
+log "kilo cli ${KILO_CLI_VERSION}"
+if ! npm ls -g --depth=0 @kilocode/cli >/dev/null 2>&1; then
+  npm install -g "@kilocode/cli@${KILO_CLI_VERSION}" || log "cài kilo cli lỗi, bỏ qua"
+else
+  log "  @kilocode/cli — đã có"
+fi
+log "kilo -> $(kilo --version 2>/dev/null || echo 'n/a')"
+
+# Config của Kilo (kilo.jsonc, agents/, skills/) được mount từ host theo
+# `mounts` trong devcontainer.json — không copy vào image, để máy này và máy khác
+# dùng chung một bộ config.
+if [ -d /root/.config/kilo ]; then
+  log "kilo config: $(find /root/.config/kilo/agents -name '*.md' 2>/dev/null | wc -l) agent, $(ls /root/.config/kilo/skills 2>/dev/null | wc -l) skill"
+fi
+
+# Nếu môi trường cần token cho MCP server github:
+if [ -z "${GITHUB_MCP_TOKEN:-}" ]; then
+  log "GITHUB_MCP_TOKEN chưa được set — MCP 'github' sẽ không hoạt động"
+fi
+
 # ---------------------------------------------------------------- Kiểm tra
 cd "$(dirname "$0")/.." || exit 1
 log "zig build"
@@ -137,16 +162,24 @@ cat <<'EOF'
   node     24.x + npm
   pnpm, yarn (qua corepack)
   bun      1.4.2
-  docker, gh (qua devcontainer features)
+  docker, gh
+  kilo CLI @kilocode/cli 7.8.3
 
 === Gói npm toàn cục ===
   npm ls -g --depth=0
+
+=== Config Kilo (mount từ host) ===
+  /root/.config/kilo/kilo.jsonc   -- quyền + MCP server
+  /root/.config/kilo/agents/      -- agent định nghĩa sẵn
+  /root/.config/kilo/skills/      -- 338 skill
+  Biến môi trường cần cho MCP github: GITHUB_MCP_TOKEN
 
 === Kiểm tra nhanh ===
   cd /workspaces/compiler_ko
   zig build
   zig build test --summary all < /dev/null
   docker build -t ko-test .
+  kilo --version
 
 Lưu ý: `zig build test` cần stdin đóng, nếu không có thể treo.
 EOF
