@@ -80,6 +80,21 @@ pub fn build(b: *std.Build) !void {
     lib_handles[lib_count] = loop_lib;
     lib_count += 1;
 
+const mod_check_exe = b.addExecutable(.{
+    .name = "mod_check",
+    .root_module = b.createModule(.{
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    }),
+});
+mod_check_exe.root_module.addCSourceFiles(.{
+    .files = &.{"testing/mod_check.c"},
+    .flags = &.{ "-std=gnu11", "-O2" },
+});
+mod_check_exe.root_module.linkSystemLibrary("dl", .{ .use_pkg_config = .force });
+b.installArtifact(mod_check_exe);
+
 const test_step = b.step("test", "Run all tests");
     const files = [_][]const u8{
         // "testing/test_harness.zig",
@@ -109,6 +124,10 @@ const test_step = b.step("test", "Run all tests");
             .root_module = test_root_module,
         });
         const test_run = b.addRunArtifact(test_exe);
+        if (std.mem.eql(u8, file, "testing/test_modules.zig")) {
+            test_run.addPathDir(b.getInstallPath(.bin, ""));
+            test_run.step.dependOn(&mod_check_exe.step);
+        }
         // Libraries must be built (and installed to zig-out/lib) before the test runs.
         var i: usize = 0;
         while (i < lib_count) : (i += 1) {
