@@ -129,7 +129,7 @@ test "ko_os: ko_file_size matches stat for existing file" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const ko_file_size = try dlopenAndLookup(*const fn (*const u8) callconv(.c) i64, "zig-out/lib", "libko_os.so", "ko_file_size", a);
+    const ko_file_size = try dlopenAndLookup(?*const fn ([*:0]const u8) callconv(.c) i64, "zig-out/lib", "libko_os.so", "ko_file_size", a);
     const size = ko_file_size.?("examples/simple.ko");
     try std.testing.expect(size >= 0);
 
@@ -147,13 +147,13 @@ test "ko_random: reproducibility via seed" {
     const ko_random_seed = try dlopenAndLookup(KoRandomSeedFn, "zig-out/lib", "libko_random.so", "ko_random_seed", a);
     const ko_random_int = try dlopenAndLookup(KoRandomIntFn, "zig-out/lib", "libko_random.so", "ko_random_int", a);
 
-    ko_random_seed(12345);
-    const a1 = ko_random_int();
-    const a2 = ko_random_int();
+    ko_random_seed.?(12345);
+    const a1 = ko_random_int.?();
+    const a2 = ko_random_int.?();
 
-    ko_random_seed(12345);
-    const b1 = ko_random_int();
-    const b2 = ko_random_int();
+    ko_random_seed.?(12345);
+    const b1 = ko_random_int.?();
+    const b2 = ko_random_int.?();
 
     try std.testing.expectEqual(a1, b1);
     try std.testing.expectEqual(a2, b2);
@@ -167,10 +167,10 @@ test "ko_random: seed uniqueness produces different sequences" {
     const ko_random_seed = try dlopenAndLookup(KoRandomSeedFn, "zig-out/lib", "libko_random.so", "ko_random_seed", a);
     const ko_random_int = try dlopenAndLookup(KoRandomIntFn, "zig-out/lib", "libko_random.so", "ko_random_int", a);
 
-    ko_random_seed(0);
-    const x1 = ko_random_int();
-    ko_random_seed(1);
-    const x2 = ko_random_int();
+    ko_random_seed.?(0);
+    const x1 = ko_random_int.?();
+    ko_random_seed.?(1);
+    const x2 = ko_random_int.?();
     try std.testing.expect(x1 != x2);
 }
 
@@ -182,9 +182,9 @@ test "ko_random: ko_random_float in [0, 1)" {
     const ko_random_seed = try dlopenAndLookup(KoRandomSeedFn, "zig-out/lib", "libko_random.so", "ko_random_seed", a);
     const ko_random_float = try dlopenAndLookup(KoRandomFloatFn, "zig-out/lib", "libko_random.so", "ko_random_float", a);
 
-    ko_random_seed(42);
+    ko_random_seed.?(42);
     for (0..100) |_| {
-        const f = ko_random_float();
+        const f = ko_random_float.?();
         try std.testing.expect(f >= 0.0);
         try std.testing.expect(f < 1.0);
     }
@@ -201,8 +201,8 @@ test "ko_random: ko_random_bytes fills buffer" {
     const len: i64 = 64;
     const buf = a.alloc(u8, @intCast(len)) catch return error.NoMemory;
     defer a.free(buf);
-    ko_random_seed(999);
-    ko_random_bytes(len, buf.ptr);
+    ko_random_seed.?(999);
+    ko_random_bytes.?(len, buf.ptr);
 
     var all_zero = true;
     for (buf) |b| {
