@@ -16,13 +16,13 @@ const Error = error{
     SymbolNotFound,
 };
 
-const KoFileExistsFn = ?*const fn (*const u8) callconv(.c) c_int;
+const KoFileExistsFn = ?*const fn ([*:0]const u8) callconv(.c) c_int;
 const KoRandomSeedFn = ?*const fn (i64) callconv(.c) void;
 const KoRandomIntFn = ?*const fn () callconv(.c) i64;
 const KoRandomFloatFn = ?*const fn () callconv(.c) f64;
 const KoRandomBytesFn = ?*const fn (i64, [*]u8) callconv(.c) void;
-const KoValidateUrlFn = ?*const fn (*const u8) callconv(.c) ?*const u8;
-const KoUrlEncodeFn = ?*const fn (*const u8) callconv(.c) ?*const u8;
+const KoValidateUrlFn = ?*const fn ([*:0]const u8) callconv(.c) ?*const u8;
+const KoUrlEncodeFn = ?*const fn ([*:0]const u8) callconv(.c) ?*const u8;
 
 fn closeLib(handle: ?*anyopaque) void {
     _ = dlclose(handle);
@@ -130,7 +130,7 @@ test "ko_os: ko_file_size matches stat for existing file" {
     const a = arena.allocator();
 
     const ko_file_size = try dlopenAndLookup(*const fn (*const u8) callconv(.c) i64, "zig-out/lib", "libko_os.so", "ko_file_size", a);
-    const size = ko_file_size("examples/simple.ko");
+    const size = ko_file_size.?("examples/simple.ko");
     try std.testing.expect(size >= 0);
 
     const path = try std.fs.path.join(a, &.{ "examples", "simple.ko" });
