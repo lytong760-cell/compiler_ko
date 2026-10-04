@@ -16,7 +16,7 @@ int ko_set_env(const char *name, const char *value) {
     return setenv(name, value, 1);
 }
 
-int ko_file_exists_X(const char *path) {
+int ko_file_exists(const char *path) {
     if (!path) return 0;
     struct stat st;
     return stat(path, &st) == 0;
