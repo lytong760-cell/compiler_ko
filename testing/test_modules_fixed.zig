@@ -1,17 +1,11 @@
-//!/usr/bin/env zig
+#!/usr/bin/env zig
 
 const std = @import("std");
 
 fn runCheckSymbols(lib_path: [:0]const u8, sym_name: [:0]const u8) !void {
     const check_exe = "zig-out/bin/check_symbols";
-    var args = std.ArrayList([]const u8).init(std.testing.allocator);
-    defer args.deinit();
-    try args.append(check_exe);
-    try args.append(lib_path);
-    try args.append(sym_name);
-
     const result = std.process.Child.run(.{
-        .argv = args.items,
+        .argv = &[_][]const u8{ check_exe, lib_path, sym_name },
         .stderr = .Ignore,
         .stdout = .Ignore,
     }) catch |err| {
