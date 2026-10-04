@@ -86,7 +86,7 @@ pub fn build(b: *std.Build) !void {
         "testing/test_3600.zig",
         "testing/test_lexer_extended.zig",
         "testing/test_parser_extended.zig",
-        // "testing/test_modules.zig",
+        "testing/test_modules.zig",
     };
 
     const src_module = b.createModule(.{
