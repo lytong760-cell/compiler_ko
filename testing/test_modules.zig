@@ -120,7 +120,7 @@ test "ko_os: ko_file_exists(false) on non-existing file" {
     const a = arena.allocator();
 
     const ko_file_exists = try dlopenAndLookup(KoFileExistsFn, "zig-out/lib", "libko_os.so", "ko_file_exists", a);
-    const result = ko_file_exists("nope");
+    const result = ko_file_exists.?("nope");
     try std.testing.expectEqual(@as(c_int, 0), result);
 }
 
@@ -241,7 +241,7 @@ test "ko_website: ko_validate_url rejects dangerous URL" {
     const a = arena.allocator();
 
     const ko_validate_url = try dlopenAndLookup(KoValidateUrlFn, "zig-out/lib", "libko_website.so", "ko_validate_url", a);
-    const result = ko_validate_url("file:///etc/passwd");
+    const result = ko_validate_url.?("file:///etc/passwd");
     try std.testing.expect(result != null);
 }
 
@@ -251,7 +251,7 @@ test "ko_website: ko_validate_url accepts safe URL" {
     const a = arena.allocator();
 
     const ko_validate_url = try dlopenAndLookup(KoValidateUrlFn, "zig-out/lib", "libko_website.so", "ko_validate_url", a);
-    const result = ko_validate_url("https://example.com/path");
+    const result = ko_validate_url.?("https://example.com/path");
     try std.testing.expect(result == null);
 }
 
@@ -261,7 +261,7 @@ test "ko_website: ko_url_encode returns non-null" {
     const a = arena.allocator();
 
     const ko_url_encode = try dlopenAndLookup(KoUrlEncodeFn, "zig-out/lib", "libko_website.so", "ko_url_encode", a);
-    const result = ko_url_encode("hello world");
+    const result = ko_url_encode.?("hello world");
     try std.testing.expect(result != null);
 }
 
