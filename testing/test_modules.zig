@@ -79,7 +79,7 @@ test "ko_loop: resolve trailing symbol ko_loop_reset_registers" {
     defer arena.deinit();
     const a = arena.allocator();
 
-    const fn_ptr = try dlopenAndLookup(*const fn (i32) callconv(.c) void, "zig-out/lib", "libko_loop.so", "ko_loop_reset_registers", a);
+    const fn_ptr = try dlopenAndLookup(?*const fn (i32) callconv(.c) void, "zig-out/lib", "libko_loop.so", "ko_loop_reset_registers", a);
     try std.testing.expect(fn_ptr != null);
 }
 
@@ -110,7 +110,7 @@ test "ko_os: ko_file_exists(true) on existing file" {
     const a = arena.allocator();
 
     const ko_file_exists = try dlopenAndLookup(KoFileExistsFn, "zig-out/lib", "libko_os.so", "ko_file_exists", a);
-    const result = ko_file_exists("examples/simple.ko");
+    const result = ko_file_exists.?("examples/simple.ko");
     try std.testing.expectEqual(@as(c_int, 1), result);
 }
 
