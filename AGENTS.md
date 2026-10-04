@@ -13,7 +13,7 @@
 ### 1.1 Automated State-Dump Subsystem (On-Every-Response Event Hook)
 The AI Agent core must interception the final execution phase of *every single prompt turn*. Prior to rendering the stream response token array to the user terminal console, the background runtime MUST orchestrate a strict synchronization routine to dump current execution context into two telemetry tracking files.
 
-- **Isolation Path:** `/root/.config/kilo/`
+- **Isolation Path:** cùng repo — `MEMORY.md` và `CHECKPOINTS.md` ở gốc repo
 - **IO Requirements:** Atomic file writes (`O_TRUNC` with strict sequential lock handling).
 - **Format Schema:** Extended Semantic Markdown (Strict structure parsing optimized for RAG injection).
 
@@ -27,8 +27,9 @@ The AI Agent core must interception the final execution phase of *every single p
   - **Technical Debt & Anti-Patterns:** <Discovered bugs, memory leaks, code anti-patterns to avoid>
   - **Shared Variables & Symbols:** <Symbol table updates, abstract data type (ADT) definitions>
   ```
+- **Ghi kèm bằng chứng:** mỗi khẳng định phải kèm lệnh đã chạy và output thật. Điều chưa kiểm chứng thì để dưới mục `## Chưa xác minh`, **không** ghi như sự thật.
 
-#### Telemetry Target B: `CHECKPOINT.md` (Short-Term Reactive Sync)
+#### Telemetry Target B: `CHECKPOINTS.md` (Short-Term Reactive Sync)
 - **Primary Function:** Captures the immediate task lifecycle state, volatile diagnostic telemetry, active compiler logs, and step-by-step progress tracking.
 - **Structural Blueprint Required:**
   ```markdown
@@ -38,12 +39,14 @@ The AI Agent core must interception the final execution phase of *every single p
   - **Volatile Context Diagnostics:** <Raw terminal stdout/stderr, stack traces, compiler panic output>
   - **Next Execution Phase Vectors:** <Atomic chronological list of what the next turn must compute>
   ```
+- **Bắt buộc cập nhật** mỗi khi trạng thái đổi, kể cả khi chuyển sang vòng lặp làm việc mới.
 
 ### 1.2 Session Bootstrapping & Warm-Start Sourcing Routine (New Session Init)
 Upon trigger event `kilo session-init` or anytime a fresh runtime stack initializes inside the terminal console, the execution context memory layer MUST perform a pre-flight execution bypass hook:
 
-Use code with caution.[Session Launch]│▼┌───────────┐         YES        ┌────────────────────────────────────────────────────────┐│ Is Directory ├────────────────►│ 1. Cold-load /root/.config/kilo/MEMORY.md into System   ││ Present?  │                    │ 2. Hot-load /root/.config/kilo/CHECKPOINT.md into Buffer│└─────┬─────┘                    └───────────────────────────┬────────────────────────────┘│ NO                                                   │▼                                                      ▼┌───────────┐                                   ┌───────────────────────────┐│ Skip Init │                                   │ Re-compile Internal Slate │└───────────┘                                   └───────────────────────────┘1. **Pre-emption Search:** Check if `/root/.config/kilo/` exists and contains non-zero byte assets for `MEMORY.md` and `CHECKPOINT.md`.
-2. **Context Reconstruction Phase:** Directly inject the parsed AST equivalent of both files into the LLM system context envelope before evaluating user input. This bypasses the typical "Cold Start" forgetfulness and natively maintains deep task continuity.
+1. **Pre-emption Search:** Đọc `MEMORY.md` và `CHECKPOINTS.md` ở gốc repo (`/workspaces/compiler_ko/`).
+2. **Context Reconstruction Phase:** Nạp nội dung hai file đó vào ngữ cảnh trước khi xử lý yêu cầu của người dùng.
+
 
 ---
 
