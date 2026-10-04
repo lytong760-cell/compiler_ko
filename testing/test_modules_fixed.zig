@@ -1,34 +1,31 @@
+//!/usr/bin/env zig
+
 const std = @import("std");
-
-const Allocator = std.mem.Allocator;
-
-const Error = error{
-    SymbolNotFound,
-    CouldNotExecuteCheck,
-    InvalidOutput,
-};
 
 fn runCheckSymbols(lib_path: [:0]const u8, sym_name: [:0]const u8) !void {
     const check_exe = "zig-out/bin/check_symbols";
-    var child = std.process.Child.init(.{ .argv = &.{ check_exe, lib_path, sym_name } }, std.testing.allocator);
-    child.stdout_behavior = .Ignore;
-    child.stderr_behavior = .Pipe;
-    
-    try child.spawn();
-    const stderr_output = try child.stderr.?.reader().readToEndAlloc(std.testing.allocator, std.math.maxInt(usize));
-    const term = try child.wait();
+    var args = std.ArrayList([]const u8).init(std.testing.allocator);
+    defer args.deinit();
+    try args.append(check_exe);
+    try args.append(lib_path);
+    try args.append(sym_name);
 
-    if (term != .Exited) {
-        std.testing.allocator.free(stderr_output);
+    const result = std.process.Child.run(.{
+        .argv = args.items,
+        .stderr = .Ignore,
+        .stdout = .Ignore,
+    }) catch |err| {
+        std.debug.print("Failed to run check_symbols: {}\n", .{err});
+        return error.CouldNotExecuteCheck;
+    };
+
+    if (result.term != .Exited) {
         return error.CouldNotExecuteCheck;
     }
 
-    if (term.Exited != 0) {
-        _ = stderr_output;
+    if (result.term.Exited != 0) {
         return error.SymbolNotFound;
     }
-
-    std.testing.allocator.free(stderr_output);
 }
 
 fn lookup(comptime T: type, lib_path: [:0]const u8, sym_name: [:0]const u8) !T {
