@@ -28,7 +28,7 @@ fn lookup(comptime T: type, lib_path: [:0]const u8, sym_name: [:0]const u8) !T {
     defer lib.close();
 
     const func_ptr = lib.lookup(T, sym_name) orelse return error.SymbolNotFound;
-    return @ptrCast(*T, func_ptr);
+    return @ptrCast(T, func_ptr);
 }
 
 test "ko_os: ko_file_exists(true) on existing file" {
