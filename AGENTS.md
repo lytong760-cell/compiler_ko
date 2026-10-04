@@ -75,6 +75,7 @@ The core architecture of `compiler_ko` is an advanced, highly coupled, multi-tie
   - Use Zig's native `std.mem.Allocator` patterns (explicit allocation passing). No hidden or implicit global memory state shifts are permitted.
   - Utilize `comptime` constructs heavily to perform translation optimizations and static data evaluations during the compiler build time itself rather than execution runtime.
   - Maintain a strict zero-dependency linking matrix targeting clean native executable output formats.
+    - **Ngoại lệ đã biết:** `testing/mod_check.c` là binary C độc lập cố ý link `libdl`, dùng để kiểm tra ABI của các module `.so` mà không kéo `libdl` vào test binary của Zig. Đây là công cụ kiểm thử, không thuộc runtime của compiler.
 
 ---
 
