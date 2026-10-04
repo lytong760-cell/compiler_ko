@@ -1,5 +1,3 @@
-#!/usr/bin/env zig
-
 const std = @import("std");
 
 fn runCheckSymbols(lib_path: [:0]const u8, sym_name: [:0]const u8) !void {
