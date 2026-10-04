@@ -97,7 +97,6 @@ test "ko_os: resolve all 9 ko_* symbols" {
         const path_z = try strdup(a, path);
         defer a.free(path_z);
         const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
-        defer closeLib(handle);
         const sym = dlsym(handle, try strdup(a, name));
         try std.testing.expect(sym != null);
     }
@@ -225,7 +224,6 @@ test "ko_website: resolve all 7 ko_* symbols" {
         const path_z = try strdup(a, path);
         defer a.free(path_z);
         const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
-        defer closeLib(handle);
         const sym = dlsym(handle, try strdup(a, name));
         try std.testing.expect(sym != null);
     }
@@ -275,7 +273,6 @@ test "ko_loop: resolve all 8 ko_loop_* symbols" {
         const path_z = try strdup(a, path);
         defer a.free(path_z);
         const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
-        defer closeLib(handle);
         const sym = dlsym(handle, try strdup(a, name));
         try std.testing.expect(sym != null);
     }
