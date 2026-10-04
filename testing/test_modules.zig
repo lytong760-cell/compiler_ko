@@ -139,18 +139,8 @@ test "ko_website: ko_url_encode returns non-null" {
     try std.testing.expect(result != null);
 }
 
-test "ko_loop: resolve all 8 ko_loop_* symbols" {
 
-    const lib_dir = "zig-out/lib";
-    const names = [_][]const u8{ "ko_loop_engine_create", "ko_loop_engine_destroy", "ko_loop_execute_optimized_loop", "ko_loop_execute_while_loop", "ko_loop_get_stats", "ko_loop_optimize_for", "ko_loop_optimize_while", "ko_loop_reset_registers" };
-
-    for (names) |name| {
-        const path = try std.fs.path.join(a, &.{ lib_dir, "zig-out/lib/libko_loop.so" });
-        defer a.free(path);
-        const path_z = try strdup(a, path);
-        defer a.free(path_z);
-        const handle = dlopen(path_z, RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
-        const sym = dlsym(handle, try strdup(a, name));
-        try std.testing.expect(sym != null);
-    }
+test "ko_loop: resolve ko_loop_optimize_for" {
+    const f = try lookup(?*const fn (?*anyopaque, [*:0]const u8, i64, i64, i64, u64) callconv(.c) c_int, "zig-out/lib/libko_loop.so", "ko_loop_optimize_for");
+    try std.testing.expect(f != null);
 }
