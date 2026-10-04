@@ -27,8 +27,8 @@ fn lookup(t: type, lib_name: [:0]const u8, sym_name: [:0]const u8) !t {
     const lib = try std.DynLib.open(lib_name);
     defer lib.close();
 
-    const func_ptr = lib.lookup(t, sym_name) orelse return error.SymbolNotFound;
-    return @ptrCast(t, func_ptr);
+    const sym = lib.lookup(t, sym_name) orelse return error.SymbolNotFound;
+    return @ptrCast(sym);
 }
 
 const KoFileExistsFn = ?*const fn ([*:0]const u8) callconv(.c) c_int;
