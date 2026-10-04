@@ -9,12 +9,15 @@ fn runCheckSymbols(lib_path: [:0]const u8, sym_name: [:0]const u8) !void {
         return error.CouldNotExecuteCheck;
     };
 
-    if (result.term != .Exited) {
+    if (result.term) |term| {
+        if (term != .Exited) {
+            return error.CouldNotExecuteCheck;
+        }
+        if (term.Exited != 0) {
+            return error.SymbolNotFound;
+        }
+    } else {
         return error.CouldNotExecuteCheck;
-    }
-
-    if (result.term.Exited != 0) {
-        return error.SymbolNotFound;
     }
 }
 
