@@ -10,7 +10,17 @@
   "onCreateCommand": "bash .devcontainer/on-create.sh",
   "updateContentCommand": "bash .devcontainer/on-create.sh",
   "remoteEnv": {
-    "KO_PYTHON": "${containerEnv:PATH}"
+    "KILO_SKIP_UPDATE_CHECK": "1"
+  },
+  "mounts": [
+    {
+      "source": "/root/.config/kilo",
+      "target": "/root/.config/kilo",
+      "type": "bind"
+    }
+  ],
+  "containerEnv": {
+    "GITHUB_MCP_TOKEN": "${localEnv:GITHUB_MCP_TOKEN}"
   },
   "customizations": {
     "vscode": {
