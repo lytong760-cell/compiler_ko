@@ -24,15 +24,14 @@ fn runCheckSymbols(lib_path: [:0]const u8, sym_name: [:0]const u8) !void {
     }
 
     if (term.Exited != 0) {
-        const err_msg = std.fmt.allocPrint(std.testing.allocator, "Check failed: {s}", .{stderr_output}) catch "Unknown error";
-        std.testing.allocator.free(stderr_output);
+        _ = stderr_output;
         return error.SymbolNotFound;
     }
 
     std.testing.allocator.free(stderr_output);
 }
 
-fn lookupFunction(comptime T: type, lib_path: [:0]const u8, sym_name: [:0]const u8) !T {
+fn lookup(comptime T: type, lib_path: [:0]const u8, sym_name: [:0]const u8) !T {
     try runCheckSymbols(lib_path, sym_name);
     
     const lib = try std.DynLib.open(lib_path);
