@@ -6,3 +6,4 @@ zig/
 zig/zig
 
  .zig-cache/
+.kilo/worktrees/
