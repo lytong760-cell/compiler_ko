@@ -17,6 +17,7 @@ const KoRandomIntFn = ?*const fn () callconv(.c) i64;
 const KoRandomFloatFn = ?*const fn () callconv(.c) f64;
 const KoRandomBytesFn = ?*const fn (i64, [*]u8) callconv(.c) void;
 const KoValidateUrlFn = ?*const fn ([*:0]const u8) callconv(.c) ?*const u8;
+const KoUrlEncodeFn = ?*const fn ([*:0]const u8) callconv(.c) ?*const u8;
 
 fn lookup(t: type, lib_name: [:0]const u8, sym_name: [:0]const u8) !t {
     const handle = dl.dlopen(lib_name, dl.RTLD_LAZY) orelse return error.CouldNotLoadLibrary;
@@ -102,8 +103,8 @@ test "ko_random: ko_random_bytes fills buffer" {
     const ko_random_bytes = try lookup(KoRandomBytesFn, "zig-out/lib/libko_random.so", "ko_random_bytes");
 
     const len: i64 = 64;
-    const buf = a.alloc(u8, @intCast(len)) catch return error.NoMemory;
-    defer a.free(buf);
+    const buf = std.testing.allocator.alloc(u8, @intCast(len)) catch return error.NoMemory;
+    defer std.testing.allocator.free(buf);
     ko_random_seed.?(999);
     ko_random_bytes.?(len, buf.ptr);
 
