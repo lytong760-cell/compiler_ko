@@ -1,0 +1,8 @@
+{
+  "skills": {
+    "paths": ["./.kilo/skills"]
+  },
+  "default_agent": "code",
+  "model": "anthropic/claude-sonnet",
+  "instructions": ["./AGENTS.md", "./CONTEXT.md"]
+}
