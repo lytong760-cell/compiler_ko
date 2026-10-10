@@ -54,5 +54,9 @@
     }
   },
   "postCreateCommand": "bash .devcontainer/on-create.sh",
+<<<<<<< ours
   "remoteUser": "root"
+=======
+  "remoteUser": "codespace"
+>>>>>>> theirs
 }

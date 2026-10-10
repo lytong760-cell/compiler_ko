@@ -116,6 +116,7 @@ for pkg in "${NPM_GLOBAL_PACKAGES[@]}"; do
   fi
 done
 
+<<<<<<< ours
 # ---------------------------------------------------------------- Kilo CLI
 # Bản thân agent đang chạy bằng @kilocode/cli — devcontainer phải có để dùng lại
 # cùng CLI, cùng agent và skill.
@@ -179,6 +180,8 @@ else
   log "  cài bằng: npx @puppeteer/browsers install chrome@stable --path /opt/chrome-for-testing"
 fi
 
+=======
+>>>>>>> theirs
 # ---------------------------------------------------------------- Kiểm tra
 cd "$(dirname "$0")/.." || exit 1
 log "zig build"
@@ -200,12 +203,17 @@ cat <<'EOF'
   node     24.x + npm
   pnpm, yarn (qua corepack)
   bun      1.4.2
+<<<<<<< ours
   docker, gh
   kilo CLI @kilocode/cli 7.8.3
+=======
+  docker, gh (qua devcontainer features)
+>>>>>>> theirs
 
 === Gói npm toàn cục ===
   npm ls -g --depth=0
 
+<<<<<<< ours
 === MCP server (cấu hình trong /root/.config/kilo/kilo.jsonc) ===
   chrome-devtools   local    -> cần Chrome tại /opt/chrome-for-testing/chrome
   camofox-browser   local    -> npx @askjo/camofox-browser-mcp
@@ -216,12 +224,17 @@ cat <<'EOF'
   /root/.config/kilo/agents/      -- 69 agent
   /root/.config/kilo/skills/      -- 338 skill
 
+=======
+>>>>>>> theirs
 === Kiểm tra nhanh ===
   cd /workspaces/compiler_ko
   zig build
   zig build test --summary all < /dev/null
   docker build -t ko-test .
+<<<<<<< ours
   kilo --version
+=======
+>>>>>>> theirs
 
 Lưu ý: `zig build test` cần stdin đóng, nếu không có thể treo.
 EOF
