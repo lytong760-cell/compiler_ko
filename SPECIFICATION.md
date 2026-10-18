@@ -307,7 +307,7 @@ Firestore REST API Endpoints:
 **POST - List All Libraries:**
 
 ```
-POST https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents:runQuery?key=AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE
+POST https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents:runQuery?key=YOUR_API_KEY
 Content-Type: application/json
 
 {
@@ -321,7 +321,7 @@ Content-Type: application/json
 **GET - Load Specific Library:**
 
 ```
-GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents/libraries/<library>?key=AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE
+GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents/libraries/<library>?key=YOUR_API_KEY
 ```
 
 #### C. Automatic Processing Flow
@@ -564,6 +564,17 @@ Hero !class [
 - [ ] Default standard library (stdlib)
 - [ ] Loop.cpp integration into Zig VM
 - [ ] JNI/JNA bridge between Zig VM and native libraries
+- [ ] Bytecode backend wired into execution pipeline
+- [ ] Token source positions and multi-error diagnostics
+- [ ] Dict literals and `bytes(<expr>)`
+- [ ] Method call arguments and method access without call
+- [ ] Second `<input>` in one program
+- [ ] Shell completion verification for zsh/fish
+
+### Known Sync Notes
+
+- Spec previously overstated Import/Loop integration; those remain open issues.
+- Leaked Firestore API key removed from this document; use `KO_FIRESTORE_API_KEY`.
 
 ## XII. SYNTAX SUMMARY
 
