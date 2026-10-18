@@ -140,6 +140,36 @@ Execution statements must not float freely outside the global scope. They are re
 - Nested list: `(1('a', 'b'))~list`
 - Dictionary: `(1{'a'})~dic`
 
+### 4. Null and None Types
+
+- **Null** is a temporary placeholder variable that has not yet been assigned a value:
+
+```ko
+()~var
+```
+
+- A null variable may later be assigned any compatible value using `<now>`:
+
+```ko
+<now>(value)>var
+```
+
+- **None** is an immutable empty value that cannot be reassigned to another value:
+
+```ko
+none~a
+```
+
+### 5. Type Introspection
+
+- `type(format)` evaluates the runtime type of a value and prints it automatically.
+
+```ko
+type("Hello")          # output: string
+type(123)~a
+<printf>^(a)            # output: int
+```
+
 ### 3. Index Access Syntax
 
 ```ko
