@@ -160,7 +160,15 @@ Execution statements must not float freely outside the global scope. They are re
 none~a
 ```
 
-### 5. Type Introspection
+### 5. Index Access Syntax
+
+```ko
+list<0>           | Get first element
+list<1<0>>        | Get element 0 in sub-list at position 1
+dic{1{'a'}}       | Get by Dictionary Key
+```
+
+### 6. Type Introspection
 
 - `type(format)` evaluates the runtime type of a value and prints it automatically.
 
@@ -168,14 +176,6 @@ none~a
 type("Hello")          # output: string
 type(123)~a
 <printf>^(a)            # output: int
-```
-
-### 3. Index Access Syntax
-
-```ko
-list<0>           | Get first element
-list<1<0>>        | Get element 0 in sub-list at position 1
-dic{1{'a'}}       | Get by Dictionary Key
 ```
 
 ## IV. INPUT/OUTPUT SYSTEM, MEMORY, ENCODING, LENGTH
