@@ -58,3 +58,12 @@ Còn mở: #6, #8, #9, #10, #11, #12, #13, #15, #18, #21, #24
 4. **Agent song song phá việc nhau.** Dùng `git worktree add` cho từng agent dưới `.kilo/worktrees/<tên>`, verify trong worktree rồi mới tích hợp. Xoá worktree ngay khi xong.
 5. **Báo cáo của sub-agent không đáng tin nếu không tự chạy lệnh.** Đã gặp: agent tuyên bố xong nhưng code không compile, agent xoá sạch file test, agent tự mâu thuẫn trong chính ví dụ của nó.
 6. **`git reset` của agent làm mất hàng nghìn deletion đã staged.** Đã xảy ra hai lần.
+
+---
+
+### [2026-10-18] REVIEW / ROADMAP / ISSUE UPDATE
+
+- **Task State:** `SUCCESS`
+- **Active Node/Context:** repo review + `ROADMAP.md` created; issues #26-#29 created
+- **Volatile Context Diagnostics:** `gh issue list` returned 19 open issues; new issues #26-#29 added for security/hygiene/CI/test quality
+- **Next Execution Phase Vectors:** rotate leaked key, remove auto-push script, fix CI, then bytecode/lexer tasks
