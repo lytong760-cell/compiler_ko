@@ -301,7 +301,7 @@ ko -search "<query>"
 
 #### B. Library Registry Gateway and API
 
-Module Store URL: `https://ko-studio.ai.studio/mobule-store`
+Module Store URL: `https://ko-vietnam.ai.studio/mobule-store`
 
 Firestore REST API Endpoints:
 
