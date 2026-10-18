@@ -247,11 +247,12 @@ Make sure you have two `**` markers around Loop
     <printf>^("Odd: {x}\n")
 ]
 
-@loop(hp > 0)
+@loop(hp > 0) {
 **Loop** <for.f.whle>@also [
     <printf>^("Fighting...\n")
     <now>(hp - 10)>hp
 ]
+}
 ```
 
 ## VII. MODULE IMPORT AND SCOPE SYSTEM
