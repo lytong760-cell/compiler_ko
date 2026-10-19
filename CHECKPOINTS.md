@@ -67,3 +67,12 @@ Còn mở: #6, #8, #9, #10, #11, #12, #13, #15, #18, #21, #24
 - **Active Node/Context:** repo review + `ROADMAP.md` created; issues #26-#29 created
 - **Volatile Context Diagnostics:** `gh issue list` returned 19 open issues; new issues #26-#29 added for security/hygiene/CI/test quality
 - **Next Execution Phase Vectors:** rotate leaked key, remove auto-push script, fix CI, then bytecode/lexer tasks
+
+---
+
+### [2026-10-19] ROADMAP / ISSUE UPDATE
+
+- **Task State:** `SUCCESS`
+- **Active Node/Context:** `ROADMAP.md` updated; GitHub issue #30 created
+- **Volatile Context Diagnostics:** `ROADMAP.md` now has Milestone 8 Documentation & Spec Standardization; issue #30 tracks SPEC future/source structure
+- **Next Execution Phase Vectors:** If user confirms, append SPECIFICATION.md Future Extensions and Required Source/File Structure; do not modify existing SPEC content.
