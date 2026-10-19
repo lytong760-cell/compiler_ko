@@ -85,9 +85,34 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 
 ---
 
-## Chưa xác minh
+### [2026-10-19] LONG-TERM MEMORY DUMP (kháng kế hoạch M0–7, bỏ qua M8)
 
-- Completion script zsh/fish (thiếu shell trên máy)
-- Bytecode backend chưa từng chạy thật
-- Dict literal, `bytes(<expr>)`, `#11` vị trí token: **chưa sửa**
-- Nhiều test chỉ assert "không crash" vì output bị discard → xanh chưa đồng nghĩa ngôn ngữ đúng
+- **Identified Truths (verify bằng lệnh thực tế, không tin mù)**
+  - Leaked Firestore API key `AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE` đã xoá khỏi `README.md` (3 dòng), thay bằng `$KO_FIRESTORE_API_KEY`. Verify: `grep AIzaSy...` → 0 match.
+  - `.my_pass/auto.bash` (force-push loop mỗi 15s) đã làm rỗng nội dung và thêm `.my_pass/` vào `.gitignore`.
+  - Zig version nhất quán 0.16.0 ở `build.zig.zon`, `Dockerfile`, `.devcontainer/on-create.sh`, `.github/workflows/ci.yml`, `CONTEXT.md`.
+  - `Op.call` encoding đã sửa: compiler đóng gói `(idx << 16) | args.len`, khớp VM decode `name_idx = arity >> 16`, `arg_count = arity & 0xFFFF` (`src/compiler.zig:206`, `src/vm.zig:1187`).
+  - `compileStatement` không còn `else => {}` bỏ `control_flow`: đã thêm xử lý `if_stmt`/`elif`/`else_body` (jump/jump_if_false + patch), `for_loop` (init/cond/step/store_var + backward jump), `while_loop`, `memory_op`, `encoding_op`, `len_op`, `priority_stmt`. `class_decl`/`class_instantiation` vẫn skip trong bytecode (AST-walker state) (`src/compiler.zig:46-173`).
+  - Bytecode backend đã wire vào `src/main.zig`: `executeCode` thử compiler + `VM.executeChunk` cho program không có func/class def, fall back sang `VM.execute` (AST-walker) nếu compile thất bại hoặc có func/class (`src/main.zig:408-440`, `src/bytecode.zig` thêm `Chunk.init`).
+  - Dict literal: parser giờ parse `{key: value, ...}` thành `DictEntry` lưu vào `ast.Literal.dict_entries`; `ast.Literal` thêm `dict_entries: []DictEntry` + `allocator`; VM `evaluateLiteral` populate `StringHashMap` từ entries; compiler `emitLiteral(.dict)` trả `error.UnsupportedBytecode` → fall back AST-walker (`src/parser.zig:1431-1460`, `src/ast.zig`, `src/vm.zig:673-678`, `src/compiler.zig:280`).
+  - `bytes(<expr>)~x`: VM `var_decl` giờ hỗ trợ `.string` (dupe nội dung) và `else` (toString rồi dupe), không chỉ `.int` nữa (`src/vm.zig:186-216`).
+  - Method call `$obj.method(args)`: `evaluateCall` giờ xử lý `.class_instance` (tra cứu method trong `ci.methods`, gọi qua `callUserFunction` helper trích xuất từ `.function` branch) — args không bị drop nữa (`src/vm.zig:866-1070`).
+  - `Value.print` `.freal` dùng `{f}` thay vì `{d}` (sai định dạng) (`src/value.zig:63`).
+  - CI: xoá `csharp` khỏi ma trận `.github/workflows/ci.yml` (repo không có `.cs`).
+
+- **Architectural Mutations**
+  - `src/main.zig` import `compiler.zig`, `bytecode.zig`; thêm `hasFuncOrClassDef` helper.
+  - `src/bytecode.zig` thêm `Chunk.init(allocator)`.
+  - `src/ast.zig` thêm `DictEntry` struct + `Literal.dict_entries` + `Literal.allocator` + `Literal.deinit` xử lý dict_entries.
+  - `src/parser.zig` tất cả `ast.Literal{...}` tạo mới đã thêm `.dict_entries = [], .allocator = self.allocator`; nhánh `{` viết lại thành key:value pairs.
+
+- **Chưa xác minh (cần Zig toolchain, không có trong sandbox)**
+  - `zig build` / `zig build test < /dev/null` — chưa chạy được (thiếu toolchain Zig trong sandbox).
+  - `docker build` — chưa chạy lại sau khi sửa code.
+  - Bytecode backend chạy thật qua CLI — đã wire nhưng chưa verify output thực.
+  - Dict literal với entries thực tế qua CLI — chưa verify.
+  - Completion zsh/fish — thiếu shell trên máy (chưa verify).
+  - Token vị trí (#11), multi-error diagnostics — chưa làm.
+
+- **Cộng với các truth cũ ở trên (2026-10-01 → 2026-10-03) vẫn giữ nguyên.**
+

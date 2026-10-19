@@ -58,6 +58,13 @@ pub const Chunk = struct {
     functions: std.array_list.Managed(Function),
     constants: std.array_list.Managed(value_mod.Value),
 
+    pub fn init(allocator: std.mem.Allocator) !Chunk {
+        return .{
+            .functions = std.array_list.Managed(Function).init(allocator),
+            .constants = std.array_list.Managed(value_mod.Value).init(allocator),
+        };
+    }
+
     pub fn deinit(self: *Chunk, allocator: std.mem.Allocator) void {
         for (self.functions.items) |*f| f.deinit(allocator);
         self.functions.deinit();

@@ -20,7 +20,6 @@ jobs:
           - java
           - cpp
           - c
-          - csharp
 
     steps:
       - name: Checkout

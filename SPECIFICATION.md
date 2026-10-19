@@ -87,11 +87,40 @@ $$\mathcal{B}_E \cap \mathcal{D}_P = \emptyset$$
 | `"\n"` | Newline Escape | Newline in double-quoted string | `"Hello\n"` |
 | `| |` | Comment Separator | Ignored at compile time | `| comment |` |
 
+
+### 2.1 Region Type Annotations (`@`)
+
+The `@` symbol is a **region/type role sigil**. It is not a variable name; it declares what kind of region or member a block belongs to. `@` has multiple roles depending on context:
+
+- `@also` — example: marks a `**Loop**` region as sequential.
+- `@private` — example in OOP: marks a class member as private/restricted access.
+- More `@` roles may be defined for other regions without changing the base meaning: annotate role, not storage.
+
+`@also` is only a visual example for sequential loops, not a rule that `@` means "loop". A `while` loop is resolved by its own control-flow rule; numbered statements such as `[0]`, `[1]` may be used when explicit execution order is required.
+
+Example:
+
+```ko
+@loop(hp > 0) {
+**Loop** <for.f.whle>@also [
+    <printf>^("Fighting...\n")
+    <now>(hp - 10)>hp
+]
+}
+```
+
+OOP example:
+
+```ko
+class Player [ 
+    @private [
+        int(100)~hp
+    ]
+]
+```
 ### 3. EBNF Syntax
 
 ```
-Program            ::= ModuleImport* Statement* MainBlock ExceptionHandler* ;
-MainBlock          ::= "[" Statement* ExceptionHandler* "]" ;
 Statement          ::= VarDecl | Assignment | FuncDecl | ClassDecl | ControlFlow | MemoryOp | EncodingOp | LenOp | ExceptionHandler ;
 
 Sigil              ::= "~" ;
@@ -140,12 +169,42 @@ Execution statements must not float freely outside the global scope. They are re
 - Nested list: `(1('a', 'b'))~list`
 - Dictionary: `(1{'a'})~dic`
 
-### 3. Index Access Syntax
+### 4. Null and None Types
+
+- **Null** is a temporary placeholder variable that has not yet been assigned a value:
+
+```ko
+()~var
+```
+
+- A null variable may later be assigned any compatible value using `<now>`:
+
+```ko
+<now>(value)>var
+```
+
+- **None** is an immutable empty value that cannot be reassigned to another value:
+
+```ko
+none~a
+```
+
+### 5. Index Access Syntax
 
 ```ko
 list<0>           | Get first element
 list<1<0>>        | Get element 0 in sub-list at position 1
 dic{1{'a'}}       | Get by Dictionary Key
+```
+
+### 6. Type Introspection
+
+- `type(format)` evaluates the runtime type of a value and prints it automatically.
+
+```ko
+type("Hello")          # output: string
+type(123)~a
+<printf>^(a)            # output: int
 ```
 
 ## IV. INPUT/OUTPUT SYSTEM, MEMORY, ENCODING, LENGTH
@@ -247,11 +306,12 @@ Make sure you have two `**` markers around Loop
     <printf>^("Odd: {x}\n")
 ]
 
-@loop(hp > 0)
+@loop(hp > 0) {
 **Loop** <for.f.whle>@also [
     <printf>^("Fighting...\n")
     <now>(hp - 10)>hp
 ]
+}
 ```
 
 ## VII. MODULE IMPORT AND SCOPE SYSTEM
@@ -300,14 +360,14 @@ ko -search "<query>"
 
 #### B. Library Registry Gateway and API
 
-Module Store URL: `https://ko-studio.ai.studio/mobule-store`
+Module Store URL: `https://ko-vietnam.ai.studio/mobule-store`
 
 Firestore REST API Endpoints:
 
 **POST - List All Libraries:**
 
 ```
-POST https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents:runQuery?key=AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE
+POST https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents:runQuery?key=YOUR_API_KEY
 Content-Type: application/json
 
 {
@@ -321,7 +381,7 @@ Content-Type: application/json
 **GET - Load Specific Library:**
 
 ```
-GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents/libraries/<library>?key=AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE
+GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents/libraries/<library>?key=YOUR_API_KEY
 ```
 
 #### C. Automatic Processing Flow
@@ -564,6 +624,17 @@ Hero !class [
 - [ ] Default standard library (stdlib)
 - [ ] Loop.cpp integration into Zig VM
 - [ ] JNI/JNA bridge between Zig VM and native libraries
+- [ ] Bytecode backend wired into execution pipeline
+- [ ] Token source positions and multi-error diagnostics
+- [ ] Dict literals and `bytes(<expr>)`
+- [ ] Method call arguments and method access without call
+- [ ] Second `<input>` in one program
+- [ ] Shell completion verification for zsh/fish
+
+### Known Sync Notes
+
+- Spec previously overstated Import/Loop integration; those remain open issues.
+- Leaked Firestore API key removed from this document; use `KO_FIRESTORE_API_KEY`.
 
 ## XII. SYNTAX SUMMARY
 
