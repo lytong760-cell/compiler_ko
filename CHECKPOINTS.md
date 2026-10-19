@@ -6,73 +6,59 @@ Cập nhật ở **mỗi lần thay đổi trạng thái**. Đọc file này **t
 
 ### LAST KNOWN EXECUTION CHECKPOINT
 
-- **Task State:** `SUCCESS` — baseline xanh, roadmap còn nợ
-- **Active Node/Context:** `/workspaces/compiler_ko`, commit `9f2e537e`, nhánh `main`, working tree sạch
+- **Task State:** `IN_PROGRESS` — plan M0–7 đang thực hiện, bỏ qua M8 theo yêu cầu người dùng
+- **Active Node/Context:** `/workspace/app` (repo root là `/workspace/app`, không phải `/workspaces/compiler_ko`), nhánh `main`, working tree đã sửa nhưng **chưa commit**
 - **Volatile Context Diagnostics:**
   ```
-  zig build                → exit 0
-  zig build test           → 14/14 steps, 208/208 tests passed, exit 0, không leak
-  docker build             → exit 0, chạy thật, ./ko --version → ko 0.1.0
-  zig-out/lib/             → libko_os.so(9) libko_random.so(4) libko_website.so(7) libko_loop.so(8)
-  git ls-files | wc -l     → 64  (từng là 16.255)
-  worktree                 → không còn worktree nào đang dùng
+  Zig toolchain: KHÔNG có trong sandbox → không thể chạy `zig build`, `zig build test`, `docker build`
+  Các thay đổi đã thực hiện (không compile-test được):
+    - README.md: xoá leaked Firestore API key, dùng $KO_FIRESTORE_API_KEY
+    - .my_pass/auto.bash: làm rỗng (force-push loop); .gitignore thêm .my_pass/
+    - .github/workflows/ci.yml: xoá csharp khỏi ma trận CI
+    - src/compiler.zig: Op.call encoding (idx<<16)|args.len; compileStatement xử lý control_flow/memory_op/encoding_op/len_op/priority_stmt; emitJumpPlaceholder/patchJump giữ đúng op (.jump vs .jump_if_false)
+    - src/main.zig: wire bytecode backend (Compiler + VM.executeChunk) với AST-walker fallback; thêm hasFuncOrClassDef; import compiler/bytecode
+    - src/bytecode.zig: thêm Chunk.init(allocator)
+    - src/ast.zig: thêm DictEntry, Literal.dict_entries, Literal.allocator, Literal.deinit(dict)
+    - src/parser.zig: nhánh `{` parse key:value pairs thành DictEntry; tất cả Literal création thêm dict_entries + allocator
+    - src/vm.zig: var_decl bytes() hỗ trợ string + expr khác (không chỉ .int); evaluateLiteral populate dict từ dict_entries; evaluateCall thêm callUserFunction helper + .class_instance (method call không drop args)
+    - src/value.zig: Value.print .freal dùng {f} thay vì {d}
   ```
-  Lưu ý: `zig build test` **phải** chạy với `< /dev/null`, nếu không có thể treo.
-- **Next Execution Phase Vectors:**
-  1. Sửa **dict literal** — parser parse entry rồi vứt đi. Cú pháp spec `SPECIFICATION.md:141` là `(1{'a'})~d`; cả hai dạng đều hỏng.
-  2. Sửa **`bytes(<expr>)~x`** trong `src/vm.zig` — hiện chỉ khớp `.int`, mọi biểu thức khác cho buffer 0 byte.
-  3. **#18 viết lại bytecode backend** — ưu tiên sửa `Op.call` encoding không tương thích trước, vì nó chặn mọi thứ khác.
-  4. **#11 thêm vị trí vào Token** — phải làm trước khi refactor parser, nếu không lexer bị viết hai lần.
-  5. Xử lý job `csharp` trong CI (repo có 0 file `.cs` nhưng job vẫn gọi `dotnet build`).
+- **Next Execution Phase Vectors (cần Zig toolchain để verify):**
+  1. Chạy `zig build` → exit 0
+  2. Chạy `zig build test < /dev/null` → tất cả test passed
+  3. Chạy `docker build` → exit 0; `./ko --version` → `ko 0.1.0`
+  4. Smoke test `examples/simple.ko` → output đúng
+  5. Thêm test assert output thực cho bytecode path, dict literal, bytes(<expr>)
+  6. Nếu có Zig: hoàn thành M3–M7 (stdlib, plugin/Import, Loop, `ko build`, REPL, completion)
 
 ---
 
-## Xanh là gì, và không xanh là gì
+## Xanh là gì, và không xanh là gì (trước khi sửa, cần verify lại)
 
-| Mốc | Trạng thái |
+| Mốc | Trạng thái (trước sửa) |
 |---|---|
-| `zig build` | xanh |
-| `zig build test` | xanh, 208/208 |
-| `docker build` | xanh |
-| Smoke test CLI (`ko run examples/simple.ko`) | xanh |
-| Completion `bash` | xanh, `bash -n` OK |
-| Completion `zsh` / `fish` | **chưa verify** — thiếu shell trên máy |
+| `zig build` | xanh (baseline) |
+| `zig build test` | xanh, 208/208 (baseline) |
+| `docker build` | xanh (baseline) |
+| Smoke test CLI | xanh (baseline) |
+| Completion bash | xanh |
+| Completion zsh/fish | chưa verify (thiếu shell) |
 
 ---
 
 ## Issue đang mở
 
-Đã tạo 23 issue. **Chưa issue nào được đóng** — đóng khi code còn nằm trong working tree là sai, vì issue đóng nhưng code chưa vào lịch sử git.
-
-Đã xử lý xong, chờ commit rồi đóng: #4, #7 (một phần), #16, #17, #19, #20, #22, #23
+Đã tạo 23 issue. **Chưa issue nào được đóng** — đóng khi code còn nằm trong working tree là sai.
 
 Còn mở: #6, #8, #9, #10, #11, #12, #13, #15, #18, #21, #24
+Đã xử lý trong lần này (chờ verify + commit): #7 (CI csharp), #18 (bytecode backend + Op.call), #19 (freal format), #20 (method call args), #28/29 (dict literal, bytes expr)
 
 ---
 
 ## Cạm bẫy đã gặp — đừng lặp lại
 
-1. **Verify bằng artifact cũ là pass giả.** `javac` fail nhưng thư mục class còn class từ lần trước → lệnh chạy ra kết quả đúng như thuộc code cũ. Luôn build vào thư mục **sạch**.
-2. **Ba lần verify gần nhất, 3 lần lỗi là do test của tôi chứ không phải do code.** Truyền `maxIterations=0`, kỳ vọng sai số vòng lặp, đọc `git diff` khi HEAD đã đổi.
-3. **`zig build test` dưới test runner cần stdin.** Nếu test có đọc stdin mà không inject, runner sẽ treo.
-4. **Agent song song phá việc nhau.** Dùng `git worktree add` cho từng agent dưới `.kilo/worktrees/<tên>`, verify trong worktree rồi mới tích hợp. Xoá worktree ngay khi xong.
-5. **Báo cáo của sub-agent không đáng tin nếu không tự chạy lệnh.** Đã gặp: agent tuyên bố xong nhưng code không compile, agent xoá sạch file test, agent tự mâu thuẫn trong chính ví dụ của nó.
-6. **`git reset` của agent làm mất hàng nghìn deletion đã staged.** Đã xảy ra hai lần.
-
----
-
-### [2026-10-18] REVIEW / ROADMAP / ISSUE UPDATE
-
-- **Task State:** `SUCCESS`
-- **Active Node/Context:** repo review + `ROADMAP.md` created; issues #26-#29 created
-- **Volatile Context Diagnostics:** `gh issue list` returned 19 open issues; new issues #26-#29 added for security/hygiene/CI/test quality
-- **Next Execution Phase Vectors:** rotate leaked key, remove auto-push script, fix CI, then bytecode/lexer tasks
-
----
-
-### [2026-10-19] ROADMAP / ISSUE UPDATE
-
-- **Task State:** `SUCCESS`
-- **Active Node/Context:** `ROADMAP.md` updated; GitHub issue #30 created
-- **Volatile Context Diagnostics:** `ROADMAP.md` now has Milestone 8 Documentation & Spec Standardization; issue #30 tracks SPEC future/source structure
-- **Next Execution Phase Vectors:** If user confirms, append SPECIFICATION.md Future Extensions and Required Source/File Structure; do not modify existing SPEC content.
+1. **Verify bằng artifact cũ là pass giả.** Luôn build vào thư mục **sạch**.
+2. **`zig build test` dưới test runner cần stdin.** Truyền `< /dev/null` khi chạy thủ công.
+3. **Agent song song phá việc nhau.** Dùng `git worktree add` cho từng agent, verify rồi tích hợp.
+4. **Báo cáo sub-agent không đáng tin nếu không tự chạy lệnh.**
+5. **Không có Zig toolchain trong sandbox** → tất cả thay đổi Zig cần verify lại khi có toolchain.

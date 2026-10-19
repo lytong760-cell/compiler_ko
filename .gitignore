@@ -7,3 +7,4 @@ zig/zig
 
  .zig-cache/
 .kilo/worktrees/
+.my_pass/

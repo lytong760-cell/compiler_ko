@@ -187,19 +187,26 @@ self.executeStatement(stmt) catch |err| {
                 var val = try self.evaluateExpression(v.value_expr);
                 const final_val = if (std.mem.eql(u8, v.type_name, "bytes")) blk: {
                     defer val.deinit(self.allocator);
-                    const size: usize = switch (val) {
-                        .int => |i| blk2: {
+                    var buf: []u8;
+                    switch (val) {
+                        .int => |i| {
                             if (i < 0) {
                                 self.raiseError("TypeError", "Cannot cast negative value to bytes");
-                                break :blk2 0;
+                                break :blk value_mod.Value{ .null = {} };
                             }
-                            break :blk2 @intCast(i);
+                            buf = try self.allocator.alloc(u8, @intCast(i));
+                            @memset(buf, 0);
                         },
-                        else => 0,
-                    };
-                    const bytes_val = try self.allocator.alloc(u8, size);
-                    @memset(bytes_val, 0);
-                    break :blk value_mod.Value{ .bytes = bytes_val };
+                        .string => |s| {
+                            buf = try self.allocator.dupe(u8, s);
+                        },
+                        else => |other| {
+                            const s = try other.toString(self.allocator);
+                            defer self.allocator.free(s);
+                            buf = try self.allocator.dupe(u8, s);
+                        },
+                    }
+                    break :blk value_mod.Value{ .bytes = buf };
                 } else val;
                 if (self.current_scope.variables.get(v.name)) |_| {
                     const gop = try self.current_scope.variables.getOrPut(v.name);
@@ -674,6 +681,10 @@ self.executeStatement(stmt) catch |err| {
             .dict => blk: {
                 const d = try self.allocator.create(std.StringHashMap(value_mod.Value));
                 d.* = std.StringHashMap(value_mod.Value).init(self.allocator);
+                for (lit.dict_entries) |entry| {
+                    const val = try self.evaluateExpression(entry.value);
+                    _ = try d.put(entry.key, val);
+                }
                 break :blk value_mod.Value{ .dict = d };
             },
         };
@@ -852,6 +863,71 @@ self.executeStatement(stmt) catch |err| {
         };
     }
 
+    fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr) anyerror!value_mod.Value {
+        if (args.len != func.params.len) {
+            self.raiseError("ArgumentError", "Argument count mismatch");
+            return error.RuntimeError;
+        }
+
+        var new_scope = try self.allocator.create(value_mod.Scope);
+        new_scope.* = value_mod.Scope.init(self.allocator, func.closure_scope);
+
+        for (args, func.params) |arg_expr, param| {
+            const arg_val = try self.evaluateExpression(@constCast(&arg_expr));
+            const param_name = try self.allocator.dupe(u8, param.name);
+            try new_scope.variables.put(param_name, arg_val);
+        }
+
+        const prev_scope = self.current_scope;
+        const prev_has_returned = self.has_returned;
+        const prev_return_value = self.return_value;
+        const prev_has_error = self.has_error;
+        const prev_error_type = self.error_type;
+        const prev_function = self.current_function;
+        self.current_scope = new_scope;
+        self.current_function = func.name;
+        self.exposeProcess();
+        self.has_returned = false;
+        self.return_value = null;
+        self.has_error = false;
+        self.error_type = null;
+
+        var body_stmts: []ast.Statement = undefined;
+        body_stmts.ptr = @ptrCast(@alignCast(func.body_ptr));
+        body_stmts.len = func.body_len;
+
+        for (body_stmts) |*body_stmt| {
+            try self.executeStatement(body_stmt);
+            if (self.has_returned or self.has_error) break;
+        }
+
+        if (self.has_error) {
+            for (func.catch_stmts) |*cs| {
+                if (self.error_type) |err_type| {
+                    if (std.mem.eql(u8, err_type, cs.error_type)) {
+                        self.has_error = false;
+                        self.error_type = null;
+                        for (cs.body) |s| try self.executeStatement(&s);
+                        break;
+                    }
+                }
+            }
+        }
+
+        const ret = self.return_value orelse value_mod.Value{ .null = {} };
+
+        new_scope.deinit();
+        self.allocator.destroy(new_scope);
+        self.current_scope = prev_scope;
+        self.current_function = prev_function;
+        self.has_returned = prev_has_returned;
+        self.return_value = prev_return_value;
+        self.has_error = prev_has_error;
+        self.error_type = prev_error_type;
+
+        return ret;
+    }
+
     fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Value {
         if (std.mem.eql(u8, call.callee, "Import")) {
             const writer = self.stdoutWriter();
@@ -876,70 +952,15 @@ self.executeStatement(stmt) catch |err| {
         }
 
         const callee_val = if (call.target) |target_expr| try self.evaluateExpression(target_expr) else try self.evaluateIdentifier(call.callee);
+        var func: ?*value_mod.Function = null;
         switch (callee_val) {
-            .function => |func| {
-                if (call.args.len != func.params.len) {
-                    self.raiseError("ArgumentError", "Argument count mismatch");
+            .function => |f| func = f,
+            .class_instance => |ci| {
+                if (ci.methods.get(call.callee)) |f| func = f,
+                else => {
+                    self.raiseError("MemberError", "Method not found");
                     return error.RuntimeError;
-                }
-
-                var new_scope = try self.allocator.create(value_mod.Scope);
-                new_scope.* = value_mod.Scope.init(self.allocator, func.closure_scope);
-
-                for (call.args, func.params) |arg_expr, param| {
-                    const arg_val = try self.evaluateExpression(@constCast(&arg_expr));
-                    const param_name = try self.allocator.dupe(u8, param.name);
-                    try new_scope.variables.put(param_name, arg_val);
-                }
-
-                const prev_scope = self.current_scope;
-                const prev_has_returned = self.has_returned;
-                const prev_return_value = self.return_value;
-                const prev_has_error = self.has_error;
-                const prev_error_type = self.error_type;
-                const prev_function = self.current_function;
-                self.current_scope = new_scope;
-                self.current_function = func.name;
-                self.exposeProcess();
-                self.has_returned = false;
-                self.return_value = null;
-                self.has_error = false;
-                self.error_type = null;
-
-                var body_stmts: []ast.Statement = undefined;
-                body_stmts.ptr = @ptrCast(@alignCast(func.body_ptr));
-                body_stmts.len = func.body_len;
-
-                for (body_stmts) |*body_stmt| {
-                    try self.executeStatement(body_stmt);
-                    if (self.has_returned or self.has_error) break;
-                }
-
-                if (self.has_error) {
-                    for (func.catch_stmts) |*cs| {
-                        if (self.error_type) |err_type| {
-                            if (std.mem.eql(u8, err_type, cs.error_type)) {
-                                self.has_error = false;
-                                self.error_type = null;
-                                for (cs.body) |s| try self.executeStatement(&s);
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                const ret = self.return_value orelse value_mod.Value{ .null = {} };
-
-                new_scope.deinit();
-                self.allocator.destroy(new_scope);
-                self.current_scope = prev_scope;
-                self.current_function = prev_function;
-                self.has_returned = prev_has_returned;
-                self.return_value = prev_return_value;
-                self.has_error = prev_has_error;
-                self.error_type = prev_error_type;
-
-                return ret;
+                },
             },
             else => {
                 var class_def: ?*value_mod.ClassDef = null;
@@ -978,6 +999,10 @@ self.executeStatement(stmt) catch |err| {
                 return error.RuntimeError;
             },
         }
+        if (func) |f| {
+            return try self.callUserFunction(f, call.args);
+        }
+        return error.RuntimeError;
     }
 
     fn evaluateMemberAccess(self: *VM, ma: *ast.MemberAccess) !value_mod.Value {

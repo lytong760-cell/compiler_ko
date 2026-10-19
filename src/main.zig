@@ -3,6 +3,8 @@ const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 const vm = @import("vm.zig");
 const ast = @import("ast.zig");
+const compiler = @import("compiler.zig");
+const bytecode = @import("bytecode.zig");
 const installer = @import("installer.zig");
 
 const ModuleManifest = struct {
@@ -403,6 +405,28 @@ fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, sou
         _ = mod;
     }
 
+    // Bytecode backend: only for programs without user func/class definitions
+    // (those are AST-walker runtime state and cannot be represented in bytecode yet).
+    if (!hasFuncOrClassDef(program)) {
+        var chunk = try bytecode.Chunk.init(allocator);
+        errdefer chunk.deinit(allocator);
+        const comp = try compiler.Compiler.init(allocator, &chunk, "main", 0);
+        defer comp.deinit();
+        if (comp.compileProgram(program) catch |err| false) |_| {
+            virtual_machine.executeChunk(&chunk) catch |err| {
+                if (err == error.EndOfInput) {
+                    std.debug.print("InputError: end of input\n", .{});
+                    return 4;
+                }
+                std.debug.print("Runtime error: {any}\n", .{err});
+                return 3;
+            };
+            return 0;
+        }
+        // compileProgram failed: fall through to AST-walker below
+    }
+
+    // AST-walker fallback (also handles func/class definitions).
     virtual_machine.execute(program) catch |err| {
         if (err == error.EndOfInput) {
             std.debug.print("InputError: end of input\n", .{});
@@ -413,6 +437,23 @@ fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, sou
     };
 
     return 0;
+}
+
+fn hasFuncOrClassDef(program: []ast.Statement) bool {
+    for (program) |stmt| {
+        switch (stmt.*) {
+            .func_decl => return true,
+            .class_decl => return true,
+            .class_instantiation => return true,
+            .block => |b| {
+                for (b.body) |s| {
+                    if (hasFuncOrClassDef(&s.*)) return true;
+                }
+            },
+            else => {},
+        }
+    }
+    return false;
 }
 
 fn isFilePath(io: std.Io, arg: []const u8) bool {

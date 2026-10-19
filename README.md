@@ -74,7 +74,7 @@ The .ko ecosystem includes a Firestore-compatible REST API for the Module Store.
 #### POST List All Libraries
 
 ```
-POST https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents:runQuery?key=AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE
+POST https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents:runQuery?key=$KO_FIRESTORE_API_KEY
 Content-Type: application/json
 
 {
@@ -105,7 +105,7 @@ Response:
 #### GET Library Metadata
 
 ```
-GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents/libraries/{library}?key=AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE
+GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents/libraries/{library}?key=$KO_FIRESTORE_API_KEY
 ```
 
 Response:
@@ -124,7 +124,7 @@ Response:
 #### PUT Register Library (API Server)
 
 ```
-PUT https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents/libraries/{library}?key=AIzaSyDcW3_plpZompdSlSYFr832A-Vq1TyQxvE
+PUT https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents/libraries/{library}?key=$KO_FIRESTORE_API_KEY
 Content-Type: application/json
 
 {

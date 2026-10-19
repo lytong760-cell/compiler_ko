@@ -236,13 +236,37 @@ pub const Expr = union(enum) {
     }
 };
 
+pub const DictEntry = struct {
+    key: []const u8,
+    value: *ast.Expr,
+    allocator: std.mem.Allocator,
+
+    pub fn deinit(self: *DictEntry) void {
+        self.value.deinit();
+        self.allocator.destroy(self.value);
+    }
+};
+
 pub const Literal = struct {
     kind: Kind,
     int_value: i64,
     freal_value: f64,
     raw: []const u8,
+    dict_entries: []DictEntry,
+    allocator: std.mem.Allocator,
 
     pub const Kind = enum { int, freal, string, bool_true, bool_false, tuple, dict };
+
+    pub fn deinit(self: *Literal) void {
+        switch (self.kind) {
+            .string => self.allocator.free(self.raw),
+            .dict => {
+                for (self.dict_entries) |*e| e.deinit();
+                self.allocator.free(self.dict_entries);
+            },
+            else => {},
+        }
+    }
 };
 
 pub const BinaryExpr = struct {

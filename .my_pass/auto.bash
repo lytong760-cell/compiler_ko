@@ -1,1 +1,1 @@
- while true; do     if [ -n "$(git status --porcelain)" ]; then         git add .;         COMMIT_MSG="Auto save: $(date +'%Y-%m-%d %H:%M:%S')";         git commit -m "$COMMIT_MSG";         git push origin main -f || echo "[WARN] Push thất bại lúc $(date)";     fi;     sleep 15; done
+# Removed: auto force-push loop (security risk). Do not re-add.

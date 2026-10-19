@@ -56,6 +56,126 @@ pub const Compiler = struct {
                     try self.compileStatement(&s);
                 }
             },
+            .control_flow => |cf| try self.compileControlFlow(cf),
+            .memory_op => |m| try self.compileMemoryOp(m),
+            .encoding_op => |eo| try self.compileEncodingOp(eo),
+            .len_op => |lo| try self.compileLenOp(lo),
+            .class_instantiation => |ci| try self.compileClassInstantiation(ci),
+            .priority_stmt => |ps| try self.compileStatement(ps.stmt),
+            .class_decl => |*c| {
+                // Class definitions are runtime AST-walker state; bytecode cannot
+                // represent them yet. Skip in bytecode pipeline.
+                _ = c;
+            },
+        }
+    }
+
+    fn compileControlFlow(self: *Compiler, cf: *const ast.ControlFlow) anyerror!void {
+        switch (cf.kind) {
+            .if_stmt => {
+                try self.compileExpression(cf.condition.?);
+                const else_pos = try self.emitJumpPlaceholder(.jump_if_false);
+                for (cf.body) |s| try self.compileStatement(&s);
+                const end_pos = try self.emitJumpPlaceholder(.jump);
+                try self.patchJump(else_pos);
+                var end_positions = std.ArrayList(usize).init(self.allocator);
+                defer end_positions.deinit();
+                for (cf.elifs) |e| {
+                    try self.compileExpression(e.condition);
+                    const elif_false = try self.emitJumpPlaceholder(.jump_if_false);
+                    for (e.body) |s| try self.compileStatement(&s);
+                    const elif_end = try self.emitJumpPlaceholder(.jump);
+                    try self.patchJump(elif_false);
+                    try end_positions.append(elif_end);
+                }
+                for (cf.else_body) |s| try self.compileStatement(&s);
+                try self.patchJump(end_pos);
+                for (end_positions.items) |p| try self.patchJump(p);
+            },
+            .for_loop => {
+                if (cf.init) |init_assign| {
+                    try self.compileExpression(init_assign.value_expr);
+                    const name_duped = try self.allocator.dupe(u8, cf.loop_var);
+                    const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped });
+                    try self.emit(.{ .store_var = @intCast(idx) });
+                }
+                const cond_pos = self.current_function.instructions.items.len;
+                if (cf.condition) |cond| {
+                    try self.compileExpression(cond);
+                    const exit_pos = try self.emitJumpPlaceholder(.jump_if_false);
+                    for (cf.body) |s| try self.compileStatement(&s);
+                    if (cf.step) |step| {
+                        try self.compileExpression(step);
+                        const name_duped = try self.allocator.dupe(u8, cf.loop_var);
+                        const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped });
+                        try self.emit(.{ .store_var = @intCast(idx) });
+                    } else {
+                        const one_idx = self.chunk.constants.items.len;
+                        try self.chunk.constants.append(.{ .int = 1 });
+                        try self.emit(.{ .load_const = @intCast(one_idx) });
+                        const name_duped = try self.allocator.dupe(u8, cf.loop_var);
+                        const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped });
+                        try self.emit(.{ .store_var = @intCast(idx) });
+                    }
+                    const jump_back = @intCast(@as(isize, @intCast(cond_pos)) - @as(isize, @intCast(self.current_function.instructions.items.len + 1)));
+                    try self.emit(.{ .jump = jump_back });
+                    try self.patchJump(exit_pos);
+                }
+            },
+            .while_loop => {
+                const cond_pos = self.current_function.instructions.items.len;
+                if (cf.condition) |cond| {
+                    try self.compileExpression(cond);
+                    const exit_pos = try self.emitJumpPlaceholder(.jump_if_false);
+                    for (cf.body) |s| try self.compileStatement(&s);
+                    const jump_back = @intCast(@as(isize, @intCast(cond_pos)) - @as(isize, @intCast(self.current_function.instructions.items.len + 1)));
+                    try self.emit(.{ .jump = jump_back });
+                    try self.patchJump(exit_pos);
+                }
+            },
+            else => {},
+        }
+    }
+
+    fn compileMemoryOp(self: *Compiler, m: *const ast.MemoryOp) anyerror!void {
+        switch (m.kind) {
+            .address => { try self.compileExpression(m.expr); try self.emit(.{ .memory = {} }); },
+            .dete => { try self.compileExpression(m.expr); _ = m; },
+        }
+    }
+
+    fn compileEncodingOp(self: *Compiler, eo: *const ast.EncodingOp) anyerror!void {
+        try self.compileExpression(eo.expr);
+        try self.emit(.{ .encode = {} });
+        _ = eo.encoding_type;
+    }
+
+    fn compileLenOp(self: *Compiler, lo: *const ast.LenOp) anyerror!void {
+        try self.compileExpression(lo.expr);
+        try self.emit(.{ .len = {} });
+    }
+
+    fn compileClassInstantiation(self: *Compiler, ci: *const ast.ClassInstantiation) anyerror!void {
+        _ = ci;
+        // Class instantiation is runtime AST-walker state; bytecode cannot represent it yet.
+    }
+
+    fn emitJumpPlaceholder(self: *Compiler, op: bytecode.Op) anyerror!usize {
+        const pos = self.current_function.instructions.items.len;
+        switch (op) {
+            .jump_if_false => try self.emit(.{ .jump_if_false = 0 }),
+            else => try self.emit(.{ .jump = 0 }),
+        }
+        return pos;
+    }
+
+    fn patchJump(self: *Compiler, pos: usize) void {
+        const target = self.current_function.instructions.items.len;
+        const offset = @intCast(@as(isize, @intCast(target)) - @as(isize, @intCast(pos + 1)));
+        const inst = self.current_function.instructions.items[pos];
+        switch (inst) {
+            .jump => |_| self.current_function.instructions.items[pos] = .{ .jump = offset },
+            .jump_if_false => |_| self.current_function.instructions.items[pos] = .{ .jump_if_false = offset },
             else => {},
         }
     }
@@ -91,7 +211,7 @@ pub const Compiler = struct {
                 }
                 const callee_duped = try self.allocator.dupe(u8, c.callee);
                 const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = callee_duped });
-                try self.emit(.{ .call = @intCast(idx + c.args.len) });
+                try self.emit(.{ .call = @intCast((idx << 16) | c.args.len) });
             },
             .system_tag => |st| {
                 if (std.mem.eql(u8, st.tag, "printf")) {
@@ -165,7 +285,7 @@ pub const Compiler = struct {
             .bool_true => value_mod.Value{ .booling = true },
             .bool_false => value_mod.Value{ .booling = false },
             .tuple => value_mod.Value{ .null = {} },
-            .dict => value_mod.Value{ .null = {} },
+            .dict => return error.UnsupportedBytecode,
         };
         const idx = self.chunk.constants.items.len; try self.chunk.constants.append(val);
         try self.emit(.{ .load_const = @intCast(idx) });
