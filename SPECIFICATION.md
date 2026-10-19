@@ -96,7 +96,7 @@ The `@` symbol is a **region/type role sigil**. It is not a variable name; it de
 - `@private` — example in OOP: marks a class member as private/restricted access.
 - More `@` roles may be defined for other regions without changing the base meaning: annotate role, not storage.
 
-`@also` is only a visual example for sequential loops, not a rule that `@` means "loop". A `while` loop is resolved by its own control-flow rule; numbered statements such as `[0]`, `[1]` may be used when explicit execution order is required.
+`@also` is only a visual example for sequential loops, not a rule that `@` means "loop". A `while` loop is resolved by its own control-flow rule; numbered statements such as `{0}`, `{1}` may be used when explicit execution order is required.
 
 Example:
 
