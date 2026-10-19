@@ -87,6 +87,26 @@ $$\mathcal{B}_E \cap \mathcal{D}_P = \emptyset$$
 | `"\n"` | Newline Escape | Newline in double-quoted string | `"Hello\n"` |
 | `| |` | Comment Separator | Ignored at compile time | `| comment |` |
 
+### 2.1 Region Type Annotations (`@`)
+
+The `@` symbol declares the **overall data/execution type of a region**. It does not name a variable; it annotates how a block must be interpreted.
+
+- `@also` in `**Loop**` declares a **sequential region type**.
+- Without `@also`, a `while` loop cannot resolve execution order unless statements are explicitly numbered with `[number]`.
+
+Example:
+
+```ko
+@loop(hp > 0) {
+**Loop** <for.f.whle>@also [
+    <printf>^("Fighting...\n")
+    <now>(hp - 10)>hp
+]
+}
+```
+
+In the example above, `@also` tells the runtime that the loop body is a sequential region. If `@also` is omitted, the compiler requires numbered statements such as `[0]`, `[1]` to determine execution order.
+
 ### 3. EBNF Syntax
 
 ```
