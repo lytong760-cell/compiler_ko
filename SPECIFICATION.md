@@ -87,12 +87,16 @@ $$\mathcal{B}_E \cap \mathcal{D}_P = \emptyset$$
 | `"\n"` | Newline Escape | Newline in double-quoted string | `"Hello\n"` |
 | `| |` | Comment Separator | Ignored at compile time | `| comment |` |
 
+
 ### 2.1 Region Type Annotations (`@`)
 
-The `@` symbol declares the **overall data/execution type of a region**. It does not name a variable; it annotates how a block must be interpreted.
+The `@` symbol is a **region/type role sigil**. It is not a variable name; it declares what kind of region or member a block belongs to. `@` has multiple roles depending on context:
 
-- `@also` in `**Loop**` declares a **sequential region type**.
-- Without `@also`, a `while` loop cannot resolve execution order unless statements are explicitly numbered with `[number]`.
+- `@also` — example: marks a `**Loop**` region as sequential.
+- `@private` — example in OOP: marks a class member as private/restricted access.
+- More `@` roles may be defined for other regions without changing the base meaning: annotate role, not storage.
+
+`@also` is only a visual example for sequential loops, not a rule that `@` means "loop". A `while` loop is resolved by its own control-flow rule; numbered statements such as `[0]`, `[1]` may be used when explicit execution order is required.
 
 Example:
 
@@ -105,13 +109,18 @@ Example:
 }
 ```
 
-In the example above, `@also` tells the runtime that the loop body is a sequential region. If `@also` is omitted, the compiler requires numbered statements such as `[0]`, `[1]` to determine execution order.
+OOP example:
 
+```ko
+class Player [ 
+    @private [
+        int(100)~hp
+    ]
+]
+```
 ### 3. EBNF Syntax
 
 ```
-Program            ::= ModuleImport* Statement* MainBlock ExceptionHandler* ;
-MainBlock          ::= "[" Statement* ExceptionHandler* "]" ;
 Statement          ::= VarDecl | Assignment | FuncDecl | ClassDecl | ControlFlow | MemoryOp | EncodingOp | LenOp | ExceptionHandler ;
 
 Sigil              ::= "~" ;
