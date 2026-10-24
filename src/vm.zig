@@ -187,7 +187,7 @@ self.executeStatement(stmt) catch |err| {
                 var val = try self.evaluateExpression(v.value_expr);
                 const final_val = if (std.mem.eql(u8, v.type_name, "bytes")) blk: {
                     defer val.deinit(self.allocator);
-                    var buf: []u8;
+                    var buf: []u8 = undefined;
                     switch (val) {
                         .int => |i| {
                             if (i < 0) {
@@ -201,7 +201,7 @@ self.executeStatement(stmt) catch |err| {
                             buf = try self.allocator.dupe(u8, s);
                         },
                         else => |other| {
-                            const s = try other.toString(self.allocator);
+                            const s = try std.fmt.allocPrint(self.allocator, "{}", .{other});
                             defer self.allocator.free(s);
                             buf = try self.allocator.dupe(u8, s);
                         },
@@ -956,11 +956,12 @@ self.executeStatement(stmt) catch |err| {
         switch (callee_val) {
             .function => |f| func = f,
             .class_instance => |ci| {
-                if (ci.methods.get(call.callee)) |f| func = f,
-                else => {
+                if (ci.methods.get(call.callee)) |f| {
+                    func = f;
+                } else {
                     self.raiseError("MemberError", "Method not found");
                     return error.RuntimeError;
-                },
+                }
             },
             else => {
                 var class_def: ?*value_mod.ClassDef = null;

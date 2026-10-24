@@ -97,7 +97,7 @@ b.installArtifact(mod_check_exe);
 
 const test_step = b.step("test", "Run all tests");
     const files = [_][]const u8{
-        // "testing/test_harness.zig",
+        "testing/test_harness.zig",
         "testing/test_3600.zig",
         "testing/test_lexer_extended.zig",
         "testing/test_parser_extended.zig",

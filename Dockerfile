@@ -19,4 +19,5 @@ FROM alpine:latest
 WORKDIR /app
 COPY --from=builder /app/zig-out/bin/ko ./ko
 EXPOSE 8080
-CMD ["./ko"]
+ENTRYPOINT ["./ko"]
+CMD ["--help"]

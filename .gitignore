@@ -1,6 +1,6 @@
 .zig-cache/
 .zig-global-cache/
-zig-out/
+zig-out/n       
 *.o
 zig/
 zig/zig
@@ -8,3 +8,5 @@ zig/zig
  .zig-cache/
 .kilo/worktrees/
 .my_pass/
+__pycache__/
+*.pyc

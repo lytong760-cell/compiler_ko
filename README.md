@@ -37,32 +37,48 @@ Source Code (.ko) -> Lexer (Zig) -> Parser (Zig) -> AST -> VM (Zig) -> Output
 - `src/lexer.zig` - Tokenizer
 - `src/parser.zig` - Syntax analyzer
 - `src/ast.zig` - Abstract Syntax Tree definitions
-- `src/vm.zig` - Runtime execution engine
+- `src/vm.zig` - Runtime execution engine (AST-walking interpreter + bytecode VM)
+- `src/bytecode.zig` - Bytecode instruction set and chunk layout
+- `src/compiler.zig` - AST to bytecode compiler
 - `src/value.zig` - Value types and scoping
+- `src/builtins.zig` - Built-in system tags
 - `src/installer.zig` - Package manager and Firestore API client
-- `src/Loop.cpp` - High-performance C++ loop optimization engine
-- `src/Import.java` - Java module import subsystem
+- `src/Loop.cpp` - High-performance C++ loop optimization engine (`libko_loop.so`)
+- `src/Import.java` - Java module import subsystem (reference implementation)
 - `src/api_server.py` - Local Module Store REST API server
+- `src/module/` - Built-in shared library modules (`Os`, `Random`, `Website`)
 
 ## Building
+
+Requires Zig `0.16.0` (pinned in `build.zig.zon`).
 
 ```bash
 zig build
 ```
 
+The build produces `zig-out/bin/ko` plus the shared libraries
+`libko_os.so`, `libko_random.so`, `libko_website.so`, and `libko_loop.so`
+under `zig-out/lib/`.
+
 ## Running
 
 ```bash
-./zig-out/bin/ko <file.ko>
+./zig-out/bin/ko <file.ko>                # Run a .ko source file
+./zig-out/bin/ko run <file.ko>            # Run a .ko source file
+./zig-out/bin/ko run '<code>'             # Run inline .ko code
 ```
 
 ## CLI Commands
 
 ```bash
 ./zig-out/bin/ko <file.ko>                # Run a .ko program
+./zig-out/bin/ko run <file|code>          # Run a file path or inline code
 ./zig-out/bin/ko -install <library>       # Install a library from the Module Store
 ./zig-out/bin/ko -list                    # List all available libraries
 ./zig-out/bin/ko -search <query>          # Search libraries by name
+./zig-out/bin/ko --version                # Print compiler version (ko 0.1.0)
+./zig-out/bin/ko --help                   # Print help
+./zig-out/bin/ko --generate-completion <bash|zsh|fish>  # Shell completion script
 ```
 
 ## Module Store API
@@ -201,6 +217,7 @@ All libraries must be packaged as a single `.zip` archive inside the GitHub repo
 | `bytes` | Byte buffer | `bytes(16)~buf` |
 | `tuple` / `list` | Composite data | `(1, 2)~t` |
 | `dict` | Key-value mappings | `({'key': 'value'})~d` |
+| `null` / `none` | Placeholder / immutable empty | `()~var`, `none~a` |
 
 ### Variables
 
@@ -238,11 +255,11 @@ bytes(32)~buffer
 Counting loops (optimized by Loop.cpp):
 
 ```ko
-Loop <for>(~i=1&=5) [
+**Loop** <for>(~i=1&=5) [
     <printf>^("Turn {i}\n")
 ]
 
-Loop <for>(~i=1(2)&=5) [
+**Loop** <for>(~i=1(2)&=5) [
     <printf>^("Odd: {i}\n")
 ]
 ```
@@ -250,11 +267,12 @@ Loop <for>(~i=1(2)&=5) [
 Conditional loops:
 
 ```ko
-@loop(hp > 0)
-Loop <for.f.whle>@also [
+@loop(hp > 0) {
+**Loop** <for.f.whle>@also [
     <printf>^("Fighting...\n")
     <now>(hp - 10)>hp
 ]
+}
 ```
 
 ### Output
@@ -356,16 +374,36 @@ process_data(int~a, int~b) [
 <now>(hp - damage)>hp
 ```
 
+### Generics (Type Parameters) (planned)
+
+```ko
+@girc(T)
+identity(T~value) [
+    <return>(value)
+]
+```
+
+Usage:
+
+```ko
+int(~identity(100))~number
+string(~identity("Phong"))~name
+```
+
+`T` is a type parameter. The compiler infers `T` from the argument or from a
+valid type context at the call site; the returned value must have a type
+compatible with the inferred type.
+
 ### Module Import
 
 ```ko
-Import($Random)@also%~random!`global`:random
+**Import**($Random)@also%~random!`global`:random
 int(<$random>(1, 100))~rand_val
 
-Import($Os)@also%~os!`global`:os
+**Import**($Os)@also%~os!`global`:os
 <$os>("data.txt")~file_var
 
-Import($Website)@also%~web!`global`:web
+**Import**($Website)@also%~web!`global`:web
 <$web>("https://api.example.com")
 ```
 
@@ -379,6 +417,12 @@ See the `examples/` directory for sample .ko programs.
 zig build test
 ```
 
+Run with stdin closed when invoking manually:
+
+```bash
+zig build test < /dev/null
+```
+
 ## Benchmark
 
 ```bash
@@ -390,27 +434,43 @@ bash benchmark.sh
 ```
 compiler_ko/
 ├── src/
-│   ├── main.zig              # Entry point
+│   ├── main.zig              # Entry point and CLI dispatcher
 │   ├── lexer.zig             # Tokenizer
 │   ├── parser.zig            # Parser
 │   ├── ast.zig               # AST definitions
-│   ├── vm.zig                # Runtime VM
+│   ├── vm.zig                # Runtime VM (AST-walking + bytecode)
+│   ├── bytecode.zig          # Bytecode instruction set and chunks
+│   ├── compiler.zig          # AST to bytecode compiler
 │   ├── value.zig             # Value types, Scope, Function, Class
-│   ├── installer.zig         # Package manager + Firestore API client
 │   ├── builtins.zig          # Built-in system tags
+│   ├── installer.zig         # Package manager + Firestore API client
+│   ├── testing_imports.zig   # Test module imports
 │   ├── Loop.cpp              # C++ loop optimization engine
 │   ├── Import.java           # Java module import subsystem
-│   └── api_server.py         # Local Module Store API server
+│   ├── api_server.py         # Local Module Store API server
+│   └── module/               # Built-in shared library modules
+│       ├── Os/
+│       ├── Random/
+│       └── Website/
 ├── testing/
 │   ├── test_3600.zig         # End-to-end lex/parse/VM tests
 │   ├── test_lexer_extended.zig
-│   └── test_parser_extended.zig
+│   ├── test_parser_extended.zig
+│   ├── test_modules.zig      # Module/shared-library tests
+│   ├── test_harness.zig
+│   ├── mod_check.c           # ABI checker for shared modules
+│   └── src/
 ├── examples/
 │   ├── simple.ko
 │   ├── test.ko
 │   └── medium.ko
+├── docs/
 ├── SPECIFICATION.md
+├── CONTEXT.md
+├── ROADMAP.md
 ├── build.zig
+├── build.zig.zon
+├── Dockerfile
 └── README.md
 ```
 # This is a new version rewritten in zig 

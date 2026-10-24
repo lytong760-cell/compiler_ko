@@ -435,7 +435,7 @@ pub const Parser = struct {
             const body = try self.parseBlock();
 
             const true_lit = try self.allocator.create(ast.Literal);
-            true_lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = [], .allocator = self.allocator };
+            true_lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
             const true_expr = try self.allocator.create(ast.Expr);
             true_expr.* = .{ .literal = true_lit.* };
 
@@ -1260,7 +1260,7 @@ pub const Parser = struct {
         if (tok == .int_lit) {
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .int, .int_value = tok.int_lit, .freal_value = 0, .raw = "", .dict_entries = [], .allocator = self.allocator };
+            lit.* = ast.Literal{ .kind = .int, .int_value = tok.int_lit, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;
@@ -1269,7 +1269,7 @@ pub const Parser = struct {
         if (tok == .freal_lit) {
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .freal, .int_value = 0, .freal_value = tok.freal_lit, .raw = "", .dict_entries = [], .allocator = self.allocator };
+            lit.* = ast.Literal{ .kind = .freal, .int_value = 0, .freal_value = tok.freal_lit, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;
@@ -1279,7 +1279,7 @@ pub const Parser = struct {
             const str = tok.string_lit;
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = str, .dict_entries = [], .allocator = self.allocator };
+            lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = str, .dict_entries = &.{}, .allocator = self.allocator };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;
@@ -1288,7 +1288,7 @@ pub const Parser = struct {
         if (tok == .bool_true) {
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = [], .allocator = self.allocator };
+            lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;
@@ -1297,7 +1297,7 @@ pub const Parser = struct {
         if (tok == .bool_false) {
             _ = self.advance();
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .bool_false, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = [], .allocator = self.allocator };
+            lit.* = ast.Literal{ .kind = .bool_false, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;
@@ -1430,7 +1430,7 @@ pub const Parser = struct {
 
         if (tok == .l_brace) {
             _ = self.advance();
-            var entries = std.array_list.Managed(DictEntry).init(self.allocator);
+            var entries = std.array_list.Managed(ast.DictEntry).init(self.allocator);
             var consumed = false;
             errdefer if (!consumed) entries.deinit();
             while (!(self.current() == .r_brace) and !self.isAtEnd()) {
@@ -1439,14 +1439,17 @@ pub const Parser = struct {
                 _ = self.advance();
                 const value_expr = try self.parseExpression();
                 const key = switch (key_expr.*) {
-                    .string => |lit| lit.raw,
+                    .literal => |lit| switch (lit.kind) {
+                        .string => lit.raw,
+                        else => return error.ExpectedDictKey,
+                    },
                     .identifier => |name| name,
                     else => return error.ExpectedDictKey,
                 };
                 key_expr.deinit();
                 self.allocator.destroy(key_expr);
-                const entry = try self.allocator.create(DictEntry);
-                entry.* = DictEntry{
+                const entry = try self.allocator.create(ast.DictEntry);
+                entry.* = ast.DictEntry{
                     .key = key,
                     .value = value_expr,
                     .allocator = self.allocator,
@@ -1492,7 +1495,7 @@ pub const Parser = struct {
             _ = self.advance();
             try self.expectGT();
             const enc_lit = try self.allocator.create(ast.Literal);
-            enc_lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = enc_name, .dict_entries = [], .allocator = self.allocator };
+            enc_lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = enc_name, .dict_entries = &.{}, .allocator = self.allocator };
             try args.append(ast.Expr{ .literal = enc_lit.* });
         } else {
             try self.expectGT();

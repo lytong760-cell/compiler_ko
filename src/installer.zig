@@ -36,6 +36,11 @@ pub const Installer = struct {
     }
 
     pub fn installLibrary(self: *Installer, lib_name: []const u8) !void {
+        for (lib_name) |c| {
+            if (!(std.ascii.isAlphanumeric(c) or c == '_' or c == '-')) {
+                return error.InvalidLibraryName;
+            }
+        }
         std.debug.print("Installing library: {s}...\n", .{lib_name});
 
         const github_url = try self.queryLibraryMetadata(lib_name);
@@ -203,6 +208,7 @@ pub const Installer = struct {
         var iter = dir.iterate();
         while (try iter.next(self.io)) |entry| {
             if (entry.kind == .file and std.mem.endsWith(u8, entry.name, ".zip")) {
+                try self.validateZipEntries(entry.name);
                 const extract_dir = try std.fmt.allocPrint(self.allocator, "{s}/extracted", .{self.temp_dir});
                 defer self.allocator.free(extract_dir);
                 try std.Io.Dir.cwd().createDirPath(self.io, extract_dir);
@@ -273,6 +279,11 @@ pub const Installer = struct {
     }
 
     fn registerScope(self: *Installer, lib_name: []const u8) !void {
+        for (lib_name) |c| {
+            if (!(std.ascii.isAlphanumeric(c) or c == '_' or c == '-')) {
+                return error.InvalidLibraryName;
+            }
+        }
         std.debug.print("Registering module in store: {s}\n", .{lib_name});
         const module_dir = try std.fmt.allocPrint(self.allocator, "src/module/{s}", .{lib_name});
         defer self.allocator.free(module_dir);
@@ -288,6 +299,30 @@ pub const Installer = struct {
         
         try std.Io.Dir.cwd().writeFile(self.io, .{ .sub_path = manifest_path, .data = manifest_content });
         std.debug.print("Module manifest written to: {s}\n", .{manifest_path});
+    }
+
+    fn validateZipEntries(self: *Installer, zip_name: []const u8) !void {
+        const result = try std.process.run(self.allocator, self.io, .{
+            .argv = &.{ "unzip", "-Z1", zip_name },
+        });
+        defer self.allocator.free(result.stdout);
+        defer self.allocator.free(result.stderr);
+        switch (result.term) {
+            .exited => |code| {
+                if (code != 0) return error.CommandFailed;
+            },
+            else => return error.CommandFailed,
+        }
+        var lines = std.mem.splitScalar(u8, result.stdout, '\n');
+        while (lines.next()) |line| {
+            if (line.len == 0) continue;
+            if (std.mem.startsWith(u8, line, "/")) return error.ZipSlip;
+            if (std.mem.indexOfScalar(u8, line, '\\') != null) return error.ZipSlip;
+            var parts = std.mem.splitScalar(u8, line, '/');
+            while (parts.next()) |part| {
+                if (std.mem.eql(u8, part, "..")) return error.ZipSlip;
+            }
+        }
     }
 
     fn runCommand(self: *Installer, args: []const []const u8) !void {

@@ -238,7 +238,7 @@ pub const Expr = union(enum) {
 
 pub const DictEntry = struct {
     key: []const u8,
-    value: *ast.Expr,
+    value: *Expr,
     allocator: std.mem.Allocator,
 
     pub fn deinit(self: *DictEntry) void {

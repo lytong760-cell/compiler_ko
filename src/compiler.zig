@@ -10,35 +10,35 @@ pub const Compiler = struct {
     current_function: *bytecode.Function,
 
     pub fn init(allocator: std.mem.Allocator, chunk: *bytecode.Chunk, name: []const u8, arity: u32) !Compiler {
-        var functions = std.array_list.Managed(bytecode.Function).init(allocator);
-        errdefer functions.deinit();
-
         var instructions = std.array_list.Managed(bytecode.Instruction).init(allocator);
         errdefer instructions.deinit();
 
         const duped = try allocator.dupe(u8, name);
-        const func = try allocator.create(bytecode.Function);
-        func.* = .{
+        errdefer allocator.free(duped);
+
+        try chunk.functions.append(.{
             .name = duped,
             .instructions = instructions,
             .arity = arity,
-        };
+        });
 
+        const current = &chunk.functions.items[chunk.functions.items.len - 1];
         return .{
             .allocator = allocator,
             .chunk = chunk,
-            .current_function = func,
+            .current_function = current,
         };
     }
 
     pub fn deinit(self: *Compiler) void {
-        // Note: current_function is owned by chunk after append
-        self.allocator.destroy(self.current_function);
+        _ = self;
+        // Ownership of current_function (and its name/instructions) was transferred
+        // to chunk during init(); chunk.deinit() releases them. Nothing to do here.
     }
 
     pub fn compileProgram(self: *Compiler, program: []const ast.Statement) !void {
-        for (program) |stmt| {
-            try self.compileStatement(&stmt);
+        for (0..program.len) |i| {
+            try self.compileStatement(&program[i]);
         }
         try self.emit(.{ .ret = {} });
     }
@@ -52,8 +52,8 @@ pub const Compiler = struct {
             .catch_stmt => |c| try self.compileCatch(c),
             .func_decl => |f| try self.compileFuncDecl(f),
             .block => |b| {
-                for (b.body) |s| {
-                    try self.compileStatement(&s);
+                for (0..b.body.len) |i| {
+                    try self.compileStatement(&b.body[i]);
                 }
             },
             .control_flow => |cf| try self.compileControlFlow(cf),
@@ -62,10 +62,8 @@ pub const Compiler = struct {
             .len_op => |lo| try self.compileLenOp(lo),
             .class_instantiation => |ci| try self.compileClassInstantiation(ci),
             .priority_stmt => |ps| try self.compileStatement(ps.stmt),
-            .class_decl => |*c| {
-                // Class definitions are runtime AST-walker state; bytecode cannot
-                // represent them yet. Skip in bytecode pipeline.
-                _ = c;
+            .class_decl => {
+                return error.UnsupportedBytecode;
             },
         }
     }
@@ -75,22 +73,22 @@ pub const Compiler = struct {
             .if_stmt => {
                 try self.compileExpression(cf.condition.?);
                 const else_pos = try self.emitJumpPlaceholder(.jump_if_false);
-                for (cf.body) |s| try self.compileStatement(&s);
+                for (0..cf.body.len) |i| try self.compileStatement(&cf.body[i]);
                 const end_pos = try self.emitJumpPlaceholder(.jump);
-                try self.patchJump(else_pos);
-                var end_positions = std.ArrayList(usize).init(self.allocator);
+                self.patchJump(else_pos);
+                var end_positions = std.array_list.Managed(usize).init(self.allocator);
                 defer end_positions.deinit();
                 for (cf.elifs) |e| {
                     try self.compileExpression(e.condition);
                     const elif_false = try self.emitJumpPlaceholder(.jump_if_false);
-                    for (e.body) |s| try self.compileStatement(&s);
+                    for (0..e.body.len) |i| try self.compileStatement(&e.body[i]);
                     const elif_end = try self.emitJumpPlaceholder(.jump);
-                    try self.patchJump(elif_false);
+                    self.patchJump(elif_false);
                     try end_positions.append(elif_end);
                 }
-                for (cf.else_body) |s| try self.compileStatement(&s);
-                try self.patchJump(end_pos);
-                for (end_positions.items) |p| try self.patchJump(p);
+                for (0..cf.else_body.len) |i| try self.compileStatement(&cf.else_body[i]);
+                self.patchJump(end_pos);
+                for (end_positions.items) |p| self.patchJump(p);
             },
             .for_loop => {
                 if (cf.init) |init_assign| {
@@ -103,7 +101,7 @@ pub const Compiler = struct {
                 if (cf.condition) |cond| {
                     try self.compileExpression(cond);
                     const exit_pos = try self.emitJumpPlaceholder(.jump_if_false);
-                    for (cf.body) |s| try self.compileStatement(&s);
+                    for (0..cf.body.len) |i| try self.compileStatement(&cf.body[i]);
                     if (cf.step) |step| {
                         try self.compileExpression(step);
                         const name_duped = try self.allocator.dupe(u8, cf.loop_var);
@@ -117,9 +115,9 @@ pub const Compiler = struct {
                         const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped });
                         try self.emit(.{ .store_var = @intCast(idx) });
                     }
-                    const jump_back = @intCast(@as(isize, @intCast(cond_pos)) - @as(isize, @intCast(self.current_function.instructions.items.len + 1)));
+                    const jump_back = @as(i32, @intCast(@as(isize, @intCast(cond_pos)) - @as(isize, @intCast(self.current_function.instructions.items.len + 1))));
                     try self.emit(.{ .jump = jump_back });
-                    try self.patchJump(exit_pos);
+                    self.patchJump(exit_pos);
                 }
             },
             .while_loop => {
@@ -127,20 +125,20 @@ pub const Compiler = struct {
                 if (cf.condition) |cond| {
                     try self.compileExpression(cond);
                     const exit_pos = try self.emitJumpPlaceholder(.jump_if_false);
-                    for (cf.body) |s| try self.compileStatement(&s);
-                    const jump_back = @intCast(@as(isize, @intCast(cond_pos)) - @as(isize, @intCast(self.current_function.instructions.items.len + 1)));
+                    for (0..cf.body.len) |i| try self.compileStatement(&cf.body[i]);
+                    const jump_back = @as(i32, @intCast(@as(isize, @intCast(cond_pos)) - @as(isize, @intCast(self.current_function.instructions.items.len + 1))));
                     try self.emit(.{ .jump = jump_back });
-                    try self.patchJump(exit_pos);
+                    self.patchJump(exit_pos);
                 }
             },
-            else => {},
+            else => return error.UnsupportedBytecode,
         }
     }
 
     fn compileMemoryOp(self: *Compiler, m: *const ast.MemoryOp) anyerror!void {
         switch (m.kind) {
             .address => { try self.compileExpression(m.expr); try self.emit(.{ .memory = {} }); },
-            .dete => { try self.compileExpression(m.expr); _ = m; },
+            .dete => { try self.compileExpression(m.expr); },
         }
     }
 
@@ -155,9 +153,8 @@ pub const Compiler = struct {
         try self.emit(.{ .len = {} });
     }
 
-    fn compileClassInstantiation(self: *Compiler, ci: *const ast.ClassInstantiation) anyerror!void {
-        _ = ci;
-        // Class instantiation is runtime AST-walker state; bytecode cannot represent it yet.
+    fn compileClassInstantiation(_: *Compiler, _: ast.ClassInstantiation) anyerror!void {
+        return error.UnsupportedBytecode;
     }
 
     fn emitJumpPlaceholder(self: *Compiler, op: bytecode.Op) anyerror!usize {
@@ -171,11 +168,11 @@ pub const Compiler = struct {
 
     fn patchJump(self: *Compiler, pos: usize) void {
         const target = self.current_function.instructions.items.len;
-        const offset = @intCast(@as(isize, @intCast(target)) - @as(isize, @intCast(pos + 1)));
+        const offset = @as(i32, @intCast(@as(isize, @intCast(target)) - @as(isize, @intCast(pos + 1))));
         const inst = self.current_function.instructions.items[pos];
         switch (inst) {
-            .jump => |_| self.current_function.instructions.items[pos] = .{ .jump = offset },
-            .jump_if_false => |_| self.current_function.instructions.items[pos] = .{ .jump_if_false = offset },
+            .jump => self.current_function.instructions.items[pos] = .{ .jump = offset },
+            .jump_if_false => self.current_function.instructions.items[pos] = .{ .jump_if_false = offset },
             else => {},
         }
     }
@@ -233,7 +230,7 @@ pub const Compiler = struct {
                     try self.emit(.{ .encode = {} });
                 }
             },
-            else => {},
+            else => return error.UnsupportedBytecode,
         }
     }
 
@@ -261,8 +258,8 @@ pub const Compiler = struct {
     fn compileCatch(self: *Compiler, c: *const ast.CatchStmt) anyerror!void {
         const catch_start = self.current_function.instructions.items.len;
         try self.emit(.{ .catch_start = 0 });
-        for (c.body) |stmt| {
-            try self.compileStatement(&stmt);
+        for (0..c.body.len) |i| {
+            try self.compileStatement(&c.body[i]);
         }
         try self.emit(.{ .catch_end = {} });
         self.current_function.instructions.items[catch_start].catch_start = @intCast(self.current_function.instructions.items.len);

@@ -62,3 +62,33 @@ Còn mở: #6, #8, #9, #10, #11, #12, #13, #15, #18, #21, #24
 3. **Agent song song phá việc nhau.** Dùng `git worktree add` cho từng agent, verify rồi tích hợp.
 4. **Báo cáo sub-agent không đáng tin nếu không tự chạy lệnh.**
 5. **Không có Zig toolchain trong sandbox** → tất cả thay đổi Zig cần verify lại khi có toolchain.
+
+---
+
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** SUCCESS
+- **Active Node/Context:** `.kilo/agents/*.md` (68 agent definitions converted to Kilo format)
+- **Volatile Context Diagnostics:** `kilo agent list` now reports all 68 custom agents as loaded (mode: all); previously 0 loaded due to missing `mode` and invalid `model`/`color` fields. Evidence: `Loaded agents count = 73 total (68 custom + 5? built-in? Actually total includes built-ins)`.
+- **Next Execution Phase Vectors:**
+  1. Reload VSCode window if agents not visible in Kilo picker.
+  2. Optionally tune `mode` per agent (primary/subagent/all) and model IDs.
+
+---
+
+### LAST KNOWN EXECUTION CHECKPOINT (code review)
+
+- **Task State:** SUCCESS
+- **Active Node/Context:** `/workspaces/compiler_ko`, branch `emcunieu-cute-patch-1`, `REVIEW.md` đã cập nhật (untracked), working tree modified nhưng **chưa commit**
+- **Volatile Context Diagnostics:** Review chi tiết xong. Không còn CRITICAL. 1 HIGH (HIGH-4 bytecode chưa parity class/function/dict). 8 MEDIUM (bind 0.0.0.0, ko_get_cwd static buffer, thiếu CORS/rate limit, installer không timeout, detectLanguage không đệ quy, v.v.). 4 LOW. Verdict: WARNING. Zig toolchain chưa có trong sandbox → không verify `zig build`, `zig build test`, `docker build`.
+- **Next Execution Phase Vectors:**
+  1. Commit các fix hiện tại (working tree chưa commit).
+  2. Khi có Zig toolchain: chạy `zig build`, `zig build test < /dev/null`, `docker build`, smoke test `examples/simple.ko`.
+  3. Đóng HIGH-4: implement bytecode cho class/function/dict, hoặc document fallback rõ ràng + test assert output.
+  4. Sửa MEDIUM-1 (bind 127.0.0.1), MEDIUM-2 (ko_get_cwd thread-safe), MEDIUM-3 (CORS/rate limit), MEDIUM-7 (timeout installer.runCommand), MEDIUM-8 (detectLanguage đệ quy).
+  5. Verify zsh/fish completion.
+
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** SUCCESS
+- **Active Node/Context:** Adversarial review of REVIEW.md findings completed.
+- **Volatile Context Diagnostics:** Verified via zsh -n, fish --no-execute, valgrind clean, Zig 0.16 hash_map source inspection.
+- **Next Execution Phase Vectors:** Apply dict overwrite fix (fetchPut) and PriorityStmt wrapper leak fix if desired.

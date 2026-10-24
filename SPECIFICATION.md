@@ -629,6 +629,7 @@ Hero !class [
 - [ ] Dict literals and `bytes(<expr>)`
 - [ ] Method call arguments and method access without call
 - [ ] Second `<input>` in one program
+- [ ] Generics / type parameters (`@girc(T)`)
 - [ ] Shell completion verification for zsh/fish
 
 ### Known Sync Notes
@@ -704,3 +705,53 @@ Priority rules:
 - Statements without an explicit priority default to priority `0`.
 - When multiple statements share the same priority, their relative order follows source order.
 - Priority affects statement scheduling within the same block scope.
+
+## XV. GENERICS (TYPE PARAMETERS) (FUTURE EXTENSION — NOT IMPLEMENTED)
+
+> Status: not implemented in the compiler source. Syntax is reserved for future work.
+
+### 1. Declaration
+
+A generic function is declared by attaching a type-parameter clause to a function
+definition. `@girc(T)` introduces `T` as a type parameter for the following
+function:
+
+```ko
+@girc(T)
+identity(T~value) [
+    <return>(value)
+]
+```
+
+`T` is a type-level parameter, not a runtime value. It ranges over valid `.ko`
+types (primitive or composite) as permitted by the call context.
+
+### 2. Usage
+
+```ko
+int(~identity(100))~number
+string(~identity("Phong"))~name
+```
+
+The concrete type is supplied by the surrounding type context or inferred from
+the argument. The compiler must derive `T` from either:
+
+1. An explicit expected type at the call site (for example `int(...)` or
+   `string(...)`), or
+2. The static type of the argument passed to the generic parameter.
+
+### 3. Type Rules
+
+- The return value of a generic function must have a type compatible with the
+  inferred type parameter `T`.
+- If `T` cannot be inferred unambiguously from the call site and its
+  arguments, compilation fails with a type error.
+- A generic function may be instantiated (monomorphized) once per distinct
+  concrete type; the implementation may defer this to compile time or runtime,
+  but observable typing must follow the rules above.
+- Type compatibility follows the standard `.ko` assignment rules: a value of
+  type `T` may be returned where `T` is expected, and no implicit conversion
+  beyond the language's defined conversions is permitted.
+
+---
+

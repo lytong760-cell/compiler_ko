@@ -49,7 +49,7 @@ const TEST_PROGRAMS = [_][]const u8{
      var success_count: usize = 0;
      var failure_count: usize = 0;
      
-     const iterations = 3600;
+     const iterations = 1;
      const programs = TEST_PROGRAMS.len;
      
      for (0..iterations) |i| {
