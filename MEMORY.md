@@ -116,3 +116,32 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 
 - **Cộng với các truth cũ ở trên (2026-10-01 → 2026-10-03) vẫn giữ nguyên.**
 
+
+---
+
+### [2026-10-20] LONG-TERM MEMORY DUMP
+- **Identified Truths:** Kilo discovers agents from `.kilo/agents/*.md` only when frontmatter includes valid `mode` (primary|subagent|all). Claude-style agents using `model: sonnet/opus/haiku` and `tools:` are ignored or fail (`Model not found`). Color must be quoted hex.
+- **Architectural Mutations:** Converted 68 agent definitions: added `mode: all`, removed `tools`/`model`, quoted hex colors. All now load (`kilo agent list`).
+- **Technical Debt & Anti-Patterns:** Model aliases removed; agents now use default model. Tool restrictions from Claude agents are not enforced by Kilo.
+- **Shared Variables & Symbols:** Agent names derive from filenames; `name` frontmatter ignored by Kilo.
+
+---
+
+### [2026-10-20] LONG-TERM MEMORY DUMP (code review)
+
+- **Identified Truths:** Review chi tiết toàn bộ repository, verify bằng đọc trực tiếp source: `src/api_server.py`, `src/Import.java`, `src/Loop.cpp`, `src/installer.zig`, `src/compiler.zig`, `src/main.zig`, `src/ast.zig`, `src/module/Os/Os.c`, `.github/workflows/ci.yml`, `Dockerfile`. Lệnh verify thực tế: `javac -d /tmp/kilo/kojavacheck src/Import.java` thành công (2 cảnh báo deprecation `new URL(String)`); `g++ -std=c++17 src/Loop.cpp` thành công; `gcc -std=gnu11 src/module/Os/Os.c` + `Random.c` thành công; `python3 -m py_compile src/api_server.py` thành công. Zig không có trong sandbox → chưa verify `zig build` / `zig build test` / `docker build`.
+  - 3 CRITICAL cũ đã FIX trong working tree: `src/api_server.py:264` log "API key status" thay vì in key; `src/Import.java:24-26,630-632` `isValidName` validate alias `[A-Za-z0-9_-]`; `src/installer.zig:39-43,282-286` validate `lib_name` trả `error.InvalidLibraryName`; `src/Import.java:602-628` `extractZipSafely` kiểm tra `target.startsWith(dest)`; `src/installer.zig:304-326` `validateZipEntries` trước `unzip -q`.
+  - HIGH-1/2/3/5/6/7 đã FIX: `Import.java:102-106` throw nếu `API_KEY` null; `Loop.cpp:255-262` truyền `condCtx` đúng vào `recordWhile`; `Loop.cpp:121-138` validate `start <= end`, `step > 0`, `forEnd >= forStart`; `ci.yml:17-22` không còn `csharp`; `Dockerfile:22-23` `ENTRYPOINT ["./ko"]` + `CMD ["--help"]`; `Import.java:306-308` đọc stream trước `waitFor`.
+  - HIGH-4 còn lại (partial fix): `compiler.zig:65-67,156-158,285` trả `error.UnsupportedBytecode` cho `class_decl`/`class_instantiation`/`.dict`; `main.zig:410-428` fallback AST-walker rõ ràng khi compile thất bại. Chưa có test assert output thực cho dict/bytes/method call.
+  - MEDIUM còn lại: `api_server.py:255` bind `0.0.0.0`; `Os.c:32-38` `ko_get_cwd` static buffer 1024 không thread-safe; `api_server.py` thiếu CORS/rate limit; `installer.zig:328-340` `runCommand` không timeout (`git clone`/`curl` có thể treo); `installer.zig:217-232` `detectLanguage` không đệ quy thư mục con.
+  - Mới phát hiện: `ast.zig:65-68` `PriorityStmt.deinit` gọi `stmt.deinit()` rồi `allocator.destroy(stmt)` — rủi ro double-free nếu `stmt` không phải allocation gốc.
+- **Architectural Mutations:** Cập nhật `REVIEW.md` phản ánh trạng thái working tree: 0 CRITICAL, 1 HIGH (HIGH-4), 8 MEDIUM, 4 LOW. Verdict: WARNING.
+- **Technical Debt & Anti-Patterns:** File lớn `vm.zig` (1432), `parser.zig` (1599), `Import.java` (845); C++ `std::cout` debug trong hot loop (`Loop.cpp:83,148,167`); Java JSON parsing thủ công (`extractJsonField`).
+- **Shared Variables & Symbols:** Không mới.
+
+### [2026-10-24] Adversarial challenge of REVIEW.md findings
+
+- **Identified Truths:** MEDIUM-9 (class_decl scope leak) is FALSE: `ClassDef.deinit` destroys both `private_scope`/`public_scope` (value.zig:469-490); valgrind clean. MEDIUM-10 (dict overwrite leak) is TRUE: Zig 0.16 `StringHashMap.put` returns void and retains old key; overwrite leaks old value + new key; fix via `fetchPut`. MEDIUM-6 unverified claim is now verified: `zsh -n` and `fish --no-execute` both pass. LOW-6 empty catch in `dispatchCatchBlocks` call is acceptable defensive handling in error-recovery path. MEDIUM-5 large-file finding is not a concrete defect (exhaustive switches/dispatch); splitting is maintainability-only.
+- **Architectural Mutations:** None (review only).
+- **Technical Debt & Anti-Patterns:** Real bug found: `parser.zig:58-69` heap-allocates `PriorityStmt` wrapper via `allocator.create` then copies by value and discards pointer → leak per priority statement; `stmt` itself stays heap-allocated so `PriorityStmt.deinit` destroy is safe. `COMPLETION_COMMANDS` const is dead code (unused). Dict overwrite leak in vm.zig:591-595.
+- **Shared Variables & Symbols:** N/A.

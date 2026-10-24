@@ -410,9 +410,9 @@ fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, sou
     if (!hasFuncOrClassDef(program)) {
         var chunk = try bytecode.Chunk.init(allocator);
         errdefer chunk.deinit(allocator);
-        const comp = try compiler.Compiler.init(allocator, &chunk, "main", 0);
+        var comp = try compiler.Compiler.init(allocator, &chunk, "main", 0);
         defer comp.deinit();
-        if (comp.compileProgram(program) catch |err| false) |_| {
+        if (comp.compileProgram(program)) |_| {
             virtual_machine.executeChunk(&chunk) catch |err| {
                 if (err == error.EndOfInput) {
                     std.debug.print("InputError: end of input\n", .{});
@@ -422,8 +422,9 @@ fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, sou
                 return 3;
             };
             return 0;
+        } else |err| {
+            std.debug.print("Bytecode compile failed ({any}); falling back to AST walker\n", .{err});
         }
-        // compileProgram failed: fall through to AST-walker below
     }
 
     // AST-walker fallback (also handles func/class definitions).
@@ -441,14 +442,12 @@ fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, sou
 
 fn hasFuncOrClassDef(program: []ast.Statement) bool {
     for (program) |stmt| {
-        switch (stmt.*) {
+        switch (stmt) {
             .func_decl => return true,
             .class_decl => return true,
             .class_instantiation => return true,
             .block => |b| {
-                for (b.body) |s| {
-                    if (hasFuncOrClassDef(&s.*)) return true;
-                }
+                if (hasFuncOrClassDef(b.body)) return true;
             },
             else => {},
         }

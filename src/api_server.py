@@ -261,7 +261,7 @@ def main():
     server = HTTPServer((args.host, args.port), RequestHandler)
     print(f".ko Module Store API Server running on http://{args.host}:{args.port}")
     print(f"Firestore-compatible base path: {BASE_PATH}")
-    print(f"API Key: {API_KEY}")
+    print(f"API key status: {'configured' if API_KEY else 'not configured'}")
     print("Press Ctrl+C to stop")
     try:
         server.serve_forever()

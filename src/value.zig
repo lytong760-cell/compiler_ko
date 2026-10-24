@@ -60,7 +60,7 @@ pub const Value = union(enum) {
         switch (self) {
             .null => try writer.print("null", .{}),
             .int => |v| try writer.print("{d}", .{v}),
-            .freal => |v| try writer.print("{f}", .{v}),
+            .freal => |v| try writer.print("{d}", .{v}),
             .string => |v| try writer.print("{s}", .{v}),
             .booling => |v| try writer.print("{s}", .{if (v) "True" else "False"}),
             .byte => |v| try writer.print("{b:0>8}", .{v}),

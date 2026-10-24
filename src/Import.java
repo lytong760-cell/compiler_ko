@@ -21,6 +21,9 @@ public class Import {
     }
     
     public ImportResult processImport(String moduleName, String alias, String scopeTag) {
+        if (alias == null || !isValidName(alias)) {
+            return ImportResult.error("Invalid alias: " + alias);
+        }
         try {
             System.out.println("[Import.java] Processing import: " + moduleName + " as " + alias + " in scope " + scopeTag);
             
@@ -98,6 +101,9 @@ public class Import {
     
     public String[] listLibraries() {
         System.out.println("[Import.java] Listing all libraries from Module Store...");
+        if (API_KEY == null || API_KEY.isEmpty()) {
+            throw new IllegalStateException("KO_FIRESTORE_API_KEY environment variable is not set");
+        }
         HttpURLConnection conn = null;
         try {
             String urlStr = FIRESTORE_BASE + ":runQuery?key=" + API_KEY;
@@ -228,16 +234,11 @@ public class Import {
         try {
             File extractDir = new File(tempDir, "extracted");
             extractDir.mkdirs();
-            
+
             File moduleDir = new File(libraryDir, alias);
             moduleDir.mkdirs();
-            
-             ProcessBuilder unzipPb = new ProcessBuilder("unzip", "-q", zipFile.getAbsolutePath(), "-d", extractDir.getAbsolutePath());
-             unzipPb.directory(tempDir);
-             unzipPb.redirectErrorStream(true);
-             Process unzipProcess = unzipPb.start(); {
-                 unzipProcess.waitFor();
-             }
+
+            extractZipSafely(zipFile, extractDir);
             
             String lang = detectLanguage(extractDir);
             System.out.println("[Import.java] Detected language: " + lang);
@@ -302,13 +303,12 @@ public class Import {
              ProcessBuilder pb = new ProcessBuilder(args);
              pb.directory(extractDir);
              pb.redirectErrorStream(true);
-             Process process = pb.start(); {
-                 int exitCode = process.waitFor();
-                 String output = readStream(process.getInputStream());
-                 if (exitCode != 0) {
-                     System.out.println("[Import.java] Java compilation failed: " + output);
-                     return false;
-                 }
+             Process process = pb.start();
+             String output = readStream(process.getInputStream());
+             int exitCode = process.waitFor();
+             if (exitCode != 0) {
+                 System.out.println("[Import.java] Java compilation failed: " + output);
+                 return false;
              }
             
             return true;
@@ -343,13 +343,12 @@ public class Import {
              ProcessBuilder pb = new ProcessBuilder(args);
              pb.directory(extractDir);
              pb.redirectErrorStream(true);
-             Process process = pb.start(); {
-                 int exitCode = process.waitFor();
-                 String output = readStream(process.getInputStream());
-                 if (exitCode != 0) {
-                     System.out.println("[Import.java] C compilation failed: " + output);
-                     return false;
-                 }
+             Process process = pb.start();
+             String output = readStream(process.getInputStream());
+             int exitCode = process.waitFor();
+             if (exitCode != 0) {
+                 System.out.println("[Import.java] C compilation failed: " + output);
+                 return false;
              }
             
             return true;
@@ -384,13 +383,12 @@ public class Import {
              ProcessBuilder pb = new ProcessBuilder(args);
              pb.directory(extractDir);
              pb.redirectErrorStream(true);
-             Process process = pb.start(); {
-                 int exitCode = process.waitFor();
-                 String output = readStream(process.getInputStream());
-                 if (exitCode != 0) {
-                     System.out.println("[Import.java] C++ compilation failed: " + output);
-                     return false;
-                 }
+             Process process = pb.start();
+             String output = readStream(process.getInputStream());
+             int exitCode = process.waitFor();
+             if (exitCode != 0) {
+                 System.out.println("[Import.java] C++ compilation failed: " + output);
+                 return false;
              }
             
             return true;
@@ -410,11 +408,11 @@ public class Import {
                  ProcessBuilder pb = new ProcessBuilder("npm", "install");
                  pb.directory(extractDir);
                  pb.redirectErrorStream(true);
-                 Process process = pb.start(); {
-                     int npmExitCode = process.waitFor();
-                     if (npmExitCode != 0) {
-                         System.out.println("[Import.java] npm install exited with code: " + npmExitCode);
-                     }
+                 Process process = pb.start();
+                 String npmOutput = readStream(process.getInputStream());
+                 int npmExitCode = process.waitFor();
+                 if (npmExitCode != 0) {
+                     System.out.println("[Import.java] npm install exited with code: " + npmExitCode + ": " + npmOutput);
                  }
              }
             
@@ -465,10 +463,11 @@ public class Import {
             pb.directory(extractDir);
             pb.redirectErrorStream(true);
             Process process = pb.start();
+            String zigOutput = readStream(process.getInputStream());
             int exitCode = process.waitFor();
 
             if (exitCode != 0) {
-                System.out.println("[Import.java] Zig compilation failed");
+                System.out.println("[Import.java] Zig compilation failed: " + zigOutput);
                 return false;
             }
 
@@ -600,6 +599,38 @@ public class Import {
         return moduleName.replaceAll("^\\$", "").toLowerCase();
     }
     
+    private void extractZipSafely(File zipFile, File destDir) throws IOException {
+        Path dest = destDir.toPath().toAbsolutePath().normalize();
+        try (ZipInputStream zis = new ZipInputStream(new FileInputStream(zipFile))) {
+            ZipEntry entry;
+            while ((entry = zis.getNextEntry()) != null) {
+                Path target = dest.resolve(entry.getName()).normalize();
+                if (!target.startsWith(dest)) {
+                    throw new IOException("Zip entry outside target directory: " + entry.getName());
+                }
+                if (entry.isDirectory()) {
+                    Files.createDirectories(target);
+                } else {
+                    if (target.getParent() != null) {
+                        Files.createDirectories(target.getParent());
+                    }
+                    try (FileOutputStream fos = new FileOutputStream(target.toFile())) {
+                        byte[] buf = new byte[8192];
+                        int n;
+                        while ((n = zis.read(buf)) > 0) {
+                            fos.write(buf, 0, n);
+                        }
+                    }
+                }
+                zis.closeEntry();
+            }
+        }
+    }
+
+    private boolean isValidName(String name) {
+        return name != null && !name.isEmpty() && name.matches("[A-Za-z0-9_-]+");
+    }
+
     private void cleanup(File dir) {
         if (dir != null && dir.exists()) {
             deleteRecursive(dir);

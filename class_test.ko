@@ -1,0 +1,1 @@
+Person !class [ string("John")~name ] [ ~Person~p ]

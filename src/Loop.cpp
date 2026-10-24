@@ -123,12 +123,18 @@ public:
         if (step <= 0) {
             return 2;
         }
+        if (start > end) {
+            return 2;
+        }
         LoopRecord rec;
         rec.isWhile = false;
         rec.forStart = static_cast<uint64_t>(start);
         rec.forEnd = static_cast<uint64_t>(end);
         rec.step = step;
         rec.unrollFactor = unrollFactor;
+        if (rec.forEnd < rec.forStart) {
+            return 2;
+        }
         rec.count = (rec.forEnd - rec.forStart) / static_cast<uint64_t>(step) + 1;
         rec.strategy = rec.count >= 16
                            ? OptimizationStrategy::UNROLL_FACTOR_8
@@ -247,13 +253,13 @@ int ko_loop_execute_optimized_loop(ko_loop_engine* eng, const char* loopId,
 }
 
 int ko_loop_execute_while_loop(ko_loop_engine* eng, const char* loopId,
-                               ko_loop::ko_loop_condition_fn cond,
+                               ko_loop::ko_loop_condition_fn cond, void* condCtx,
                                ko_loop::ko_loop_body_fn body, void* bodyCtx,
                                uint64_t maxIterations) {
     if (eng == nullptr || loopId == nullptr || cond == nullptr || body == nullptr) {
         return 1;
     }
-    if (eng->unroller.recordWhile(loopId, cond, bodyCtx, 4) != 0) {
+    if (eng->unroller.recordWhile(loopId, cond, condCtx, 4) != 0) {
         return 3;
     }
     return eng->unroller.executeOptimized(loopId, body, bodyCtx, maxIterations);
