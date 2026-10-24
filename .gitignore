@@ -1,6 +1,6 @@
 .zig-cache/
 .zig-global-cache/
-zig-out/n       
+zig-out/
 *.o
 zig/
 zig/zig

@@ -103,17 +103,25 @@ pub const Compiler = struct {
                     const exit_pos = try self.emitJumpPlaceholder(.jump_if_false);
                     for (0..cf.body.len) |i| try self.compileStatement(&cf.body[i]);
                     if (cf.step) |step| {
-                        try self.compileExpression(step);
                         const name_duped = try self.allocator.dupe(u8, cf.loop_var);
                         const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped });
-                        try self.emit(.{ .store_var = @intCast(idx) });
+                        try self.emit(.{ .load_var = @intCast(idx) });
+                        try self.compileExpression(step);
+                        try self.emit(.{ .binary = 0 });
+                        const name_duped2 = try self.allocator.dupe(u8, cf.loop_var);
+                        const idx2 = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped2 });
+                        try self.emit(.{ .store_var = @intCast(idx2) });
                     } else {
+                        const name_duped = try self.allocator.dupe(u8, cf.loop_var);
+                        const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped });
+                        try self.emit(.{ .load_var = @intCast(idx) });
                         const one_idx = self.chunk.constants.items.len;
                         try self.chunk.constants.append(.{ .int = 1 });
                         try self.emit(.{ .load_const = @intCast(one_idx) });
-                        const name_duped = try self.allocator.dupe(u8, cf.loop_var);
-                        const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped });
-                        try self.emit(.{ .store_var = @intCast(idx) });
+                        try self.emit(.{ .binary = 0 });
+                        const name_duped2 = try self.allocator.dupe(u8, cf.loop_var);
+                        const idx2 = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped2 });
+                        try self.emit(.{ .store_var = @intCast(idx2) });
                     }
                     const jump_back = @as(i32, @intCast(@as(isize, @intCast(cond_pos)) - @as(isize, @intCast(self.current_function.instructions.items.len + 1))));
                     try self.emit(.{ .jump = jump_back });

@@ -208,11 +208,13 @@ pub const Installer = struct {
         var iter = dir.iterate();
         while (try iter.next(self.io)) |entry| {
             if (entry.kind == .file and std.mem.endsWith(u8, entry.name, ".zip")) {
-                try self.validateZipEntries(entry.name);
+                const zip_path = try std.fmt.allocPrint(self.allocator, "{s}/{s}", .{ self.temp_dir, entry.name });
+                defer self.allocator.free(zip_path);
+                try self.validateZipEntries(zip_path);
                 const extract_dir = try std.fmt.allocPrint(self.allocator, "{s}/extracted", .{self.temp_dir});
                 defer self.allocator.free(extract_dir);
                 try std.Io.Dir.cwd().createDirPath(self.io, extract_dir);
-                _ = try self.runCommand(&.{"unzip", "-q", entry.name, "-d", extract_dir});
+                _ = try self.runCommand(&.{ "unzip", "-q", zip_path, "-d", extract_dir });
 
                 var ext_dir = try std.Io.Dir.cwd().openDir(self.io, extract_dir, .{ .iterate = true });
                 defer ext_dir.close(self.io);

@@ -132,9 +132,6 @@ public:
         rec.forEnd = static_cast<uint64_t>(end);
         rec.step = step;
         rec.unrollFactor = unrollFactor;
-        if (rec.forEnd < rec.forStart) {
-            return 2;
-        }
         rec.count = (rec.forEnd - rec.forStart) / static_cast<uint64_t>(step) + 1;
         rec.strategy = rec.count >= 16
                            ? OptimizationStrategy::UNROLL_FACTOR_8

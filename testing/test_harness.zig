@@ -49,7 +49,7 @@ const TEST_PROGRAMS = [_][]const u8{
      var success_count: usize = 0;
      var failure_count: usize = 0;
      
-     const iterations = 1;
+     const iterations = TEST_PROGRAMS.len;
      const programs = TEST_PROGRAMS.len;
      
      for (0..iterations) |i| {
@@ -74,7 +74,7 @@ const TEST_PROGRAMS = [_][]const u8{
      }
      
      const avg_time = if (success_count > 0) total_time / success_count else 0;
-     std.debug.print("\n=== 3600 Iteration Benchmark ===\n", .{});
+     std.debug.print("\n=== {d} Iteration Benchmark ===\n", .{iterations});
      std.debug.print("Successful iterations: {d}/{d}\n", .{success_count, iterations});
      std.debug.print("Failed iterations: {d}/{d}\n", .{failure_count, iterations});
      std.debug.print("Average time: {d} ns\n", .{avg_time});

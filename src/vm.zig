@@ -201,7 +201,10 @@ self.executeStatement(stmt) catch |err| {
                             buf = try self.allocator.dupe(u8, s);
                         },
                         else => |other| {
-                            const s = try std.fmt.allocPrint(self.allocator, "{}", .{other});
+                            var aw: std.Io.Writer.Allocating = .init(self.allocator);
+                            errdefer aw.deinit();
+                            try other.print(&aw.writer);
+                            const s = try aw.toOwnedSlice();
                             defer self.allocator.free(s);
                             buf = try self.allocator.dupe(u8, s);
                         },
@@ -1178,21 +1181,25 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
 
             switch (inst) {
                 .load_const => |idx| {
+                    if (sp >= stack.len) return error.StackOverflow;
                     const val = chunk.constants.items[idx];
                     stack[sp] = val;
                     sp += 1;
                 },
                 .load_var => |idx| {
+                    if (sp >= stack.len) return error.StackOverflow;
                     const name = chunk.constants.items[idx].string;
                     const val = self.current_scope.variables.get(name) orelse value_mod.Value{ .null = {} };
                     stack[sp] = val;
                     sp += 1;
                 },
                 .store_var => |idx| {
+                    if (sp == 0) return error.StackUnderflow;
                     const name = chunk.constants.items[idx].string;
                     const val = stack[sp - 1];
                     const owned = try self.allocator.dupe(u8, name);
                     try self.current_scope.variables.put(owned, val);
+                    sp -= 1;
                 },
                 .binary => |op| {
                     const rhs = stack[sp - 1];

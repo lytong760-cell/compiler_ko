@@ -1,4 +1,9 @@
-# MEMORY.md — Ký ức dài hạn của compiler_ko
+### [2026-10-24] LONG-TERM MEMORY DUMP
+- **Identified Truths:** Zig 0.16.0 is the supported toolchain (`zig version` = 0.16.0); build and all tests pass after fixes.
+- **Architectural Mutations:** Updated .gitignore, kilo.jsonc, build.zig.zon, installer ZIP paths, Loop.cpp, vm.zig, compiler.zig, test_harness iterations.
+- **Technical Debt & Anti-Patterns:** Avoid `std.fmt.allocPrint` with `{}` on Value; use allocating writer + `print`.
+- **Shared Variables & Symbols:** VM `.store_var` now consumes stack value.
+
 
 Ghi lại những điều đã xác minh được, để phiên sau không phải đo lại từ đầu.
 Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dưới "Chưa xác minh".
