@@ -150,3 +150,29 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 - **Architectural Mutations:** None (review only).
 - **Technical Debt & Anti-Patterns:** Real bug found: `parser.zig:58-69` heap-allocates `PriorityStmt` wrapper via `allocator.create` then copies by value and discards pointer → leak per priority statement; `stmt` itself stays heap-allocated so `PriorityStmt.deinit` destroy is safe. `COMPLETION_COMMANDS` const is dead code (unused). Dict overwrite leak in vm.zig:591-595.
 - **Shared Variables & Symbols:** N/A.
+
+### [2026-10-25] LONG-TERM MEMORY DUMP
+- **Identified Truths:** Implemented HIGH-4/HIGH-3/MEDIUM-12 in src/main.zig; scanModuleStore now owns name/version/language via allocator.dupe; manifests list deinited after copy.
+- **Architectural Mutations:** src/main.zig: executeCode bytecode path adds defer chunk.deinit; scanModuleStore dupes strings with errdefers; COMPLETION_COMMANDS duplicate removed.
+- **Technical Debt & Anti-Patterns:** defer+errdefer chunk.deinit may double-free on Compiler.init failure (pre-existing pattern retained per instruction).
+- **Shared Variables & Symbols:** N/A.
+
+### [2026-10-25] LONG-TERM MEMORY DUMP
+- **Identified Truths:** Zig 0.16 uses `std.process.spawn(io, options)` and `child.wait(io)`/`child.kill(io)`; `std.process.Child.init` removed.
+- **Architectural Mutations:** src/installer.zig MEDIUM-7/8/10 implemented.
+- **Technical Debt & Anti-Patterns:** Could not compile locally (no zig binary); WIFEXITED API assumed.
+- **Shared Variables & Symbols:** scanDirForLanguage, runCommand timeout.
+
+### [2026-10-25] LONG-TERM MEMORY DUMP
+- **Identified Truths:** Zig 0.16.0 build verified after VM changes.
+- **Architectural Mutations:** src/vm.zig: MEDIUM-9 dict assignment uses getOrPut with deinit of overwritten value/key; MEDIUM-11 runFunction stack moved to heap slice with overflow guard; LOW-5 dispatchCatchBlocks empty catch replaced with debug log; LOW-6 class_decl errdefer cleanup added.
+- **Technical Debt & Anti-Patterns:** Pre-existing installer/compiler changes left mostly intact; installer reverted to HEAD for build stability.
+- **Shared Variables & Symbols:** StackOverflow error path preserved.
+
+---
+
+### [2026-10-25] LONG-TERM MEMORY DUMP
+- **Identified Truths:** User requested detailed report of what `.ko` still lacks plus nomination order and algorithms; consolidated from `REVIEW.md`/`ROADMAP.md`/`SPECIFICATION.md`/source tree into `nomination.md` and `nomination..md`.
+- **Architectural Mutations:** Added two report markdown files at repo root (identical content) covering gap matrix G1–G16, dependency graph, priority scoring, algorithms A–J, risk register, verification plan, DoD.
+- **Technical Debt & Anti-Patterns:** Report is documentation only; no code changes or verification executed.
+- **Shared Variables & Symbols:** N/A.
