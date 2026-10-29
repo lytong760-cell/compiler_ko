@@ -1,10 +1,15 @@
 # .ko Language Formal Technical Specification & Architectural Manual
 
+> This document is the normalized specification of the `.ko` language and its multi-tier compiler architecture (Zig / C++ / Java).  
+> Goal: future-oriented, independent of the current repository layout. Only two runtime components are named explicitly: `Import.java` and `Loop.cpp`.
+
+---
+
 ## I. RUNTIME ARCHITECTURE & ENGINE TARGET MAPPING
 
-The .ko language operates on a Hybrid Execution Target Engine model.
+The `.ko` language operates on a **Hybrid Execution Target Engine** model.
 
-The central compiler/interpreter (`compiler.zig`) acts as a "Conductor". It receives source code, parses it, and dispatches work to specialized "Subcontractors" underneath for execution.
+The central compiler/interpreter (the conductor) receives source code, parses it, and dispatches work to specialized subcontractors underneath for execution.
 
 ### 1. Mathematical Pipeline Model and Execution Diagram
 
@@ -17,11 +22,11 @@ $$\mathcal{P}: \text{SourceCode}_{.ko} \xrightarrow{\text{Lexer/Parser}} \text{A
                                    |
                                    v
 +-------------------------------------------------------------------+
-|        Abstract Syntax Analysis (compiler.zig)                     |
+|        Abstract Syntax Analysis (Conductor / Compiler Core)        |
 +-------------------------------------------------------------------+
-                   /                                   \
-                  /                                     \
-                 v                                       v
+                    /                                   \
+                   /                                     \
+                  v                                       v
 +--------------------------+           +----------------------------+
 |   Subsystem Import Engine|           |    Subsystem Loop Engine   |
 |      (Import.java)       |           |         (Loop.cpp)         |
@@ -36,44 +41,41 @@ $$\mathcal{P}: \text{SourceCode}_{.ko} \xrightarrow{\text{Lexer/Parser}} \text{A
 
 #### A. Module Import Library: Import Subsystem Target
 
-Language Directive: `Import`
+- **Language Directive:** `Import`
+- **Responsible Source Files:** `Import.java` + installer layer
+- **Simple Explanation:** Think of `Import.java` as a "Librarian". When you use the `Import` keyword or the `ko -install` command, the Java librarian finds the library package, verifies its validity, compiles it, and places it in your workspace.
 
-Responsible Source Files: `Import.java` + `installer.zig`
-
-Simple Explanation: Think of Import.java as a "Librarian". When you use the `Import` keyword or the `ko -install` command, the Java librarian will find the library package, verify its validity, compile it, and place it on your workspace.
-
-Mathematical & Technical Semantics:
+**Mathematical & Technical Semantics:**
 
 $$\text{Import}_{\text{subsystem}}: \text{ModuleName} \times \text{ScopeTag} \to \mathcal{S}_{\text{updated\_scope\_table}}$$
 
-- Dynamic File Path Resolution
-- Source Code Signature Verification
-- Dynamic Classloading and insertion of identifiers into the Scope Table
+- Dynamic file path resolution
+- Source code signature verification
+- Dynamic classloading and insertion of identifiers into the Scope Table
 
 #### B. High-Performance Loop Engine: Loop Subsystem Target
 
-Language Directive: `Loop`
+- **Language Directive:** `Loop`
+- **Responsible Source File:** `Loop.cpp`
+- **Simple Explanation:** Think of `Loop.cpp` as an "F1 Racing Car". Repeating an action millions of times is handed off to C++ code running directly at the CPU hardware level.
 
-Responsible Source File: `Loop.cpp`
-
-Simple Explanation: Think of Loop.cpp as an "F1 Racing Car". Repeating an action millions of times is handed off to C++ code running directly at the CPU hardware level.
-
-Mathematical & Technical Semantics:
+**Mathematical & Technical Semantics:**
 
 $$\text{Loop}_{\text{subsystem}}: \text{IterCondition} \times \text{BodyBlock} \xrightarrow{\text{Native C++}} \Delta \text{State}$$
 
-- CPU Hardware Register Allocation and Optimization
-- Bypassing interpreter overhead, Instruction Cache Line Optimization
+- CPU hardware register allocation and optimization
+- Bypassing interpreter overhead, instruction cache line optimization
+
+---
 
 ## II. THEORETICAL MODEL AND GENERAL SYNTAX VOCABULARY
 
 ### 1. Command and Data Separation Principle
 
-Command Space / Scope Block ($\mathcal{B}_E$): Uses only square brackets `[ ]`.
+- **Command Space / Scope Block ($\mathcal{B}_E$):** Uses only square brackets `[ ]`.
+- **Data & Parameter Space ($\mathcal{D}_P$):** Uses parentheses `( )` for sets/parameters and curly braces `{ }` for Key-Value mappings.
 
-Data & Parameter Space ($\mathcal{D}_P$): Uses parentheses `( )` for sets/parameters and curly braces `{ }` for Key-Value mappings.
-
-Axiom:
+**Axiom:**
 
 $$\mathcal{B}_E \cap \mathcal{D}_P = \emptyset$$
 
@@ -87,7 +89,6 @@ $$\mathcal{B}_E \cap \mathcal{D}_P = \emptyset$$
 | `"\n"` | Newline Escape | Newline in double-quoted string | `"Hello\n"` |
 | `| |` | Comment Separator | Ignored at compile time | `| comment |` |
 
-
 ### 2.1 Region Type Annotations (`@`)
 
 The `@` symbol is a **region/type role sigil**. It is not a variable name; it declares what kind of region or member a block belongs to. `@` has multiple roles depending on context:
@@ -98,7 +99,7 @@ The `@` symbol is a **region/type role sigil**. It is not a variable name; it de
 
 `@also` is only a visual example for sequential loops, not a rule that `@` means "loop". A `while` loop is resolved by its own control-flow rule; numbered statements such as `{0}`, `{1}` may be used when explicit execution order is required.
 
-Example:
+**Example:**
 
 ```ko
 @loop(hp > 0) {
@@ -109,7 +110,7 @@ Example:
 }
 ```
 
-OOP example:
+**OOP example:**
 
 ```ko
 class Player [ 
@@ -118,6 +119,7 @@ class Player [
     ]
 ]
 ```
+
 ### 3. EBNF Syntax
 
 ```
@@ -139,15 +141,16 @@ LenOp              ::= SystemTagOpen "len" SystemTagClose "^(" Expression ")" ;
 
 ### 4. Operator System
 
-Arithmetic Operators: `+`, `-`, `*`, `/`, `%`
-
-Logical Operators:
-- `&&` : Logical AND
-- `%%` : Logical OR
+- **Arithmetic Operators:** `+`, `-`, `*`, `/`, `%`
+- **Logical Operators:**
+  - `&&` : Logical AND
+  - `%%` : Logical OR
 
 ### 5. Global Execution Scope Axiom
 
 Execution statements must not float freely outside the global scope. They are required to be inside a Function or Main Execution Block `[ ]`. The global scope only accepts: Import statements, Function declarations, and Class declarations.
+
+---
 
 ## III. DATA TYPE SYSTEM
 
@@ -169,7 +172,7 @@ Execution statements must not float freely outside the global scope. They are re
 - Nested list: `(1('a', 'b'))~list`
 - Dictionary: `(1{'a'})~dic`
 
-### 4. Null and None Types
+### 3. Null and None Types
 
 - **Null** is a temporary placeholder variable that has not yet been assigned a value:
 
@@ -189,7 +192,7 @@ Execution statements must not float freely outside the global scope. They are re
 none~a
 ```
 
-### 5. Index Access Syntax
+### 4. Index Access Syntax
 
 ```ko
 list<0>           | Get first element
@@ -197,7 +200,7 @@ list<1<0>>        | Get element 0 in sub-list at position 1
 dic{1{'a'}}       | Get by Dictionary Key
 ```
 
-### 6. Type Introspection
+### 5. Type Introspection
 
 - `type(format)` evaluates the runtime type of a value and prints it automatically.
 
@@ -206,6 +209,8 @@ type("Hello")          # output: string
 type(123)~a
 <printf>^(a)            # output: int
 ```
+
+---
 
 ## IV. INPUT/OUTPUT SYSTEM, MEMORY, ENCODING, LENGTH
 
@@ -260,6 +265,8 @@ int(0)~h
 <now>(hp - damage)>hp
 ```
 
+---
+
 ## V. FUNCTION STRUCTURE, RETURN VALUES, AND MAIN EXECUTION BLOCK
 
 ### 1. Function Definition and Call
@@ -275,7 +282,9 @@ int(~calculate_power(10))~total
 
 ### 2. Main Execution Block
 
-Every standalone .ko file must have exactly one Main Block `[ ]`.
+Every standalone `.ko` file must have exactly one Main Block `[ ]`.
+
+---
 
 ## VI. CONTROL FLOW STRUCTURE
 
@@ -295,7 +304,7 @@ Every standalone .ko file must have exactly one Main Block `[ ]`.
 
 ### 2. Loop System
 
-Make sure you have two `**` markers around Loop
+Make sure you have two `**` markers around Loop.
 
 ```ko
 **Loop** <for>(~x=1&=5) [
@@ -314,11 +323,13 @@ Make sure you have two `**` markers around Loop
 }
 ```
 
+---
+
 ## VII. MODULE IMPORT AND SCOPE SYSTEM
 
 ### 1. Module Import Syntax
 
-Make sure you use `**` to wrap Import
+Make sure you use `**` to wrap Import.
 
 ```ko
 **Import**($Random)@also%~random!`global`:random
@@ -341,7 +352,7 @@ int(<$random>(1, 100))~rand_val
 **Import**($Random)@also%~random!`global`:random
 int(<$random>(1, 100))~rand_val
 
-**Impor**t($Os)@also%~os!`global`:os
+**Import**($Os)@also%~os!`global`:os
 <$os>("data.txt")~file_var
 
 **Import**($Website)@also%~web!`global`:web
@@ -360,9 +371,8 @@ ko -search "<query>"
 
 #### B. Library Registry Gateway and API
 
-Module Store URL: `https://ko-vietnam.ai.studio/mobule-store`
-
-Firestore REST API Endpoints:
+- **Module Store URL:** `https://ko-vietnam.ai.studio/mobule-store`
+- **Firestore REST API Endpoints:**
 
 **POST - List All Libraries:**
 
@@ -389,12 +399,12 @@ GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-
 ```
 +-----------------------------------------------------------------------------------+
 | 1. Terminal Call: ko -install "<Library>"                                         |
-+-------------------------------------------s----------------------------------------+
++-----------------------------------------------------------------------------------+
                                            |
                                            v
 +-----------------------------------------------------------------------------------+
 | 2. Firestore GET API Query:                                                       |
-|    GET /documents/libraries/<library>?key=...                                    |
+|    GET /documents/libraries/<library>?key=...                                     |
 |    -> Retrieve Metadata & GitHub Repository link of the library                  |
 +-----------------------------------------------------------------------------------+
                                            |
@@ -417,14 +427,16 @@ GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-
 +-----------------------------------------------------------------------------------+
 | 5. Extract `.zip` & Automatic Language Analysis                                   |
 +-----------------------------------------------------------------------------------+
-                 /                                       \
-                /                                         \
+                  /                                       \
+                 /                                         \
 [Success]  v                                           v [Failure]
 +----------------------------------+     +----------------------------------+
 | Scope Table Integration         |     | 1. Print detailed error to CLI   |
 | Ready for `Import` directive    |     | 2. AUTO-CLEAN the library       |
 +----------------------------------+     +----------------------------------+
 ```
+
+---
 
 ## VIII. OBJECT-ORIENTED PROGRAMMING
 
@@ -449,6 +461,8 @@ Monster !class [
 int($m1~take_damage())~remaining_hp
 ```
 
+---
+
 ## IX. ERROR AND EXCEPTION HANDLING MECHANISM
 
 ### 1. `<catch>` Syntax
@@ -459,11 +473,9 @@ int($m1~take_damage())~remaining_hp
 
 ### 2. Error Scanning Scope Rules
 
-A. **Internal Catch**: Only scans backward within the Function/Main Block containing it.
-
-B. **Global Catch**: Scans backward protecting all Functions/Main Blocks preceding it.
-
-C. **Chain Priority Rule**: Checks from top to bottom, first matching error is processed.
+- **A. Internal Catch:** Only scans backward within the Function/Main Block containing it.
+- **B. Global Catch:** Scans backward protecting all Functions/Main Blocks preceding it.
+- **C. Chain Priority Rule:** Checks from top to bottom, first matching error is processed.
 
 ### 3. Intrinsic Exception Variables
 
@@ -472,6 +484,8 @@ C. **Chain Priority Rule**: Checks from top to bottom, first matching error is p
     <printf>^("Error {error<"type">} at line {error<"line">}: {error<"code">'}\n")
 ]
 ```
+
+---
 
 ## X. COMPLETE SAMPLE PROGRAM
 
@@ -585,11 +599,13 @@ Hero !class [
 ]
 ```
 
+---
+
 ## XI. CURRENT IMPLEMENTATION STATUS
 
 ### Implemented
 
-- [x] Full Lexer
+- [x] FullLexer
 - [x] Expression and statement Parser
 - [x] AST representation
 - [x] VM execution engine
@@ -637,6 +653,8 @@ Hero !class [
 - Spec previously overstated Import/Loop integration; those remain open issues.
 - Leaked Firestore API key removed from this document; use `KO_FIRESTORE_API_KEY`.
 
+---
+
 ## XII. SYNTAX SUMMARY
 
 ```
@@ -671,6 +689,8 @@ priority_stmt   -> '{' NUMBER '}' statement ;
 NUMBER          -> [0-9]+ ;
 ```
 
+---
+
 ## XIII. PROCESS MANAGER VISIBILITY
 
 When executing a `.ko` file, the runtime exposes the current execution process in the process manager using the format:
@@ -679,7 +699,7 @@ When executing a `.ko` file, the runtime exposes the current execution process i
 file:main-function
 ```
 
-Examples:
+**Examples:**
 
 ```
 test.ko:main
@@ -688,11 +708,13 @@ test.ko:main-test_func
 
 This allows external tools and debuggers to track which file, main block, or function is currently executing.
 
+---
+
 ## XIV. PRIORITY ORDER SYNTAX
 
 Statements can be prefixed with a priority number in curly braces `{number}` to control execution order. Lower numbers execute first.
 
-Examples:
+**Examples:**
 
 ```ko
 {1}<print>string^("test")
@@ -701,10 +723,13 @@ Examples:
 
 In the example above, `{0} <printf>^("hello")` runs before `{1}<print>string^("test")` because `0` has higher priority.
 
-Priority rules:
+**Priority rules:**
+
 - Statements without an explicit priority default to priority `0`.
 - When multiple statements share the same priority, their relative order follows source order.
 - Priority affects statement scheduling within the same block scope.
+
+---
 
 ## XV. GENERICS (TYPE PARAMETERS) (FUTURE EXTENSION — NOT IMPLEMENTED)
 
@@ -712,9 +737,7 @@ Priority rules:
 
 ### 1. Declaration
 
-A generic function is declared by attaching a type-parameter clause to a function
-definition. `@girc(T)` introduces `T` as a type parameter for the following
-function:
+A generic function is declared by attaching a type-parameter clause to a function definition. `@girc(T)` introduces `T` as a type parameter for the following function:
 
 ```ko
 @girc(T)
@@ -723,8 +746,7 @@ identity(T~value) [
 ]
 ```
 
-`T` is a type-level parameter, not a runtime value. It ranges over valid `.ko`
-types (primitive or composite) as permitted by the call context.
+`T` is a type-level parameter, not a runtime value. It ranges over valid `.ko` types (primitive or composite) as permitted by the call context.
 
 ### 2. Usage
 
@@ -733,25 +755,212 @@ int(~identity(100))~number
 string(~identity("Phong"))~name
 ```
 
-The concrete type is supplied by the surrounding type context or inferred from
-the argument. The compiler must derive `T` from either:
+The concrete type is supplied by the surrounding type context or inferred from the argument. The compiler must derive `T` from either:
 
-1. An explicit expected type at the call site (for example `int(...)` or
-   `string(...)`), or
+1. An explicit expected type at the call site (for example `int(...)` or `string(...)`), or
 2. The static type of the argument passed to the generic parameter.
 
 ### 3. Type Rules
 
-- The return value of a generic function must have a type compatible with the
-  inferred type parameter `T`.
-- If `T` cannot be inferred unambiguously from the call site and its
-  arguments, compilation fails with a type error.
-- A generic function may be instantiated (monomorphized) once per distinct
-  concrete type; the implementation may defer this to compile time or runtime,
-  but observable typing must follow the rules above.
-- Type compatibility follows the standard `.ko` assignment rules: a value of
-  type `T` may be returned where `T` is expected, and no implicit conversion
-  beyond the language's defined conversions is permitted.
+- The return value of a generic function must have a type compatible with the inferred type parameter `T`.
+- If `T` cannot be inferred unambiguously from the call site and its arguments, compilation fails with a type error.
+- A generic function may be instantiated (monomorphized) once per distinct concrete type; the implementation may defer this to compile time or runtime, but observable typing must follow the rules above.
+- Type compatibility follows the standard `.ko` assignment rules: a value of type `T` may be returned where `T` is expected, and no implicit conversion beyond the language's defined conversions is permitted.
 
 ---
 
+## XVI. COMPILER EXECUTION MODEL: HOW EACH STATEMENT IS RUN
+
+This section defines **how the compiler processes each statement** through a normalized pipeline, independent of repository layout.
+
+### 1. Standard Pipeline (Conductor)
+
+$$\text{Source} \xrightarrow{\text{Lex}} \text{TokenStream} \xrightarrow{\text{Parse}} \text{AST} \xrightarrow{\text{Resolve}} \text{TypedAST} \xrightarrow{\text{Lower}} \text{IR} \xrightarrow{\text{Opt}} \text{IR}' \xrightarrow{\text{Dispatch}} \text{EngineTarget} \xrightarrow{\text{Exec}} \text{State}'$$
+
+Phases:
+
+1. **Lexical Analysis** — split source into tokens per the symbol table (Sigil, System Tag, Comment, Escape).
+2. **Parsing** — build AST per EBNF and priority rules `{n}`.
+3. **Scope Resolution** — register identifiers into the Scope Table per scope tag.
+4. **Type Checking** — infer types, check compatibility, handle generics (future).
+5. **Lowering** — lower AST to canonical IR.
+6. **Optimization** — optimize IR (loops delegated to `Loop.cpp`).
+7. **Dispatch** — choose EngineTarget (Import / Loop / Runtime).
+8. **Execution** — execute and update state.
+
+### 2. Processing per Statement Type
+
+| Statement Type | Processing Phase | EngineTarget | Notes |
+|----------------|------------------|--------------|-------|
+| `VarDecl` | Parse → Resolve → TypeCheck → Lower | Runtime VM | Allocate cell, register scope |
+| `Assignment` (`<now>`) | TypeCheck → Lower | Runtime VM | Instant state mutation |
+| `FuncDecl` | Resolve → Lower | Runtime VM | Register function, defer body |
+| `ClassDecl` | Resolve → Lower | Runtime VM | Create class blueprint, members per `@private` |
+| `If/Elif/Else` | TypeCheck → Lower (branch) | Runtime VM | Evaluate condition, select branch |
+| `Loop` (`**Loop**`) | TypeCheck → Lower → Opt | **Loop.cpp** | CPU-level loop optimization |
+| `Import` (`**Import**`) | Resolve → Lower | **Import.java** | Load module, update Scope Table |
+| `Catch` | Resolve → Lower (handler) | Runtime VM | Scan errors by scope |
+| `System Tag` (`<printf>`, `<input>`, `<len>`, `<encode>`, `<memory>`) | Lower → Dispatch | Runtime VM / Native | I/O, encoding, memory |
+| `Return` | Lower | Runtime VM | Exit function, return value |
+| `Priority Stmt` `{n}` | Parse → Schedule | Runtime VM | Schedule by priority |
+
+### 3. EngineTarget Dispatch Rules
+
+- If the statement is `Loop`, the entire loop block is packaged as IR and handed to `Loop.cpp` for unroll/optimization; the resulting state delta is returned to the VM.
+- If the statement is `Import`, the entire module-loading process is handed to `Import.java`; new identifiers are inserted into the Scope Table.
+- All other statements are executed by the Runtime VM.
+
+### 4. Error Handling in the Pipeline
+
+- Syntax errors: stop at Parse, report token position.
+- Type errors: stop at TypeCheck.
+- Runtime errors: trigger `<catch>` mechanism per scope.
+- Import/Loop errors: propagate standardized error codes to the VM.
+
+---
+
+## XVII. OPTIMAL ALGORITHMIC FILE STRUCTURE AND CROSS-LANGUAGE DATA EXCHANGE
+
+This section defines the **optimal algorithmic file structure** and the **powerful data-exchange mechanism** among the three tiers Java (Frontend) / C++ (Middleware) / Zig (Backend), independent of the current repository layout.
+
+### 1. Optimal Algorithmic File Structure (Normalized)
+
+Every `.ko` file follows the standard layout:
+
+```
+[SECTION A] Import Declarations
+[SECTION B] Function Declarations
+[SECTION C] Class Declarations
+[SECTION D] Global Exception Handlers (catch)
+[SECTION E] Main Execution Block [ ... ]
+```
+
+Rules:
+
+- Imports appear only in SECTION A (global scope).
+- Function/class declarations in SECTION B/C.
+- Exactly one main block in SECTION E.
+- Free execution statements outside function/class/main block are invalid.
+
+### 2. Multi-Language Architecture Tiers
+
+```
+┌──────────────────────────────────────────────────────┐
+│                 JAVA FRONTEND TIER                   │
+│   Lexical Analysis -> Parsing -> Concrete AST        │
+└──────────────────────────┬───────────────────────────┘
+                           │ [IPC / Protocol Serialization]
+                           ▼
+┌──────────────────────────────────────────────────────┐
+│                 C++ MIDDLEWARE ENGINE                │
+│   Semantic Analysis -> Symbol Table -> Optimizations │
+└──────────────────────────┬───────────────────────────┘
+                           │ [Direct C-ABI Binding]
+                           ▼
+┌──────────────────────────────────────────────────────┐
+│                  ZIG RUNTIME & CODES                │
+│   Memory Safety Management -> Native Backend CodeGen │
+└──────────────────────────────────────────────────────┘
+```
+
+- **Java Tier:** Lexer, Parser, AST, diagnostic/GUI tooling. Uses `java.base` modular patterns. Decouples error reporting from AST mutation. Serializes via file descriptors or high-speed IPC.
+- **C++ Tier:** Middle-end, SSA, HIR/LIR, global symbol table. ISO C++17/C++20. STL smart pointers for ownership. Avoid undefined behavior.
+- **Zig Tier:** Backend codegen, arena allocators, runtime memory protection, native C-ABI bridging. Explicit `std.mem.Allocator`. `comptime` for static optimization. Clean native output.
+
+Known exception: `testing/mod_check.c` is an independent C binary intentionally linking `libdl`, used to verify ABI of `.so` modules without pulling `libdl` into Zig test binaries. It is a testing tool, not part of compiler runtime.
+
+### 3. Cross-Language Data Exchange (Powerful Mechanism)
+
+#### 3.1 Canonical Data Exchange Layer (CDEL)
+
+All data crossing language boundaries must pass through **CDEL**, a normalized binary format:
+
+- **Frame:** `[Magic(4)] [Version(2)] [TypeTag(2)] [Length(4)] [Payload(Length)] [CRC32(4)]`
+- **Endianness:** Little-endian.
+- **String encoding:** UTF-8, length-prefixed.
+- **Versioning:** Schema version increments; backward compatibility via "ignore unknown fields".
+
+#### 3.2 Type Mapping
+
+| `.ko` Type | Java | C++ | Zig |
+|------------|------|-----|-----|
+| `int` (i64) | `long` | `int64_t` | `i64` |
+| `freal` (f64) | `double` | `double` | `f64` |
+| `string` | `String` (UTF-8) | `std::string` (UTF-8) | `[]const u8` |
+| `booling` | `boolean` | `bool` | `bool` |
+| `byte` | `byte` | `int8_t` / `uint8_t` | `u8` |
+| `bytes` | `byte[]` | `std::vector<uint8_t>` | `[]u8` |
+| `Null` | `null` reference | `std::optional<T>` empty | `null` (optional) |
+| `None` | immutable sentinel | `std::monostate` | `void`/sentinel |
+| Tuple/List | `List<Object>` | `std::vector<Variant>` | `std.ArrayList(Value)` |
+| Dict | `Map<String,Object>` | `std::unordered_map<std::string,Variant>` | `std.StringHashMap(Value)` |
+
+#### 3.3 Ownership & Memory Rules
+
+- **Zig → C++/Java:** Zig owns original memory via arena; pass `[*]const u8` + length; receiver must NOT `free`. Lifetime tied to arena scope.
+- **C++ → Zig:** C++ allocates via allocator provided by Zig (callback allocator); or passes `std::shared_ptr` via C-ABI handle (opaque pointer).
+- **Java → C++:** Java allocates off-heap (direct ByteBuffer) or passes JNI reference; C++ accesses via pointer + length, does not free Java heap.
+- **Principle:** No `malloc/free` in C++; use arena/smart pointers. No hidden global memory state in Zig.
+
+#### 3.4 ABI Bridge
+
+- **Zig ↔ C++:** Direct C-ABI binding. Zig exports `export fn` with `callconv(.C)`; C++ declares `extern "C"`. Structs passed with `extern struct` / `#[repr(C)]` layout.
+- **C++ ↔ Java:** JNI or JNA. Java calls native method; C++ provides `JavaVM*` context. Alternatively IPC via socket/pipe with CDEL frames.
+- **Java ↔ Zig (indirect):** Via C++ middleware or direct JNI if Zig exports C-ABI.
+
+#### 3.5 Error Propagation Across Boundaries
+
+- **Zig:** Uses error union `!T`; exports to C as error code `int32` + out-parameter.
+- **C++:** Uses `std::expected<T, ErrorCode>` or exception; at C-ABI boundary converts to error code.
+- **Java:** Converts error code into typed `Exception`.
+- **Rule:** Never swallow errors (empty `_ = catch {}` forbidden). All errors propagate via CDEL error frame.
+
+#### 3.6 AST/IR Serialization (Schema Versioning)
+
+- AST/IR serialized via CDEL frames with dedicated TypeTags (`AST_NODE`, `IR_BLOCK`, `SYMBOL_ENTRY`).
+- Java serializes AST → CDEL → C++ deserializes → semantic check → serializes IR → Zig deserializes → codegen.
+- CRC32 checksum ensures integrity.
+
+#### 3.7 Performance & Exchange Optimization
+
+- Zero-copy where possible (shared memory / mmap).
+- Batch symbol entries into a single frame.
+- Optional payload compression for large modules (zstd).
+- Cache digest of loaded modules to avoid re-parsing.
+
+### 4. Roles of `Import.java` and `Loop.cpp` in Data Exchange
+
+- **`Import.java`:** Entry point at the Java boundary. Performs HTTP (Firestore), git clone, zip inspection, compiles/loads module, serializes metadata into CDEL frame, sends down to C++ middleware to update Scope Table.
+- **`Loop.cpp`:** Entry point at the C++ boundary. Receives loop IR block from middleware, optimizes (unroll, register allocation, cache line), executes natively, returns state delta to Zig runtime via C-ABI.
+
+---
+
+## XVIII. FUTURE DIRECTION
+
+- Full runtime module loading (Import.java ↔ Zig VM).
+- Loop.cpp integration into Zig VM.
+- JNI/JNA bridge between Zig VM and native libraries.
+- Bytecode backend wired into execution pipeline.
+- Token source positions and multi-error diagnostics.
+- Dict literals and `bytes(<expr>)` support.
+- Method calls with arguments and method access without call.
+- Second `<input>` in one program.
+- Generics / type parameters (`@girc(T)`).
+- Shell completion verification for zsh/fish.
+- Data-exchange optimization: shared memory, zero-copy, compression.
+- IR standardization and schema versioning for long-term compatibility.
+
+---
+
+## XIX. COMPLIANCE NOTES
+
+- No `malloc/free` in the C++ tier.
+- No swallowed errors in Zig loops.
+- No modifications without reviewing latest execution state.
+- Technical documentation follows project language policy.
+
+---
+```
+
+This is English. Good. Final response concise.<|end|><|start|> assistant to=bash<|channel|>analysis <|constrain|>xml<|message|><rfl:parameter name="command">
+wc -l /content/compiler_ko/SPECIFICATION.md
