@@ -176,3 +176,9 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 - **Architectural Mutations:** Added two report markdown files at repo root (identical content) covering gap matrix G1–G16, dependency graph, priority scoring, algorithms A–J, risk register, verification plan, DoD.
 - **Technical Debt & Anti-Patterns:** Report is documentation only; no code changes or verification executed.
 - **Shared Variables & Symbols:** N/A.
+
+### [2026-10-30] LONG-TERM MEMORY DUMP
+- **Identified Truths:** Matt Pocock skills repo (`mattpocock/skills`) is a Claude Code plugin with promoted skills under `skills/engineering` and `skills/productivity`; `kilo debug skill` discovers `.kilo/skills/*/SKILL.md`.
+- **Architectural Mutations:** Copied 27 promoted skill directories into `.kilo/skills` (engineering + productivity), verified by `kilo debug skill` (ask-matt, grill-me, grilling, tdd, triage, etc. recognized).
+- **Technical Debt & Anti-Patterns:** Beta `skills/in-progress` and `skills/misc` intentionally not installed; repo's `docs/agents/domain.md` still uses legacy `CONTEXT.md` naming while Matt skills expect `GLOSSARY.md` (setup skill can align later).
+- **Shared Variables & Symbols:** Skill invocation names match directory/frontmatter names.

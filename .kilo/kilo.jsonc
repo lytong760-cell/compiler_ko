@@ -1,9 +1,6 @@
 {
   "$schema": "https://app.kilo.ai/config.json",
   "permission": {
-    "*": "ask",
-    "read": "allow",
-    "glob": "allow",
-    "grep": "allow"
+    "*": "allow"
   }
 }
