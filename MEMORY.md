@@ -182,3 +182,15 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 - **Architectural Mutations:** Copied 27 promoted skill directories into `.kilo/skills` (engineering + productivity), verified by `kilo debug skill` (ask-matt, grill-me, grilling, tdd, triage, etc. recognized).
 - **Technical Debt & Anti-Patterns:** Beta `skills/in-progress` and `skills/misc` intentionally not installed; repo's `docs/agents/domain.md` still uses legacy `CONTEXT.md` naming while Matt skills expect `GLOSSARY.md` (setup skill can align later).
 - **Shared Variables & Symbols:** Skill invocation names match directory/frontmatter names.
+
+### [2026-10-30] LONG-TERM MEMORY DUMP
+- **Identified Truths:** Zig 0.16.0 build and tests pass after unifying value arithmetic behind Value module.
+- **Architectural Mutations:** src/value.zig: strict add/sub/mul/div/rem/equals (no coercion), new predicate methods less/greater/lessOrEqual/greaterOrEqual; src/vm.zig: evaluateBinary and binaryOp delegate to Value, removed addValues/subValues/etc; testing/test_value.zig added (17 tests); build.zig wired test file; src/testing_imports.zig exports value.
+- **Technical Debt & Anti-Patterns:** Existing .ko programs relying on int↔freal coercion now surface TypeError; bytecode path now matches AST strictness.
+- **Shared Variables & Symbols:** OverflowError, TypeError, DivideByZero preserved.
+
+### [2026-10-30] LONG-TERM MEMORY DUMP
+- **Identified Truths:** Zig 0.16.0 build passes after fixes; example simple.ko now prints newline correctly.
+- **Architectural Mutations:** Fixed HIGH-2 bytecode escape in src/compiler.zig (added unescapeString); fixed HIGH-1 aliasing in src/vm.zig (load_var/store_var clone); fixed dict overwrite leak in src/vm.zig; changed API default host to 127.0.0.1.
+- **Technical Debt & Anti-Patterns:** Bytecode backend still lacks class/func/dict/bytes parity (falls back to AST walker); potential extra memory copies.
+- **Shared Variables & Symbols:** `unescapeString` helper in compiler.zig.

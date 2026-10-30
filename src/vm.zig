@@ -595,7 +595,11 @@ self.executeStatement(stmt) catch |err| {
                             if (idx == .string) {
                                 const key = idx.string;
                                 const key_copy = try self.allocator.dupe(u8, key);
-                                try d.put(key_copy, val);
+                                if (try d.fetchPut(key_copy, val)) |old_entry| {
+                                    self.allocator.free(old_entry.key);
+                                    var old_val = old_entry.value;
+                                    old_val.deinit(self.allocator);
+                                }
                             } else {
                                 self.raiseError("TypeError", "Dict key must be string");
                             }
@@ -727,90 +731,10 @@ self.executeStatement(stmt) catch |err| {
             .logical_or => value_mod.Value{ .booling = (try left.toBool()) or (try right.toBool()) },
             .eq => value_mod.Value{ .booling = try left.equals(right) },
             .neq => value_mod.Value{ .booling = !(try left.equals(right)) },
-            .lt => try compareLess(left, right),
-            .gt => try compareGreater(left, right),
-            .lte => try compareLessOrEqual(left, right),
-            .gte => try compareGreaterOrEqual(left, right),
-        };
-    }
-
-    fn compareLess(left: value_mod.Value, right: value_mod.Value) !value_mod.Value {
-        return switch (left) {
-            .int => |a| switch (right) {
-                .int => |b| value_mod.Value{ .booling = a < b },
-                .freal => |b| value_mod.Value{ .booling = @as(f64, @floatFromInt(a)) < b },
-                else => error.TypeError,
-            },
-            .freal => |a| switch (right) {
-                .freal => |b| value_mod.Value{ .booling = a < b },
-                .int => |b| value_mod.Value{ .booling = a < @as(f64, @floatFromInt(b)) },
-                else => error.TypeError,
-            },
-            .string => |a| switch (right) {
-                .string => |b| value_mod.Value{ .booling = std.mem.order(u8, a, b) == .lt },
-                else => error.TypeError,
-            },
-            else => error.TypeError,
-        };
-    }
-
-    fn compareGreater(left: value_mod.Value, right: value_mod.Value) !value_mod.Value {
-        return switch (left) {
-            .int => |a| switch (right) {
-                .int => |b| value_mod.Value{ .booling = a > b },
-                .freal => |b| value_mod.Value{ .booling = @as(f64, @floatFromInt(a)) > b },
-                else => error.TypeError,
-            },
-            .freal => |a| switch (right) {
-                .freal => |b| value_mod.Value{ .booling = a > b },
-                .int => |b| value_mod.Value{ .booling = a > @as(f64, @floatFromInt(b)) },
-                else => error.TypeError,
-            },
-            .string => |a| switch (right) {
-                .string => |b| value_mod.Value{ .booling = std.mem.order(u8, a, b) == .gt },
-                else => error.TypeError,
-            },
-            else => error.TypeError,
-        };
-    }
-
-    fn compareLessOrEqual(left: value_mod.Value, right: value_mod.Value) !value_mod.Value {
-        return switch (left) {
-            .int => |a| switch (right) {
-                .int => |b| value_mod.Value{ .booling = a <= b },
-                .freal => |b| value_mod.Value{ .booling = @as(f64, @floatFromInt(a)) <= b },
-                else => error.TypeError,
-            },
-            .freal => |a| switch (right) {
-                .freal => |b| value_mod.Value{ .booling = a <= b },
-                .int => |b| value_mod.Value{ .booling = a <= @as(f64, @floatFromInt(b)) },
-                else => error.TypeError,
-            },
-            .string => |a| switch (right) {
-                .string => |b| value_mod.Value{ .booling = std.mem.order(u8, a, b) != .gt },
-                else => error.TypeError,
-            },
-            else => error.TypeError,
-        };
-    }
-
-    fn compareGreaterOrEqual(left: value_mod.Value, right: value_mod.Value) !value_mod.Value {
-        return switch (left) {
-            .int => |a| switch (right) {
-                .int => |b| value_mod.Value{ .booling = a >= b },
-                .freal => |b| value_mod.Value{ .booling = @as(f64, @floatFromInt(a)) >= b },
-                else => error.TypeError,
-            },
-            .freal => |a| switch (right) {
-                .freal => |b| value_mod.Value{ .booling = a >= b },
-                .int => |b| value_mod.Value{ .booling = a >= @as(f64, @floatFromInt(b)) },
-                else => error.TypeError,
-            },
-            .string => |a| switch (right) {
-                .string => |b| value_mod.Value{ .booling = std.mem.order(u8, a, b) != .lt },
-                else => error.TypeError,
-            },
-            else => error.TypeError,
+            .lt => value_mod.Value{ .booling = try left.less(right) },
+            .gt => value_mod.Value{ .booling = try left.greater(right) },
+            .lte => value_mod.Value{ .booling = try left.lessOrEqual(right) },
+            .gte => value_mod.Value{ .booling = try left.greaterOrEqual(right) },
         };
     }
 
@@ -1190,7 +1114,7 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     if (sp >= stack.len) return error.StackOverflow;
                     const name = chunk.constants.items[idx].string;
                     const val = self.current_scope.variables.get(name) orelse value_mod.Value{ .null = {} };
-                    stack[sp] = val;
+                    stack[sp] = try val.clone(self.allocator);
                     sp += 1;
                 },
                 .store_var => |idx| {
@@ -1198,7 +1122,12 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     const name = chunk.constants.items[idx].string;
                     const val = stack[sp - 1];
                     const owned = try self.allocator.dupe(u8, name);
-                    try self.current_scope.variables.put(owned, val);
+                    const cloned = try val.clone(self.allocator);
+                    if (try self.current_scope.variables.fetchPut(owned, cloned)) |old_entry| {
+                        self.allocator.free(old_entry.key);
+                        var old_val = old_entry.value;
+                        old_val.deinit(self.allocator);
+                    }
                     sp -= 1;
                 },
                 .binary => |op| {
@@ -1296,19 +1225,19 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
 
     fn binaryOp(self: *VM, op: u8, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
         return switch (op) {
-            0 => self.addValues(lhs, rhs),
-            1 => self.subValues(lhs, rhs),
-            2 => self.mulValues(lhs, rhs),
-            3 => self.divValues(lhs, rhs),
-            4 => self.remValues(lhs, rhs),
-            5 => self.andValues(lhs, rhs),
-            6 => self.orValues(lhs, rhs),
-            7 => self.eqValues(lhs, rhs),
-            8 => self.neqValues(lhs, rhs),
-            9 => self.ltValues(lhs, rhs),
-            10 => self.gtValues(lhs, rhs),
-            11 => self.lteValues(lhs, rhs),
-            12 => self.gteValues(lhs, rhs),
+            0 => try lhs.add(rhs, self.allocator),
+            1 => try lhs.sub(rhs),
+            2 => try lhs.mul(rhs),
+            3 => try lhs.div(rhs),
+            4 => try lhs.rem(rhs),
+            5 => value_mod.Value{ .booling = (try lhs.toBool()) and (try rhs.toBool()) },
+            6 => value_mod.Value{ .booling = (try lhs.toBool()) or (try rhs.toBool()) },
+            7 => value_mod.Value{ .booling = try lhs.equals(rhs) },
+            8 => value_mod.Value{ .booling = !(try lhs.equals(rhs)) },
+            9 => value_mod.Value{ .booling = try lhs.less(rhs) },
+            10 => value_mod.Value{ .booling = try lhs.greater(rhs) },
+            11 => value_mod.Value{ .booling = try lhs.lessOrEqual(rhs) },
+            12 => value_mod.Value{ .booling = try lhs.greaterOrEqual(rhs) },
             else => error.TypeError,
         };
     }
@@ -1351,90 +1280,4 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
         return error.UndefinedFunction;
     }
 
-    fn addValues(self: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        if (lhs == .int and rhs == .int) return value_mod.Value{ .int = lhs.int + rhs.int };
-        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .freal = lhs.freal + rhs.freal };
-        if (lhs == .string and rhs == .string) {
-            const result = try std.mem.concat(self.allocator, u8, &.{ lhs.string, rhs.string });
-            return value_mod.Value{ .string = result };
-        }
-        return error.TypeError;
-    }
-
-    fn subValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        if (lhs == .int and rhs == .int) return value_mod.Value{ .int = lhs.int - rhs.int };
-        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .freal = lhs.freal - rhs.freal };
-        return error.TypeError;
-    }
-
-    fn mulValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        if (lhs == .int and rhs == .int) return value_mod.Value{ .int = lhs.int * rhs.int };
-        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .freal = lhs.freal * rhs.freal };
-        return error.TypeError;
-    }
-
-    fn divValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        if (lhs == .int and rhs == .int) return value_mod.Value{ .int = @divTrunc(lhs.int, rhs.int) };
-        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .freal = lhs.freal / rhs.freal };
-        return error.TypeError;
-    }
-
-    fn remValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        if (lhs == .int and rhs == .int) return value_mod.Value{ .int = @rem(lhs.int, rhs.int) };
-        return error.TypeError;
-    }
-
-    fn andValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        _ = lhs;
-        _ = rhs;
-        return error.TypeError;
-    }
-
-    fn orValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        _ = lhs;
-        _ = rhs;
-        return error.TypeError;
-    }
-
-    fn eqValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        const equal = switch (lhs) {
-            .int => |li| if (rhs == .int) li == rhs.int else false,
-            .freal => |lf| if (rhs == .freal) lf == rhs.freal else false,
-            .string => |ls| if (rhs == .string) std.mem.eql(u8, ls, rhs.string) else false,
-            .booling => |lb| if (rhs == .booling) lb == rhs.booling else false,
-            .null => rhs == .null,
-            else => false,
-        };
-        return value_mod.Value{ .booling = equal };
-    }
-
-    fn neqValues(self: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        const equal = try self.eqValues(lhs, rhs);
-        return value_mod.Value{ .booling = !equal.booling };
-    }
-
-    fn ltValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        if (lhs == .int and rhs == .int) return value_mod.Value{ .booling = lhs.int < rhs.int };
-        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .booling = lhs.freal < rhs.freal };
-        return error.TypeError;
-    }
-
-    fn gtValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        if (lhs == .int and rhs == .int) return value_mod.Value{ .booling = lhs.int > rhs.int };
-        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .booling = lhs.freal > rhs.freal };
-        return error.TypeError;
-    }
-
-    fn lteValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        if (lhs == .int and rhs == .int) return value_mod.Value{ .booling = lhs.int <= rhs.int };
-        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .booling = lhs.freal <= rhs.freal };
-        return error.TypeError;
-    }
-
-    fn gteValues(_: *VM, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        if (lhs == .int and rhs == .int) return value_mod.Value{ .booling = lhs.int >= rhs.int };
-        if (lhs == .freal and rhs == .freal) return value_mod.Value{ .booling = lhs.freal >= rhs.freal };
-        return error.TypeError;
-    }
 };
-

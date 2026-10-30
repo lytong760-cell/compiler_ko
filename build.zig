@@ -102,6 +102,7 @@ const test_step = b.step("test", "Run all tests");
         "testing/test_lexer_extended.zig",
         "testing/test_parser_extended.zig",
         "testing/test_modules.zig",
+        "testing/test_value.zig",
     };
 
     const src_module = b.createModule(.{

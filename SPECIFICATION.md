@@ -174,23 +174,32 @@ Execution statements must not float freely outside the global scope. They are re
 
 ### 3. Null and None Types
 
-- **Null** is a temporary placeholder variable that has not yet been assigned a value:
+- **Null** is a temporary placeholder for a variable that has **not yet been assigned** a value:
 
 ```ko
 ()~var
 ```
 
-- A null variable may later be assigned any compatible value using `<now>`:
+  **Rules for Null:**
+  - A `null` variable **must** be assigned a value or converted to `none` before it can be used in any operation.
+  - While still `null`, the variable is **unusable**: it cannot be compared (`==`, `!=`, `<`, `>`, ...), cannot participate in arithmetic, cannot be printed as a value, and cannot be passed to functions.
+  - Any attempt to use an unassigned `null` raises a runtime `TypeError` (or `UnassignedError`).
+  - Assignment or conversion must happen explicitly via `<now>`:
 
 ```ko
-<now>(value)>var
+<now>(value)>var        | assign a value
+<now>(none)>var          | convert to none
 ```
 
-- **None** is an immutable empty value that cannot be reassigned to another value:
+- **None** is an immutable empty value that **cannot be reassigned** to another value:
 
 ```ko
 none~a
 ```
+
+  **Rules for None:**
+  - `none` is a final, immutable sentinel; once bound, it cannot be overwritten.
+  - `none` supports equality comparison (`none == none` is true; `none == <other>` is false) but no arithmetic or ordering operations.
 
 ### 4. Index Access Syntax
 
@@ -264,6 +273,83 @@ int(0)~h
 <now>(100)>hp
 <now>(hp - damage)>hp
 ```
+
+### 7. Algorithmic Core and Memory Model (Optimal Design, Repo-Independent)
+
+This subsection describes the **optimal algorithmic and memory-management design** for the `.ko` runtime. It is intentionally **not** a 1:1 mirror of the current repository layout; it states the idealized model and then maps each concept to its current implementation location for reference.
+
+#### 7.1 Algorithm Inventory and Effect
+
+| # | Algorithm / Mechanism | Purpose (Effect) | Optimal Complexity | Current Location (reference) |
+|---|------------------------|------------------|--------------------|------------------------------|
+| 1 | **Lexical Scanning (DFA-based)** | Convert source text into a token stream; classify sigils, system tags, comments, escapes. | O(n) time, O(n) tokens | `src/lexer.zig` (`tokenize`) |
+| 2 | **Recursive-Descent Parsing** | Build AST from token stream according to EBNF and priority rules; precedence climbing for expressions. | O(n) time, O(depth) stack | `src/parser.zig` (`parse`, `parseExpr`) |
+| 3 | **Scope Resolution (Hash-Table Symbol Table)** | Register identifiers into nested scopes (global/main/func/class); resolve names via parent-chain lookup. | O(1) avg lookup, O(scope depth) worst | `src/vm.zig` (`Scope`, `getVariable`) |
+| 4 | **Stack-Based VM Execution** | Evaluate AST/IR with an explicit evaluation stack; dispatch statements and expressions. | O(n) per program, O(stack depth) space | `src/vm.zig` (`execute`, `evaluateExpression`, `evaluateBinary`) |
+| 5 | **Value Algebra (Unified Binary Ops)** | Single source of truth for all binary operations: arithmetic, comparison, equality, logical. Checked overflow for integer ops; strict typing (no implicit int↔freal coercion). | O(1) per op (O(n) for concat) | `src/value.zig` (`add`, `sub`, `mul`, `div`, `rem`, `equals`, `less`, `greater`, `lessOrEqual`, `greaterOrEqual`) |
+| 6 | **Truthiness Coercion (`toBool`)** | Convert any value to boolean for logical/control-flow contexts (non-strict, matches AST behavior). | O(1) (O(n) for containers) | `src/value.zig` (`toBool`) |
+| 7 | **Memory Ownership (Arena + GPA)** | Arena for parse-time/short-lived allocations; GeneralPurposeAllocator for long-lived owned values; explicit `deinit` chains. | O(1) alloc, O(n) bulk free | `src/main.zig` (arena), `src/vm.zig`/`src/value.zig` (allocator) |
+| 8 | **Value Cloning** | Deep-copy owned values (strings, lists, dicts, class instances) when crossing scope boundaries. | O(size of value) | `src/value.zig` (`clone`) |
+| 9 | **Bytecode Compilation (optional backend)** | Lower AST to a compact instruction stream (opcodes 0..12 for binary ops) for faster dispatch. | O(n) compile, O(n) exec | `src/compiler.zig`, `src/bytecode.zig`, `src/vm.zig` (`binaryOp`) |
+| 10 | **Exception Scanning by Scope** | Scan backward within function/main/global scope for matching `<catch>` handler; chain priority top-to-bottom. | O(handlers) per throw | `src/vm.zig` (`dispatchCatchBlocks`) |
+| 11 | **Index/Key Access** | Random access into tuples/lists/strings and dict lookup by key. | O(1) avg (dict), O(1) (list index) | `src/vm.zig` (`evaluateIndexAccess`) |
+| 12 | **String Interpolation** | Substitute `{var}` placeholders in printf templates with runtime values. | O(n + m) | `src/vm.zig` (`printInterpolated`) |
+
+#### 7.2 Memory Management Strategy (Optimal)
+
+**Principle:** Memory is **explicitly owned**; no hidden global state. Every allocation is tied to an allocator passed down the call chain.
+
+- **Arena Allocator (short-lived):** Used for the entire parse phase. All AST nodes, tokens' derived data, and temporary strings are allocated in one arena; `arena.deinit()` frees everything in O(1) bulk at end of compilation/execution. This eliminates per-node `free` and prevents leaks during error paths.
+- **GeneralPurposeAllocator (long-lived values):** Runtime values that outlive the parse arena (variables in scopes, cloned values, class instances) are allocated with a GPA. Each `Value` implements `deinit(allocator)` to recursively release owned memory.
+- **Ownership Rules:**
+  - **Creator owns:** The function that allocates a value owns it; transfer occurs via explicit `clone` or move.
+  - **No implicit sharing:** Strings, lists, and dicts are never shared by reference across scope boundaries without cloning.
+  - **Allocator injection:** Every function that allocates takes `allocator: std.mem.Allocator` as a parameter; no module-level allocator global.
+  - **Error safety:** `errdefer` is used to roll back partial allocations on failure (e.g., class declaration, function creation).
+- **Memory Tagging for Debug:** In debug builds, the GPA detects leaks and double-frees; arena frees are bulk-verified.
+
+#### 7.3 Algorithmic Data Structures (Optimal)
+
+| Structure | Used For | Rationale |
+|-----------|----------|-----------|
+| **Hash Map (`StringHashMap`)** | Scope variables, class fields/methods, dict values | O(1) average lookup; natural key-based access |
+| **Dynamic Array (`[]Value`, ArrayList)** | Tuples, lists, evaluation stack, bytecode chunks | Contiguous memory, cache-friendly, O(1) amortized append |
+| **Tagged Union (`union(enum)`)** | `Value` type | Single type representing all runtime values; exhaustive switch ensures type safety |
+| **Arena-allocated AST nodes** | Parse tree | Bulk allocation/deallocation; no per-node lifetime tracking |
+| **Evaluation Stack (`[]Value`)** | VM expression evaluation | LIFO discipline matches expression evaluation order |
+
+#### 7.4 Effect Analysis (What Each Algorithm Achieves)
+
+- **Lexer/Parser:** Transforms unstructured text into a structured, type-checked AST; enables all downstream analysis.
+- **Scope Resolution:** Ensures variables are declared before use and isolated by scope; prevents name collisions.
+- **VM Execution:** Interprets AST directly (AST-walker path) or dispatches bytecode (bytecode path); maintains runtime state.
+- **Value Algebra:** Centralizes all binary operations; guarantees consistent behavior across both execution paths; checked overflow prevents silent wraparound; strict typing catches type mismatches at runtime.
+- **Memory Model:** Prevents use-after-free and leaks via explicit ownership; arena bulk-free makes error paths safe and fast.
+- **Exception Handling:** Provides scoped error recovery; allows graceful degradation.
+
+#### 7.5 Where (Current Repo Reference, Not Optimal Layout)
+
+The current repository places all core logic in `src/`:
+- `src/lexer.zig` — lexical analysis
+- `src/parser.zig` — parsing
+- `src/ast.zig` — AST definitions
+- `src/vm.zig` — VM, scope, execution, bytecode dispatch
+- `src/value.zig` — value algebra and memory ownership
+- `src/compiler.zig` — bytecode compiler
+- `src/bytecode.zig` — bytecode format
+- `src/main.zig` — entry point, arena setup, orchestration
+- `src/builtins.zig` — built-in functions
+- `src/installer.zig` — module installation
+- `src/module/` — native C/C++/Zig modules
+
+**Optimal (future) layout** would separate into:
+```
+frontend/   (Java: lexer, parser, AST)
+middleware/ (C++: semantic analysis, optimization, symbol table)
+backend/    (Zig: codegen, runtime, memory, ABI)
+core/       (shared: Value, AST/IR definitions)
+```
+with cross-language data exchange via CDEL (Section XVII.3).
 
 ---
 

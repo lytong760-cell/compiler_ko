@@ -35,3 +35,15 @@
 - **Active Node/Context:** `.kilo/skills` (Matt Pocock promoted skills install)
 - **Volatile Context Diagnostics:** 27 skill directories copied; `kilo debug skill` confirms recognition.
 - **Next Execution Phase Vectors:** none
+
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** SUCCESS
+- **Active Node/Context:** src/value.zig, src/vm.zig, testing/test_value.zig
+- **Volatile Context Diagnostics:** Unified binary ops behind Value; strict typing (no int↔freal coercion); added less/greater/lessOrEqual/greaterOrEqual; removed VM helpers; zig build and zig build test pass (test_value 17 tests); smoke examples pass.
+- **Next Execution Phase Vectors:** none
+
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** SUCCESS
+- **Active Node/Context:** src/compiler.zig, src/vm.zig
+- **Volatile Context Diagnostics:** zig build passes; simple.ko prints "Hello World\n".
+- **Next Execution Phase Vectors:** none

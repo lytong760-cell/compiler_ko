@@ -117,12 +117,10 @@ pub const Value = union(enum) {
         return switch (self) {
             .int => |a| switch (other) {
                 .int => |b| a == b,
-                .freal => |b| @as(f64, @floatFromInt(a)) == b,
                 else => error.TypeError,
             },
             .freal => |a| switch (other) {
                 .freal => |b| a == b,
-                .int => |b| a == @as(f64, @floatFromInt(b)),
                 else => error.TypeError,
             },
             .string => |a| switch (other) {
@@ -171,12 +169,10 @@ pub const Value = union(enum) {
                     if (result[1] != 0) break :blk error.OverflowError;
                     break :blk Value{ .int = result[0] };
                 },
-                .freal => |b| Value{ .freal = @as(f64, @floatFromInt(a)) + b },
                 else => error.TypeError,
             },
             .freal => |a| switch (other) {
                 .freal => |b| Value{ .freal = a + b },
-                .int => |b| Value{ .freal = a + @as(f64, @floatFromInt(b)) },
                 else => error.TypeError,
             },
             .string => |a| switch (other) {
@@ -204,12 +200,10 @@ pub const Value = union(enum) {
                     if (result[1] != 0) break :blk error.OverflowError;
                     break :blk Value{ .int = result[0] };
                 },
-                .freal => |b| Value{ .freal = @as(f64, @floatFromInt(a)) - b },
                 else => error.TypeError,
             },
             .freal => |a| switch (other) {
                 .freal => |b| Value{ .freal = a - b },
-                .int => |b| Value{ .freal = a - @as(f64, @floatFromInt(b)) },
                 else => error.TypeError,
             },
             else => error.TypeError,
@@ -224,12 +218,10 @@ pub const Value = union(enum) {
                     if (result[1] != 0) break :blk error.OverflowError;
                     break :blk Value{ .int = result[0] };
                 },
-                .freal => |b| Value{ .freal = @as(f64, @floatFromInt(a)) * b },
                 else => error.TypeError,
             },
             .freal => |a| switch (other) {
                 .freal => |b| Value{ .freal = a * b },
-                .int => |b| Value{ .freal = a * @as(f64, @floatFromInt(b)) },
                 else => error.TypeError,
             },
             else => error.TypeError,
@@ -243,12 +235,10 @@ pub const Value = union(enum) {
                     if (b == 0) break :blk error.DivideByZero;
                     break :blk Value{ .int = @divTrunc(a, b) };
                 },
-                .freal => |b| Value{ .freal = @as(f64, @floatFromInt(a)) / b },
                 else => error.TypeError,
             },
             .freal => |a| switch (other) {
                 .freal => |b| Value{ .freal = a / b },
-                .int => |b| Value{ .freal = a / @as(f64, @floatFromInt(b)) },
                 else => error.TypeError,
             },
             else => error.TypeError,
@@ -262,6 +252,78 @@ pub const Value = union(enum) {
                     if (b == 0) break :blk error.DivideByZero;
                     break :blk Value{ .int = @rem(a, b) };
                 },
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn less(self: Value, other: Value) !bool {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| a < b,
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| a < b,
+                else => error.TypeError,
+            },
+            .string => |a| switch (other) {
+                .string => |b| std.mem.order(u8, a, b) == .lt,
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn greater(self: Value, other: Value) !bool {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| a > b,
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| a > b,
+                else => error.TypeError,
+            },
+            .string => |a| switch (other) {
+                .string => |b| std.mem.order(u8, a, b) == .gt,
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn lessOrEqual(self: Value, other: Value) !bool {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| a <= b,
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| a <= b,
+                else => error.TypeError,
+            },
+            .string => |a| switch (other) {
+                .string => |b| std.mem.order(u8, a, b) != .gt,
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn greaterOrEqual(self: Value, other: Value) !bool {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| a >= b,
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| a >= b,
+                else => error.TypeError,
+            },
+            .string => |a| switch (other) {
+                .string => |b| std.mem.order(u8, a, b) != .lt,
                 else => error.TypeError,
             },
             else => error.TypeError,
