@@ -1,11 +1,9 @@
 const std = @import("std");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
-const vm = @import("vm.zig");
 const ast = @import("ast.zig");
-const compiler = @import("compiler.zig");
-const bytecode = @import("bytecode.zig");
 const installer = @import("installer.zig");
+const executor_mod = @import("executor.zig");
 
 const ModuleManifest = struct {
     name: []const u8,
@@ -73,7 +71,6 @@ const COMPLETION_COMMANDS = [_][]const u8{
     "--version",
     "--help",
     "--generate-completion",
-    "--generate-completion", // duplicate for consistency
 };
 
 fn unsupportedShell(it: std.process.Init, shell: []const u8) noreturn {
@@ -268,6 +265,19 @@ fn mainInner(it: std.process.Init) !u8 {
         return 0;
     }
 
+    if (std.mem.eql(u8, args[1], "-plugins")) {
+        var buf: [4096]u8 = undefined;
+        var file_writer = std.Io.File.stdout().writer(it.io, &buf);
+        const writer = &file_writer.interface;
+        writer.print("Plugin directories:\n", .{}) catch {};
+        const dirs = [_][]const u8{ "libs", ".ko/plugins" };
+        for (dirs) |d| {
+            scanPluginDir(writer, it.io, d);
+        }
+        writer.flush() catch {};
+        return 0;
+    }
+
     if (std.mem.eql(u8, args[1], "-search")) {
         if (args.len < 3) {
             var buf: [4096]u8 = undefined;
@@ -319,6 +329,57 @@ fn mainInner(it: std.process.Init) !u8 {
         return try executeCode(allocator, it.io, arg, "<repl>");
     }
 
+    if (std.mem.eql(u8, args[1], "build")) {
+        if (args.len < 3) {
+            var buf: [4096]u8 = undefined;
+            var file_writer = std.Io.File.stderr().writer(it.io, &buf);
+            const writer = &file_writer.interface;
+            writer.print("Error: Please specify a .ko file to build\n", .{}) catch {};
+            writer.flush() catch {};
+            return 1;
+        }
+        const arg = args[2];
+        const source = readSourceFile(allocator, it.io, arg) catch return 1;
+        defer allocator.free(source);
+        // validate
+        const rc = executeCode(allocator, it.io, source, arg) catch 1;
+        if (rc != 0) {
+            var buf: [4096]u8 = undefined;
+            var file_writer = std.Io.File.stderr().writer(it.io, &buf);
+            const writer = &file_writer.interface;
+            writer.print("Build failed with exit code {d}\n", .{rc}) catch {};
+            writer.flush() catch {};
+            return rc;
+        }
+        // create build dir + wrapper
+        std.Io.Dir.cwd().createDirPath(it.io, "build") catch {};
+        var name_buf: [256]u8 = undefined;
+        const base = std.fs.path.basename(arg);
+        const stem = if (std.mem.endsWith(u8, base, ".ko")) base[0 .. base.len - 3] else base;
+        const out_name = std.fmt.bufPrint(&name_buf, "build/{s}", .{stem}) catch return 1;
+        // write wrapper script
+        var fbuf: [4096]u8 = undefined;
+        var fw = std.Io.Dir.cwd().createFile(it.io, out_name, .{}) catch return 1;
+        defer fw.close(it.io);
+        _ = std.process.run(allocator, it.io, .{ .argv = &.{ "chmod", "+x", out_name } }) catch {};
+        var w = fw.writer(it.io, &fbuf);
+        const writer2 = &w.interface;
+        writer2.print("#!/bin/sh\nexec ko run '{s}' \"$@\"\n", .{arg}) catch {};
+        writer2.flush() catch {};
+        // chmod +x
+        // (best effort; ignore errors)
+        var buf2: [4096]u8 = undefined;
+        var fw2 = std.Io.File.stdout().writer(it.io, &buf2);
+        const w2 = &fw2.interface;
+        w2.print("Built: {s}\n", .{out_name}) catch {};
+        w2.flush() catch {};
+        return 0;
+    }
+
+    if (std.mem.eql(u8, args[1], "repl")) {
+        return try runRepl(allocator, it.io);
+    }
+
     if (std.mem.eql(u8, args[1], "--generate-completion")) {
         if (args.len < 3) {
             var buf: [4096]u8 = undefined;
@@ -350,6 +411,21 @@ fn mainInner(it: std.process.Init) !u8 {
     defer allocator.free(source);
 
     return try executeCode(allocator, it.io, source, file_path);
+}
+
+fn scanPluginDir(writer: *std.Io.Writer, io: std.Io, path: []const u8) void {
+    var dir = std.Io.Dir.cwd().openDir(io, path, .{ .iterate = true }) catch return;
+    defer dir.close(io);
+    writer.print("  {s}:\n", .{path}) catch {};
+    var iter = dir.iterate();
+    while (iter.next(io) catch null) |entry| {
+        if (entry.kind != .directory) continue;
+        var mbuf: [4096]u8 = undefined;
+        const manifest_path = std.fmt.bufPrint(&mbuf, "{s}/{s}/module.json", .{ path, entry.name }) catch continue;
+        const data = std.Io.Dir.cwd().readFileAlloc(io, manifest_path, std.heap.page_allocator, .limited(64 * 1024)) catch continue;
+        defer std.heap.page_allocator.free(data);
+        writer.print("    - {s}\n", .{entry.name}) catch {};
+    }
 }
 
 fn readSourceFile(allocator: std.mem.Allocator, io: std.Io, path: []const u8) ![]u8 {
@@ -396,8 +472,8 @@ fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, sou
         for (program) |*stmt| stmt.deinit();
     }
 
-    var virtual_machine = try vm.VM.init(allocator, io, source_name);
-    defer virtual_machine.deinit();
+    var executor = try executor_mod.Executor.init(allocator, io, source_name, null);
+    defer executor.deinit();
 
     const modules = try scanModuleStore(allocator, io);
     defer allocator.free(modules);
@@ -405,54 +481,69 @@ fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, sou
         _ = mod;
     }
 
-    // Bytecode backend: only for programs without user func/class definitions
-    // (those are AST-walker runtime state and cannot be represented in bytecode yet).
-    if (!hasFuncOrClassDef(program)) {
-        var chunk = try bytecode.Chunk.init(allocator);
-        errdefer chunk.deinit(allocator);
-        var comp = try compiler.Compiler.init(allocator, &chunk, "main", 0);
-        defer comp.deinit();
-        if (comp.compileProgram(program)) |_| {
-            virtual_machine.executeChunk(&chunk) catch |err| {
-                if (err == error.EndOfInput) {
-                    std.debug.print("InputError: end of input\n", .{});
-                    return 4;
-                }
-                std.debug.print("Runtime error: {any}\n", .{err});
-                return 3;
-            };
-            return 0;
-        } else |err| {
-            std.debug.print("Bytecode compile failed ({any}); falling back to AST walker\n", .{err});
-        }
-    }
-
-    // AST-walker fallback (also handles func/class definitions).
-    virtual_machine.execute(program) catch |err| {
-        if (err == error.EndOfInput) {
-            std.debug.print("InputError: end of input\n", .{});
-            return 4;
-        }
-        std.debug.print("Runtime error: {any}\n", .{err});
+    // Execution pipeline: bytecode backend with AST-walker fallback, hidden
+    // behind the Executor module's single interface.
+    executor.execute(program) catch |err| {
+        if (err == error.EndOfInput) return 4;
+        if (err == error.RuntimeError) return 3;
         return 3;
     };
 
     return 0;
 }
 
-fn hasFuncOrClassDef(program: []ast.Statement) bool {
-    for (program) |stmt| {
-        switch (stmt) {
-            .func_decl => return true,
-            .class_decl => return true,
-            .class_instantiation => return true,
-            .block => |b| {
-                if (hasFuncOrClassDef(b.body)) return true;
+fn runRepl(allocator: std.mem.Allocator, io: std.Io) !u8 {
+    var stdin_buf: [4096]u8 = undefined;
+    var file_reader = std.Io.File.stdin().reader(io, &stdin_buf);
+    const reader = &file_reader.interface;
+
+    var buf: [4096]u8 = undefined;
+    var stdout_file = std.Io.File.stdout().writer(io, &buf);
+    const out = &stdout_file.interface;
+
+    var accum = std.array_list.Managed(u8).init(allocator);
+    defer accum.deinit();
+
+    var depth: i32 = 0;
+    out.writeAll("ko repl (type 'exit' to quit)\n") catch {};
+    out.flush() catch {};
+
+    while (true) {
+        out.writeAll(if (depth == 0) "ko> " else "... ") catch {};
+        out.flush() catch {};
+
+        const line = reader.takeDelimiterInclusive('\n') catch |err| switch (err) {
+            error.EndOfStream => break,
+            else => {
+                std.debug.print("read error: {any}\n", .{err});
+                return 1;
             },
-            else => {},
+        };
+
+        const trimmed = std.mem.trim(u8, line, " \t\r\n");
+        if (depth == 0 and (std.mem.eql(u8, trimmed, "exit") or std.mem.eql(u8, trimmed, "quit"))) {
+            break;
+        }
+
+        for (line) |c| {
+            if (c == '[') depth += 1;
+            if (c == ']') depth -= 1;
+        }
+        try accum.appendSlice(line);
+
+        if (depth <= 0 and accum.items.len > 0) {
+            // ensure at least one newline
+            if (accum.items[accum.items.len - 1] != '\n') try accum.append('\n');
+            const source = accum.items;
+            const rc = executeCode(allocator, io, source, "<repl>") catch 1;
+            if (rc != 0) std.debug.print("exit code: {d}\n", .{rc});
+            accum.clearRetainingCapacity();
+            depth = 0;
         }
     }
-    return false;
+    out.writeAll("bye\n") catch {};
+    out.flush() catch {};
+    return 0;
 }
 
 fn isFilePath(io: std.Io, arg: []const u8) bool {

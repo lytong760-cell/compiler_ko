@@ -80,7 +80,6 @@ private:
 
         while (remaining > 0) {
             const uint64_t chunk = std::min(rec.unrollFactor, remaining);
-            std::cout << "[Loop.cpp]   chunk=" << chunk << std::endl;
             for (uint64_t j = 0; j < chunk; ++j) {
                 body(i + j, bodyCtx);
             }
@@ -142,10 +141,6 @@ public:
         regs.rdx = rec.forStart;
         regs.rsi = static_cast<uint64_t>(step);
         loopCache[loopId] = rec;
-        std::cout << "[Loop.cpp] Optimizing loop '" << loopId << "': "
-                  << rec.count << " iterations, unroll=" << rec.unrollFactor
-                  << ", strategy=" << static_cast<int>(rec.strategy)
-                  << std::endl;
         return 0;
     }
 
@@ -161,10 +156,6 @@ public:
         rec.cond = cond;
         rec.condCtx = condCtx;
         loopCache[loopId] = rec;
-        std::cout << "[Loop.cpp] Optimizing while-loop '" << loopId << "': "
-                  << "unroll=" << rec.unrollFactor
-                  << ", strategy=" << static_cast<int>(rec.strategy)
-                  << std::endl;
         return 0;
     }
 
@@ -304,9 +295,7 @@ int main(int argc, char* argv[]) {
     const int rc2 = ko_loop_execute_optimized_loop(
         eng, "test_loop",
         [](uint64_t i, void*) {
-            if (i % 1000 == 0) {
-                std::cout << "[Loop.cpp] Iteration: " << i << std::endl;
-            }
+            (void)i;
         },
         nullptr, iterations);
     if (rc2 != 0) {

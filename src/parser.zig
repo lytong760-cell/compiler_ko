@@ -59,14 +59,13 @@ pub const Parser = struct {
             const priority = tok.priority_lit;
             _ = self.advance();
             const stmt = try self.parseStatement();
-            const ps = try self.allocator.create(ast.PriorityStmt);
-            ps.* = ast.PriorityStmt{
+            const stmt_ptr = try self.allocator.create(ast.Statement);
+            stmt_ptr.* = stmt;
+            return ast.Statement{ .priority_stmt = .{
                 .priority = priority,
-                .stmt = try self.allocator.create(ast.Statement),
+                .stmt = stmt_ptr,
                 .allocator = self.allocator,
-            };
-            ps.stmt.* = stmt;
-            return ast.Statement{ .priority_stmt = ps.* };
+            } };
         }
 
         if (tok == .keyword) {
@@ -244,6 +243,8 @@ pub const Parser = struct {
         if (self.current() == .at) {
             _ = self.advance();
             if (self.current() == .identifier) {
+                const role = self.current().identifier;
+                if (!std.mem.eql(u8, role, "also")) return error.InvalidRegionRole;
                 _ = self.advance();
             }
             if (self.current() == .percent) {
@@ -415,19 +416,7 @@ pub const Parser = struct {
             const body = try self.parseBlock();
 
             const kind: ast.ControlFlow.Kind = if (std.mem.eql(u8, tag, "for")) .for_loop else .while_loop;
-            const cf = try self.allocator.create(ast.ControlFlow);
-            cf.* = ast.ControlFlow{
-                .kind = kind,
-                .condition = cond,
-                .body = body,
-                .init = init_assign,
-                .step = step,
-                .loop_var = loop_var_name,
-                .elifs = &[_]ast.Elif{},
-                .else_body = &[_]ast.Statement{},
-                .allocator = self.allocator,
-            };
-            return ast.Statement{ .control_flow = cf };
+            return try self.makeLoopStmt(kind, cond, body, init_assign, step, loop_var_name);
         }
 
         if (self.current() == .l_bracket) {
@@ -466,19 +455,7 @@ pub const Parser = struct {
         const cond = try self.parseExpression();
         try self.expectRParen();
         const body = try self.parseBlock();
-        const cf = try self.allocator.create(ast.ControlFlow);
-        cf.* = ast.ControlFlow{
-            .kind = .if_stmt,
-            .condition = cond,
-            .body = body,
-            .init = null,
-            .step = null,
-            .loop_var = "",
-            .elifs = &[_]ast.Elif{},
-            .else_body = &[_]ast.Statement{},
-            .allocator = self.allocator,
-        };
-        return ast.Statement{ .control_flow = cf };
+        return try self.makeIfStmt(cond, body);
     }
 
     fn parseElifStmt(self: *Parser) anyerror!ast.Statement {
@@ -490,37 +467,13 @@ pub const Parser = struct {
         const cond = try self.parseExpression();
         try self.expectRParen();
         const body = try self.parseBlock();
-        const cf = try self.allocator.create(ast.ControlFlow);
-        cf.* = ast.ControlFlow{
-            .kind = .elif_stmt,
-            .condition = cond,
-            .body = body,
-            .init = null,
-            .step = null,
-            .loop_var = "",
-            .elifs = &[_]ast.Elif{},
-            .else_body = &[_]ast.Statement{},
-            .allocator = self.allocator,
-        };
-        return ast.Statement{ .control_flow = cf };
+        return try self.makeElifStmt(cond, body);
     }
 
     fn parseElseStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         const body = try self.parseBlock();
-        const cf = try self.allocator.create(ast.ControlFlow);
-        cf.* = ast.ControlFlow{
-            .kind = .else_stmt,
-            .condition = null,
-            .body = body,
-            .init = null,
-            .step = null,
-            .loop_var = "",
-            .elifs = &[_]ast.Elif{},
-            .else_body = &[_]ast.Statement{},
-            .allocator = self.allocator,
-        };
-        return ast.Statement{ .control_flow = cf };
+        return try self.makeElseStmt(body);
     }
 
     fn parseReturnStmt(self: *Parser) anyerror!ast.Statement {
@@ -529,9 +482,7 @@ pub const Parser = struct {
         const expr = try self.parseExpression();
         try self.expectRParen();
 
-        const rs = try self.allocator.create(ast.ReturnStmt);
-        rs.* = ast.ReturnStmt{ .expr = expr };
-        return ast.Statement{ .return_stmt = rs };
+        return try self.makeReturnStmt(expr);
     }
 
     fn parseCatchStmt(self: *Parser) anyerror!ast.Statement {
@@ -540,13 +491,7 @@ pub const Parser = struct {
         const err_type = try self.parseErrorType();
         try self.expectRParen();
         const body = try self.parseBlock();
-        const cs = try self.allocator.create(ast.CatchStmt);
-        cs.* = ast.CatchStmt{
-            .error_type = err_type,
-            .body = body,
-            .allocator = self.allocator,
-        };
-        return ast.Statement{ .catch_stmt = cs };
+        return try self.makeCatchStmt(err_type, body);
     }
 
     fn parseErrorType(self: *Parser) ![]const u8 {
@@ -630,11 +575,7 @@ pub const Parser = struct {
         try self.expectGT();
         const target = try self.parseExpression();
 
-        const ne = try self.allocator.create(ast.NowExpr);
-        ne.* = ast.NowExpr{ .expr = expr, .target = target };
-        const e = try self.allocator.create(ast.Expr);
-        e.* = .{ .now_expr = ne };
-        return ast.Statement{ .expr = e };
+        return try self.makeNowStmt(expr, target);
     }
 
     fn parseMemoryOpStmt(self: *Parser) anyerror!ast.Statement {
@@ -645,12 +586,7 @@ pub const Parser = struct {
             const expr = try self.parseExpression();
             try self.expectRParen();
 
-            const mo = try self.allocator.create(ast.MemoryOp);
-            mo.* = ast.MemoryOp{
-                .kind = .dete,
-                .expr = expr,
-            };
-            return ast.Statement{ .memory_op = mo };
+            return try self.makeMemoryOp(.dete, expr);
         }
         if (self.current() == .caret) {
             _ = self.advance();
@@ -658,12 +594,7 @@ pub const Parser = struct {
             const expr = try self.parseExpression();
             try self.expectRParen();
 
-            const mo = try self.allocator.create(ast.MemoryOp);
-            mo.* = ast.MemoryOp{
-                .kind = .address,
-                .expr = expr,
-            };
-            return ast.Statement{ .memory_op = mo };
+            return try self.makeMemoryOp(.address, expr);
         }
         return error.UnexpectedToken;
     }
@@ -678,12 +609,7 @@ pub const Parser = struct {
         const expr = try self.parseExpression();
         try self.expectRParen();
 
-        const eo = try self.allocator.create(ast.EncodingOp);
-        eo.* = ast.EncodingOp{
-            .encoding_type = tag,
-            .expr = expr,
-        };
-        return ast.Statement{ .encoding_op = eo };
+        return try self.makeEncodeOp(tag, expr);
     }
 
     fn parseLenOpStmt(self: *Parser) anyerror!ast.Statement {
@@ -796,104 +722,46 @@ pub const Parser = struct {
             const cond = try self.parseExpression();
             try self.expectRParen();
             const body = try self.parseBlock();
-            const cf = try self.allocator.create(ast.ControlFlow);
-            cf.* = ast.ControlFlow{
-                .kind = .if_stmt,
-                .condition = cond,
-                .body = body,
-                .init = null,
-                .step = null,
-                .loop_var = "",
-                .elifs = &[_]ast.Elif{},
-                .else_body = &[_]ast.Statement{},
-                .allocator = self.allocator,
-            };
-            return ast.Statement{ .control_flow = cf };
+            return try self.makeIfStmt(cond, body);
         } else if (std.mem.eql(u8, tag, "elif")) {
             try self.expectLParen();
             const cond = try self.parseExpression();
             try self.expectRParen();
             const body = try self.parseBlock();
-            const cf = try self.allocator.create(ast.ControlFlow);
-            cf.* = ast.ControlFlow{
-                .kind = .elif_stmt,
-                .condition = cond,
-                .body = body,
-                .init = null,
-                .step = null,
-                .loop_var = "",
-                .elifs = &[_]ast.Elif{},
-                .else_body = &[_]ast.Statement{},
-                .allocator = self.allocator,
-            };
-            return ast.Statement{ .control_flow = cf };
+            return try self.makeElifStmt(cond, body);
         } else if (std.mem.eql(u8, tag, "else")) {
             const body = try self.parseBlock();
-            const cf = try self.allocator.create(ast.ControlFlow);
-            cf.* = ast.ControlFlow{
-                .kind = .else_stmt,
-                .condition = null,
-                .body = body,
-                .init = null,
-                .step = null,
-                .loop_var = "",
-                .elifs = &[_]ast.Elif{},
-                .else_body = &[_]ast.Statement{},
-                .allocator = self.allocator,
-            };
-            return ast.Statement{ .control_flow = cf };
+            return try self.makeElseStmt(body);
         } else if (std.mem.eql(u8, tag, "catch")) {
             try self.expectLParen();
             const err_type = try self.parseErrorType();
             try self.expectRParen();
             const body = try self.parseBlock();
-            const cs = try self.allocator.create(ast.CatchStmt);
-            cs.* = ast.CatchStmt{
-                .error_type = err_type,
-                .body = body,
-                .allocator = self.allocator,
-            };
-            return ast.Statement{ .catch_stmt = cs };
+            return try self.makeCatchStmt(err_type, body);
         } else if (std.mem.eql(u8, tag, "return")) {
             try self.expectLParen();
             const expr = try self.parseExpression();
             try self.expectRParen();
-            const rs = try self.allocator.create(ast.ReturnStmt);
-            rs.* = ast.ReturnStmt{ .expr = expr };
-            return ast.Statement{ .return_stmt = rs };
+            return try self.makeReturnStmt(expr);
         } else if (std.mem.eql(u8, tag, "now")) {
             try self.expectLParen();
             const expr = try self.parseExpression();
             try self.expectRParen();
             try self.expectGT();
             const target = try self.parseExpression();
-            const ne = try self.allocator.create(ast.NowExpr);
-            ne.* = ast.NowExpr{ .expr = expr, .target = target };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .now_expr = ne };
-            return ast.Statement{ .expr = e };
+            return try self.makeNowStmt(expr, target);
         } else if (std.mem.eql(u8, tag, "memory")) {
             if (self.current() == .caret) {
                 _ = self.advance();
                 const expr = try self.parseExpression();
-                const mo = try self.allocator.create(ast.MemoryOp);
-                mo.* = ast.MemoryOp{
-                    .kind = .address,
-                    .expr = expr,
-                };
-                return ast.Statement{ .memory_op = mo };
+                return try self.makeMemoryOp(.address, expr);
             }
             if (self.current() == .identifier and std.mem.eql(u8, self.current().identifier, "dete")) {
                 _ = self.advance();
                 try self.expectLParen();
                 const expr = try self.parseExpression();
                 try self.expectRParen();
-                const mo = try self.allocator.create(ast.MemoryOp);
-                mo.* = ast.MemoryOp{
-                    .kind = .dete,
-                    .expr = expr,
-                };
-                return ast.Statement{ .memory_op = mo };
+                return try self.makeMemoryOp(.dete, expr);
             }
             return error.UnexpectedToken;
         } else if (std.mem.eql(u8, tag, "input")) {
@@ -936,12 +804,7 @@ pub const Parser = struct {
             try self.expectLParen();
             const expr = try self.parseExpression();
             try self.expectRParen();
-            const eo = try self.allocator.create(ast.EncodingOp);
-            eo.* = ast.EncodingOp{
-                .encoding_type = encoding_type,
-                .expr = expr,
-            };
-            return ast.Statement{ .encoding_op = eo };
+            return try self.makeEncodeOp(encoding_type, expr);
         } else if (self.current() == .caret) {
             _ = self.advance();
             if (self.current() == .l_paren) {
@@ -1023,19 +886,7 @@ pub const Parser = struct {
             const body = try self.parseBlock();
 
             const kind: ast.ControlFlow.Kind = if (std.mem.eql(u8, tag, "for")) .for_loop else .while_loop;
-            const cf = try self.allocator.create(ast.ControlFlow);
-            cf.* = ast.ControlFlow{
-                .kind = kind,
-                .condition = cond,
-                .body = body,
-                .init = init_assign,
-                .step = step,
-                .loop_var = loop_var_name,
-                .elifs = &[_]ast.Elif{},
-                .else_body = &[_]ast.Statement{},
-                .allocator = self.allocator,
-            };
-            return ast.Statement{ .control_flow = cf };
+            return try self.makeLoopStmt(kind, cond, body, init_assign, step, loop_var_name);
         } else if (self.current() == .l_paren) {
             _ = self.advance();
             const expr = try self.parseExpression();
@@ -1303,6 +1154,15 @@ pub const Parser = struct {
             return e;
         }
 
+        if (tok == .identifier and std.mem.eql(u8, tok.identifier, "none")) {
+            _ = self.advance();
+            const lit = try self.allocator.create(ast.Literal);
+            lit.* = ast.Literal{ .kind = .none, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .literal = lit.* };
+            return e;
+        }
+
         if (tok == .identifier) {
             const name = tok.identifier;
             _ = self.advance();
@@ -1548,6 +1408,106 @@ pub const Parser = struct {
         }
 
         return object;
+    }
+
+    fn makeIfStmt(self: *Parser, cond: *ast.Expr, body: []ast.Statement) !ast.Statement {
+        const cf = try self.allocator.create(ast.ControlFlow);
+        cf.* = ast.ControlFlow{
+            .kind = .if_stmt,
+            .condition = cond,
+            .body = body,
+            .init = null,
+            .step = null,
+            .loop_var = "",
+            .elifs = &[_]ast.Elif{},
+            .else_body = &[_]ast.Statement{},
+            .allocator = self.allocator,
+        };
+        return ast.Statement{ .control_flow = cf };
+    }
+
+    fn makeElifStmt(self: *Parser, cond: *ast.Expr, body: []ast.Statement) !ast.Statement {
+        const cf = try self.allocator.create(ast.ControlFlow);
+        cf.* = ast.ControlFlow{
+            .kind = .elif_stmt,
+            .condition = cond,
+            .body = body,
+            .init = null,
+            .step = null,
+            .loop_var = "",
+            .elifs = &[_]ast.Elif{},
+            .else_body = &[_]ast.Statement{},
+            .allocator = self.allocator,
+        };
+        return ast.Statement{ .control_flow = cf };
+    }
+
+    fn makeElseStmt(self: *Parser, body: []ast.Statement) !ast.Statement {
+        const cf = try self.allocator.create(ast.ControlFlow);
+        cf.* = ast.ControlFlow{
+            .kind = .else_stmt,
+            .condition = null,
+            .body = body,
+            .init = null,
+            .step = null,
+            .loop_var = "",
+            .elifs = &[_]ast.Elif{},
+            .else_body = &[_]ast.Statement{},
+            .allocator = self.allocator,
+        };
+        return ast.Statement{ .control_flow = cf };
+    }
+
+    fn makeReturnStmt(self: *Parser, expr: *ast.Expr) !ast.Statement {
+        const rs = try self.allocator.create(ast.ReturnStmt);
+        rs.* = ast.ReturnStmt{ .expr = expr };
+        return ast.Statement{ .return_stmt = rs };
+    }
+
+    fn makeCatchStmt(self: *Parser, err_type: []const u8, body: []ast.Statement) !ast.Statement {
+        const cs = try self.allocator.create(ast.CatchStmt);
+        cs.* = ast.CatchStmt{
+            .error_type = err_type,
+            .body = body,
+            .allocator = self.allocator,
+        };
+        return ast.Statement{ .catch_stmt = cs };
+    }
+
+    fn makeNowStmt(self: *Parser, expr: *ast.Expr, target: *ast.Expr) !ast.Statement {
+        const ne = try self.allocator.create(ast.NowExpr);
+        ne.* = ast.NowExpr{ .expr = expr, .target = target };
+        const e = try self.allocator.create(ast.Expr);
+        e.* = .{ .now_expr = ne };
+        return ast.Statement{ .expr = e };
+    }
+
+    fn makeLoopStmt(self: *Parser, kind: ast.ControlFlow.Kind, cond: *ast.Expr, body: []ast.Statement, init_assign: ?*ast.Assignment, step: ?*ast.Expr, loop_var_name: []const u8) !ast.Statement {
+        const cf = try self.allocator.create(ast.ControlFlow);
+        cf.* = ast.ControlFlow{
+            .kind = kind,
+            .condition = cond,
+            .body = body,
+            .init = init_assign,
+            .step = step,
+            .loop_var = loop_var_name,
+            .elifs = &[_]ast.Elif{},
+            .else_body = &[_]ast.Statement{},
+            .allocator = self.allocator,
+        };
+        return ast.Statement{ .control_flow = cf };
+    }
+
+    fn makeMemoryOp(self: *Parser, kind: ast.MemoryOp.Kind, expr: *ast.Expr) !ast.Statement {
+        const mo = try self.allocator.create(ast.MemoryOp);
+        mo.* = ast.MemoryOp{ .kind = kind, .expr = expr };
+        return ast.Statement{ .memory_op = mo };
+    }
+
+    fn makeEncodeOp(self: *Parser, encoding_type: []const u8, expr: *ast.Expr) !ast.Statement {
+        const eo = try self.allocator.create(ast.EncodingOp);
+        eo.* = ast.EncodingOp{ .encoding_type = encoding_type, .expr = expr };
+        return ast.Statement{ .encoding_op = eo };
     }
 
     fn expectLParen(self: *Parser) !void {

@@ -12,6 +12,7 @@ Usage:
 """
 
 import json
+import hmac
 import os
 import sys
 import argparse
@@ -133,7 +134,7 @@ class RequestHandler(BaseHTTPRequestHandler):
     def _check_api_key(self):
         query = parse_qs(urlparse(self.path).query)
         key = query.get("key", [""])[0]
-        return key == API_KEY
+        return hmac.compare_digest(key.encode(), (API_KEY or "").encode())
 
     def _parse_path(self):
         parsed = urlparse(self.path)
@@ -211,8 +212,9 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         if rel_path.startswith("/libraries/"):
             lib_name = rel_path[len("/libraries/"):]
-            if not lib_name:
-                self._send_json(400, {"error": {"message": "Library name required", "status": "INVALID_ARGUMENT"}})
+            import re
+            if not lib_name or not re.fullmatch(r"[A-Za-z0-9_-]+", lib_name):
+                self._send_json(400, {"error": {"message": "Invalid library name", "status": "INVALID_ARGUMENT"}})
                 return
 
             content_length = int(self.headers.get("Content-Length", 0))

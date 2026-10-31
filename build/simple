@@ -1,0 +1,2 @@
+#!/bin/sh
+exec ko run 'examples/simple.ko' "$@"

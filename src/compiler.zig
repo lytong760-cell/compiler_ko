@@ -3,6 +3,7 @@ const ast = @import("ast.zig");
 const bytecode = @import("bytecode.zig");
 const lexer = @import("lexer.zig");
 const value_mod = @import("value.zig");
+const operator = @import("operator.zig");
 
 pub const Compiler = struct {
     allocator: std.mem.Allocator,
@@ -196,18 +197,12 @@ pub const Compiler = struct {
             .binary => |b| {
                 try self.compileExpression(b.left);
                 try self.compileExpression(b.right);
-                const op: u8 = switch (b.op) {
-                    .add => 0, .sub => 1, .mul => 2, .div => 3,
-                    .rem => 4, .logical_and => 5, .logical_or => 6,
-                    .eq => 7, .neq => 8, .lt => 9, .gt => 10, .lte => 11, .gte => 12,
-                };
+                const op: u8 = operator.binaryToOpcode(b.op);
                 try self.emit(.{ .binary = op });
             },
             .unary => |u| {
                 try self.compileExpression(u.expr);
-                const op: u8 = switch (u.op) {
-                    .neg => 0, .not => 1,
-                };
+                const op: u8 = operator.unaryToOpcode(u.op);
                 try self.emit(.{ .unary = op });
             },
             .call => |c| {
@@ -289,6 +284,7 @@ pub const Compiler = struct {
             },
             .bool_true => value_mod.Value{ .booling = true },
             .bool_false => value_mod.Value{ .booling = false },
+            .none => value_mod.Value{ .none = {} },
             .tuple => value_mod.Value{ .null = {} },
             .dict => return error.UnsupportedBytecode,
         };

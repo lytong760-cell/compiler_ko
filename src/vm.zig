@@ -2,6 +2,7 @@ const std = @import("std");
 const ast = @import("ast.zig");
 const value_mod = @import("value.zig");
 const bytecode = @import("bytecode.zig");
+const operator = @import("operator.zig");
 
 const EndOfInput = error.EndOfInput;
 
@@ -144,15 +145,34 @@ fn readInputLine(self: *VM) ![]const u8 {
     pub fn execute(self: *VM, program: []ast.Statement) anyerror!void {
         self.current_function = "main";
         self.exposeProcess();
+
+        const Entry = struct { priority: i64, index: usize, stmt: *ast.Statement };
+        var entries = std.array_list.Managed(Entry).init(self.allocator);
+        defer entries.deinit();
         for (program, 0..) |*stmt, idx| {
+            const prio: i64 = if (stmt.* == .priority_stmt) stmt.priority_stmt.priority else 0;
+            try entries.append(.{ .priority = prio, .index = idx, .stmt = stmt });
+        }
+        var i: usize = 1;
+        while (i < entries.items.len) : (i += 1) {
+            var j = i;
+            while (j > 0 and entries.items[j - 1].priority > entries.items[j].priority) {
+                const tmp = entries.items[j];
+                entries.items[j] = entries.items[j - 1];
+                entries.items[j - 1] = tmp;
+                j -= 1;
+            }
+        }
+
+        for (entries.items) |e| {
             if (self.has_returned) break;
             if (self.has_error) {
-                self.dispatchCatchBlocks(program, idx) catch {};
+                self.dispatchCatchBlocks(program, e.index) catch |err| std.debug.print("dispatchCatchBlocks: {any}\n", .{err});
                 continue;
             }
-self.executeStatement(stmt) catch |err| {
-    self.raiseError(VM.zigErrorToKoType(err), @errorName(err));
-};
+            self.executeStatement(e.stmt) catch |err| {
+                self.raiseError(VM.zigErrorToKoType(err), @errorName(err));
+            };
         }
         if (self.has_error) {
             if (self.error_type) |et| {
@@ -185,7 +205,7 @@ self.executeStatement(stmt) catch |err| {
         switch (stmt.*) {
             .var_decl => |*v| {
                 var val = try self.evaluateExpression(v.value_expr);
-                const final_val = if (std.mem.eql(u8, v.type_name, "bytes")) blk: {
+                 var final_val = if (std.mem.eql(u8, v.type_name, "bytes")) blk: {
                     defer val.deinit(self.allocator);
                     var buf: []u8 = undefined;
                     switch (val) {
@@ -211,11 +231,21 @@ self.executeStatement(stmt) catch |err| {
                     }
                     break :blk value_mod.Value{ .bytes = buf };
                 } else val;
-                if (self.current_scope.variables.get(v.name)) |_| {
+                 if (self.current_scope.variables.get(v.name)) |existing| {
+                    if (existing == .none) {
+                        self.raiseError("TypeError", "Cannot reassign none value");
+                        final_val.deinit(self.allocator);
+                        return;
+                    }
                     const gop = try self.current_scope.variables.getOrPut(v.name);
                     gop.value_ptr.*.deinit(self.allocator);
                     gop.value_ptr.* = final_val;
-                } else if (self.global_scope.variables.get(v.name)) |_| {
+                } else if (self.global_scope.variables.get(v.name)) |existing| {
+                    if (existing == .none) {
+                        self.raiseError("TypeError", "Cannot reassign none value");
+                        final_val.deinit(self.allocator);
+                        return;
+                    }
                     const gop = try self.global_scope.variables.getOrPut(v.name);
                     gop.value_ptr.*.deinit(self.allocator);
                     gop.value_ptr.* = final_val;
@@ -483,7 +513,27 @@ self.executeStatement(stmt) catch |err| {
     }
 
     fn executeBlock(self: *VM, body: []ast.Statement) !void {
-        for (body) |s| try self.executeStatement(&s);
+        const Entry = struct { priority: i64, stmt: *ast.Statement };
+        var entries = std.array_list.Managed(Entry).init(self.allocator);
+        defer entries.deinit();
+        for (body) |*s| {
+            const prio: i64 = if (s.* == .priority_stmt) s.priority_stmt.priority else 0;
+            try entries.append(.{ .priority = prio, .stmt = s });
+        }
+        var i: usize = 1;
+        while (i < entries.items.len) : (i += 1) {
+            var j = i;
+            while (j > 0 and entries.items[j - 1].priority > entries.items[j].priority) {
+                const tmp = entries.items[j];
+                entries.items[j] = entries.items[j - 1];
+                entries.items[j - 1] = tmp;
+                j -= 1;
+            }
+        }
+        for (entries.items) |e| {
+            if (self.has_returned) break;
+            try self.executeStatement(e.stmt);
+        }
     }
 
     fn executeStatementInScope(self: *VM, stmt: *const ast.Statement, scope: *value_mod.Scope) anyerror!void {
@@ -496,11 +546,23 @@ self.executeStatement(stmt) catch |err| {
     fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
         switch (target.*) {
             .identifier => |name| {
-                if (self.current_scope.variables.get(name)) |_| {
+                if (self.current_scope.variables.get(name)) |existing| {
+                    if (existing == .none) {
+                        self.raiseError("TypeError", "Cannot reassign none value");
+                        var v = val;
+                        v.deinit(self.allocator);
+                        return;
+                    }
                     const gop = try self.current_scope.variables.getOrPut(name);
                     gop.value_ptr.*.deinit(self.allocator);
                     gop.value_ptr.* = val;
-                } else if (self.global_scope.variables.get(name)) |_| {
+                } else if (self.global_scope.variables.get(name)) |existing| {
+                    if (existing == .none) {
+                        self.raiseError("TypeError", "Cannot reassign none value");
+                        var v = val;
+                        v.deinit(self.allocator);
+                        return;
+                    }
                     const gop = try self.global_scope.variables.getOrPut(name);
                     gop.value_ptr.*.deinit(self.allocator);
                     gop.value_ptr.* = val;
@@ -684,6 +746,7 @@ self.executeStatement(stmt) catch |err| {
             },
             .bool_true => value_mod.Value{ .booling = true },
             .bool_false => value_mod.Value{ .booling = false },
+            .none => value_mod.Value{ .none = {} },
             .tuple => value_mod.Value{ .tuple = &[_]value_mod.Value{} },
             .dict => blk: {
                 const d = try self.allocator.create(std.StringHashMap(value_mod.Value));
@@ -721,21 +784,7 @@ self.executeStatement(stmt) catch |err| {
         const left = try self.evaluateExpression(bin.left);
         const right = try self.evaluateExpression(bin.right);
 
-        return switch (bin.op) {
-            .add => try left.add(right, self.allocator),
-            .sub => try left.sub(right),
-            .mul => try left.mul(right),
-            .div => try left.div(right),
-            .rem => try left.rem(right),
-            .logical_and => value_mod.Value{ .booling = (try left.toBool()) and (try right.toBool()) },
-            .logical_or => value_mod.Value{ .booling = (try left.toBool()) or (try right.toBool()) },
-            .eq => value_mod.Value{ .booling = try left.equals(right) },
-            .neq => value_mod.Value{ .booling = !(try left.equals(right)) },
-            .lt => value_mod.Value{ .booling = try left.less(right) },
-            .gt => value_mod.Value{ .booling = try left.greater(right) },
-            .lte => value_mod.Value{ .booling = try left.lessOrEqual(right) },
-            .gte => value_mod.Value{ .booling = try left.greaterOrEqual(right) },
-        };
+        return try operator.applyBinary(bin.op, left, right, self.allocator);
     }
 
     fn printInterpolated(self: *VM, s: []const u8) !void {
@@ -780,14 +829,7 @@ self.executeStatement(stmt) catch |err| {
 
     fn evaluateUnary(self: *VM, unary: *ast.UnaryExpr) !value_mod.Value {
         const val = try self.evaluateExpression(unary.expr);
-        return switch (unary.op) {
-            .neg => switch (val) {
-                .int => |i| value_mod.Value{ .int = -i },
-                .freal => |f| value_mod.Value{ .freal = -f },
-                else => error.TypeError,
-            },
-            .not => value_mod.Value{ .booling = !(try val.toBool()) },
-        };
+        return try operator.applyUnary(unary.op, val);
     }
 
     fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr) anyerror!value_mod.Value {
@@ -1224,34 +1266,11 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
     }
 
     fn binaryOp(self: *VM, op: u8, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        return switch (op) {
-            0 => try lhs.add(rhs, self.allocator),
-            1 => try lhs.sub(rhs),
-            2 => try lhs.mul(rhs),
-            3 => try lhs.div(rhs),
-            4 => try lhs.rem(rhs),
-            5 => value_mod.Value{ .booling = (try lhs.toBool()) and (try rhs.toBool()) },
-            6 => value_mod.Value{ .booling = (try lhs.toBool()) or (try rhs.toBool()) },
-            7 => value_mod.Value{ .booling = try lhs.equals(rhs) },
-            8 => value_mod.Value{ .booling = !(try lhs.equals(rhs)) },
-            9 => value_mod.Value{ .booling = try lhs.less(rhs) },
-            10 => value_mod.Value{ .booling = try lhs.greater(rhs) },
-            11 => value_mod.Value{ .booling = try lhs.lessOrEqual(rhs) },
-            12 => value_mod.Value{ .booling = try lhs.greaterOrEqual(rhs) },
-            else => error.TypeError,
-        };
+        return try operator.applyBinaryOpcode(op, lhs, rhs, self.allocator);
     }
 
     fn evaluateUnaryOp(_: *VM, op: u8, val: value_mod.Value) !value_mod.Value {
-        return switch (op) {
-            0 => switch (val) {
-                .int => |i| value_mod.Value{ .int = -i },
-                .freal => |f| value_mod.Value{ .freal = -f },
-                else => error.TypeError,
-            },
-            1 => value_mod.Value{ .booling = !(try val.toBool()) },
-            else => error.TypeError,
-        };
+        return try operator.applyUnaryOpcode(op, val);
     }
 
     fn callBuiltin(self: *VM, name: []const u8, args: []value_mod.Value) !value_mod.Value {

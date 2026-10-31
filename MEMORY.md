@@ -1,4 +1,16 @@
-### [2026-10-24] LONG-TERM MEMORY DUMP
+### [2026-10-31] LONG-TERM MEMORY DUMP
+- **Identified Truths:** Verified toolchains available: Java, g++, gcc, Python compile clean; Zig 0.16.0 not in sandbox. Many prior HIGH/MEDIUM fixes already present in tree (escape unescape, aliasing clone, dict fetchPut, class scope destroy, api default bind 127.0.0.1).
+- **Architectural Mutations:** Implemented hardening subset of full development plan: PriorityStmt wrapper leak removed (parser.zig); Loop.cpp debug cout removed from hot path; duplicate completion entry removed (main.zig); ko_get_cwd thread-safe with PATH_MAX (Os.c); timing-safe API key compare and library name validation (api_server.py); dispatchCatchBlocks empty catch replaced with debug log (vm.zig).
+- **Technical Debt & Anti-Patterns:** Zig build/test not verified in sandbox; REPL, ko build, plugin loader, Java Import runtime integration, generics still unimplemented (Phases 6-8 / G1/G2/G12/G13/G14/G16).
+- **Shared Variables & Symbols:** N/A.
+
+## Chưa xác minh
+- `zig build` / `zig build test < /dev/null` chưa chạy (thiếu Zig).
+- Bytecode parity cho class/func/dict/method/input chưa implement.
+- REPL, `ko build`, plugin loader, Java runtime integration chưa implement.
+
+---
+
 - **Identified Truths:** Zig 0.16.0 is the supported toolchain (`zig version` = 0.16.0); build and all tests pass after fixes.
 - **Architectural Mutations:** Updated .gitignore, kilo.jsonc, build.zig.zon, installer ZIP paths, Loop.cpp, vm.zig, compiler.zig, test_harness iterations.
 - **Technical Debt & Anti-Patterns:** Avoid `std.fmt.allocPrint` with `{}` on Value; use allocating writer + `print`.

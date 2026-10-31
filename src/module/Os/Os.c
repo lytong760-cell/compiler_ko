@@ -29,8 +29,10 @@ int64_t ko_file_size(const char *path) {
     return (int64_t)st.st_size;
 }
 
+#include <limits.h>
+
 const char* ko_get_cwd(void) {
-    static char buf[1024];
+    static __thread char buf[PATH_MAX];
     if (getcwd(buf, sizeof(buf)) != NULL) {
         return buf;
     }

@@ -3,6 +3,7 @@ const ast = @import("ast.zig");
 
 pub const Value = union(enum) {
     null,
+    none,
     int: i64,
     freal: f64,
     string: []const u8,
@@ -59,6 +60,7 @@ pub const Value = union(enum) {
     pub fn print(self: Value, writer: anytype) !void {
         switch (self) {
             .null => try writer.print("null", .{}),
+            .none => try writer.print("none", .{}),
             .int => |v| try writer.print("{d}", .{v}),
             .freal => |v| try writer.print("{d}", .{v}),
             .string => |v| try writer.print("{s}", .{v}),
@@ -109,6 +111,7 @@ pub const Value = union(enum) {
             .tuple, .list => |v| v.len > 0,
             .dict => |d| d.count() > 0,
             .null => false,
+            .none => false,
             else => error.TypeError,
         };
     }
@@ -156,6 +159,10 @@ pub const Value = union(enum) {
                     return true;
                 },
                 else => error.TypeError,
+            },
+            .none => switch (other) {
+                .none => true,
+                else => false,
             },
             else => error.TypeError,
         };
@@ -333,6 +340,7 @@ pub const Value = union(enum) {
     pub fn clone(self: Value, allocator: std.mem.Allocator) !Value {
         return switch (self) {
             .null => Value{ .null = {} },
+            .none => Value{ .none = {} },
             .int => |v| Value{ .int = v },
             .freal => |v| Value{ .freal = v },
             .string => |s| Value{ .string = try allocator.dupe(u8, s) },

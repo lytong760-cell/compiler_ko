@@ -255,7 +255,7 @@ pub const Literal = struct {
     dict_entries: []DictEntry,
     allocator: std.mem.Allocator,
 
-    pub const Kind = enum { int, freal, string, bool_true, bool_false, tuple, dict };
+    pub const Kind = enum { int, freal, string, bool_true, bool_false, none, tuple, dict };
 
     pub fn deinit(self: *Literal) void {
         switch (self.kind) {
