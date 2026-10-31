@@ -184,6 +184,8 @@ Execution statements must not float freely outside the global scope. They are re
   - A `null` variable **must** be assigned a value or converted to `none` before it can be used in any operation.
   - While still `null`, the variable is **unusable**: it cannot be compared (`==`, `!=`, `<`, `>`, ...), cannot participate in arithmetic, cannot be printed as a value, and cannot be passed to functions.
   - Any attempt to use an unassigned `null` raises a runtime `TypeError` (or `UnassignedError`).
+
+  - If a variable has a null value and remains unassigned until the end of the program, the system will throw a `Null Unassigned` error.
   - Assignment or conversion must happen explicitly via `<now>`:
 
 ```ko
