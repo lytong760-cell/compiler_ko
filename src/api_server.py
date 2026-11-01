@@ -12,6 +12,9 @@ Usage:
 """
 
 import json
+import time
+import re
+from collections import defaultdict, deque
 import hmac
 import os
 import sys
@@ -26,6 +29,9 @@ if not API_KEY:
     print("WARNING: KO_FIRESTORE_API_KEY environment variable is not set. The server will reject all requests.", file=sys.stderr)
 
 BASE_PATH = f"/v1/projects/{PROJECT_ID}/databases/{DATABASE_ID}/documents"
+
+_RATE_BUCKETS = defaultdict(deque)
+_RATE_LIMIT = 120  # requests per minute per IP
 
 class ModuleStore:
     def __init__(self, data_dir):
@@ -128,6 +134,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, x-goog-api-key")
         self.end_headers()
         self.wfile.write(body)
 
@@ -143,7 +152,28 @@ class RequestHandler(BaseHTTPRequestHandler):
             return path[len(BASE_PATH):]
         return path
 
+    def _rate_ok(self):
+        now = time.time()
+        ip = self.client_address[0]
+        bucket = _RATE_BUCKETS[ip]
+        while bucket and now - bucket[0] > 60:
+            bucket.popleft()
+        if len(bucket) >= _RATE_LIMIT:
+            return False
+        bucket.append(now)
+        return True
+
+    def do_OPTIONS(self):
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, x-goog-api-key")
+        self.end_headers()
+
     def do_GET(self):
+        if not self._rate_ok():
+            self._send_json(429, {"error": {"message": "Rate limit exceeded", "status": "RESOURCE_EXHAUSTED"}})
+            return
         if not self._check_api_key():
             self._send_json(403, {"error": {"message": "Invalid or missing API key", "status": "PERMISSION_DENIED"}})
             return
@@ -152,8 +182,8 @@ class RequestHandler(BaseHTTPRequestHandler):
 
         if rel_path.startswith("/libraries/"):
             lib_name = rel_path[len("/libraries/"):]
-            if not lib_name:
-                self._send_json(400, {"error": {"message": "Library name required", "status": "INVALID_ARGUMENT"}})
+            if not lib_name or not re.fullmatch(r"[A-Za-z0-9_-]+", lib_name):
+                self._send_json(400, {"error": {"message": "Invalid library name", "status": "INVALID_ARGUMENT"}})
                 return
 
             doc = self.store.get_library(lib_name)
@@ -167,6 +197,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         self._send_json(404, {"error": {"message": "Not found", "status": "NOT_FOUND"}})
 
     def do_POST(self):
+        if not self._rate_ok():
+            self._send_json(429, {"error": {"message": "Rate limit exceeded", "status": "RESOURCE_EXHAUSTED"}})
+            return
         if not self._check_api_key():
             self._send_json(403, {"error": {"message": "Invalid or missing API key", "status": "PERMISSION_DENIED"}})
             return
@@ -204,6 +237,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         self._send_json(404, {"error": {"message": "Not found", "status": "NOT_FOUND"}})
 
     def do_PUT(self):
+        if not self._rate_ok():
+            self._send_json(429, {"error": {"message": "Rate limit exceeded", "status": "RESOURCE_EXHAUSTED"}})
+            return
         if not self._check_api_key():
             self._send_json(403, {"error": {"message": "Invalid or missing API key", "status": "PERMISSION_DENIED"}})
             return

@@ -4,13 +4,16 @@ const parser = @import("src").parser;
 
 fn parseSource(allocator: std.mem.Allocator, source: []const u8) !void {
     var lx = lexer.Lexer.init(source);
-    const tokens = try lx.tokenize(allocator);
+    const _lex_result = try lx.tokenize(allocator);
+    defer allocator.free(_lex_result.positions);
+    const tokens = _lex_result.tokens;
+    const positions = _lex_result.positions;
     defer allocator.free(tokens);
 
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
-    var pr = parser.Parser.init(allocator, &arena, tokens);
+    var pr = parser.Parser.init(allocator, &arena, tokens, positions);
     _ = try pr.parse();
 }
 

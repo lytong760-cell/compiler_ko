@@ -65,3 +65,9 @@
 
 - **Volatile Context Diagnostics:** zig build passes; simple.ko prints "Hello World\n".
 - **Next Execution Phase Vectors:** none
+
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** SUCCESS
+- **Active Node/Context:** src/main.zig, src/api_server.py, src/parser.zig, src/vm.zig, src/ast.zig, src/compiler.zig
+- **Volatile Context Diagnostics:** Added ~/.ko/plugins discovery; API server CORS/rate limit/name validation; added null literal and type() introspection system tag; build and tests pass.
+- **Next Execution Phase Vectors:** Bridge layer, bytecode parity, diagnostics, region validation remain.

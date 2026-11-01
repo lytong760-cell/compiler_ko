@@ -6,6 +6,14 @@ const operator = @import("operator.zig");
 
 const EndOfInput = error.EndOfInput;
 
+const KoLoopEngine = opaque {};
+const KoLoopCreateFn = *const fn () callconv(.c) ?*KoLoopEngine;
+const KoLoopDestroyFn = *const fn (?*KoLoopEngine) callconv(.c) void;
+const KoLoopOptimizeForFn = *const fn (*KoLoopEngine, [*:0]const u8, i64, i64, i64, u64) callconv(.c) c_int;
+const KoLoopBodyFn = *const fn (u64, ?*anyopaque) callconv(.c) void;
+const KoLoopExecuteFn = *const fn (*KoLoopEngine, [*:0]const u8, KoLoopBodyFn, ?*anyopaque, u64) callconv(.c) c_int;
+const KoLoopGetStatsFn = *const fn (*KoLoopEngine, ?[*]u8, usize) callconv(.c) c_int;
+
 pub const VM = struct {
     allocator: std.mem.Allocator,
     global_scope: *value_mod.Scope,
@@ -21,6 +29,9 @@ pub const VM = struct {
     skip_elif_else: bool,
     file_path: []const u8,
     current_function: []const u8,
+    loaded_libs: std.array_list.Managed(std.DynLib),
+    loop_lib: ?std.DynLib,
+    loop_lib_checked: bool,
     stdin_buf: [4096]u8,
     stdin_file_reader: ?std.Io.File.Reader,
     stdin_reader: ?std.Io.Reader,
@@ -44,6 +55,9 @@ pub const VM = struct {
             .skip_elif_else = false,
             .file_path = duped,
             .current_function = "main",
+            .loaded_libs = std.array_list.Managed(std.DynLib).init(allocator),
+            .loop_lib = null,
+            .loop_lib_checked = false,
             .stdin_buf = undefined,
             .stdin_file_reader = null,
             .stdin_reader = null,
@@ -62,7 +76,7 @@ pub const VM = struct {
         self.output_writer = writer;
     }
 
-    fn stdinReader(self: *VM) !*std.Io.Reader {
+    pub fn stdinReader(self: *VM) !*std.Io.Reader {
         if (self.stdin_reader) |*reader| return reader;
         if (self.stdin_file_reader == null) {
             self.stdin_file_reader = std.Io.File.stdin().reader(self.io, &self.stdin_buf);
@@ -70,7 +84,7 @@ pub const VM = struct {
         return &self.stdin_file_reader.?.interface;
     }
 
-fn readInputLine(self: *VM) ![]const u8 {
+pub fn readInputLine(self: *VM) ![]const u8 {
     const reader = try self.stdinReader();
     const result = reader.takeDelimiterInclusive('\n') catch |err| switch (err) {
         error.EndOfStream => return reader.buffered(),
@@ -80,7 +94,7 @@ fn readInputLine(self: *VM) ![]const u8 {
     return result;
 }
 
-    fn stdoutWriter(self: *VM) *std.Io.Writer {
+    pub fn stdoutWriter(self: *VM) *std.Io.Writer {
         if (self.output_writer) |writer| return writer;
         if (self.stdout_writer == null) {
             self.stdout_writer = std.Io.File.stdout().writer(self.io, &self.stdout_buf);
@@ -88,16 +102,13 @@ fn readInputLine(self: *VM) ![]const u8 {
         return &self.stdout_writer.?.interface;
     }
 
-    fn appendValueToString(self: *VM, out: *std.array_list.Managed(u8), val: value_mod.Value) !void {
-        var aw: std.Io.Writer.Allocating = .init(self.allocator);
-        errdefer aw.deinit();
-        try val.print(&aw.writer);
-        const text = try aw.toOwnedSlice();
-        try out.appendSlice(text);
-        self.allocator.free(text);
+    pub fn appendValueToString(self: *VM, out: *std.array_list.Managed(u8), val: value_mod.Value) !void {
+        return @import("vm_value_ops.zig").appendValueToString(self, out, val);
     }
 
     pub fn deinit(self: *VM) void {
+        for (self.loaded_libs.items) |*lib| lib.close();
+        self.loaded_libs.deinit();
         self.allocator.free(self.file_path);
         var fiter = self.global_scope.functions.iterator();
         while (fiter.next()) |entry| {
@@ -125,14 +136,14 @@ fn readInputLine(self: *VM) ![]const u8 {
         self.allocator.destroy(self.global_scope);
     }
 
-    fn getProcessName(self: *VM) []const u8 {
+    pub fn getProcessName(self: *VM) []const u8 {
         if (std.mem.eql(u8, self.current_function, "main")) {
             return std.fmt.allocPrint(self.allocator, "{s}:main", .{self.file_path}) catch self.file_path;
         }
         return std.fmt.allocPrint(self.allocator, "{s}:main-{s}", .{ self.file_path, self.current_function }) catch self.file_path;
     }
 
-    fn exposeProcess(self: *VM) void {
+    pub fn exposeProcess(self: *VM) void {
         const name = self.getProcessName();
         const writer = self.stdoutWriter();
         writer.print("{s}\n", .{name}) catch {};
@@ -182,7 +193,7 @@ fn readInputLine(self: *VM) ![]const u8 {
         }
     }
 
-    fn dispatchCatchBlocks(self: *VM, program: []ast.Statement, current_idx: usize) !void {
+    pub fn dispatchCatchBlocks(self: *VM, program: []ast.Statement, current_idx: usize) !void {
         var i: usize = 0;
         while (i < program.len) {
             if (i == current_idx) break;
@@ -199,7 +210,7 @@ fn readInputLine(self: *VM) ![]const u8 {
         }
     }
 
-    fn executeStatement(self: *VM, stmt: *const ast.Statement) anyerror!void {
+    pub fn executeStatement(self: *VM, stmt: *const ast.Statement) anyerror!void {
         if (self.has_returned or self.has_error) return;
 
         switch (stmt.*) {
@@ -424,6 +435,7 @@ fn readInputLine(self: *VM) ![]const u8 {
                         self.skip_elif_else = true;
                     },
                     .for_loop => {
+                        self.dispatchLoop();
                         if (cf.init) |init_assign| {
                             const val = try self.evaluateExpression(init_assign.value_expr);
                             try self.assignValue(init_assign.target, val);
@@ -453,6 +465,7 @@ fn readInputLine(self: *VM) ![]const u8 {
                         }
                     },
                     .while_loop => {
+                        self.dispatchLoop();
                         var cond_val = try self.evaluateExpression(cf.condition.?);
                         while (try cond_val.toBool() and !self.has_returned and !self.has_error) {
                             for (cf.body) |s| try self.executeStatement(&s);
@@ -512,7 +525,7 @@ fn readInputLine(self: *VM) ![]const u8 {
         }
     }
 
-    fn executeBlock(self: *VM, body: []ast.Statement) !void {
+    pub fn executeBlock(self: *VM, body: []ast.Statement) !void {
         const Entry = struct { priority: i64, stmt: *ast.Statement };
         var entries = std.array_list.Managed(Entry).init(self.allocator);
         defer entries.deinit();
@@ -536,14 +549,14 @@ fn readInputLine(self: *VM) ![]const u8 {
         }
     }
 
-    fn executeStatementInScope(self: *VM, stmt: *const ast.Statement, scope: *value_mod.Scope) anyerror!void {
+    pub fn executeStatementInScope(self: *VM, stmt: *const ast.Statement, scope: *value_mod.Scope) anyerror!void {
         const prev_scope = self.current_scope;
         self.current_scope = scope;
         defer self.current_scope = prev_scope;
         try self.executeStatement(stmt);
     }
 
-    fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
+    pub fn assignValue(self: *VM, target: *ast.Expr, val: value_mod.Value) !void {
         switch (target.*) {
             .identifier => |name| {
                 if (self.current_scope.variables.get(name)) |existing| {
@@ -673,460 +686,129 @@ fn readInputLine(self: *VM) ![]const u8 {
         }
     }
 
-    fn zigErrorToKoType(err: anyerror) []const u8 {
-        return switch (err) {
-            error.DivideByZero => "DivideByZeroError",
-            error.OverflowError => "OverflowError",
-            error.TypeError => "TypeError",
-            error.UndefinedVariable => "NameError",
-            error.EndOfInput => "InputError",
-            else => "RuntimeError",
-        };
+    pub fn zigErrorToKoType(err: anyerror) []const u8 {
+        return @import("vm_value_ops.zig").zigErrorToKoType(err);
     }
 
-    fn raiseError(self: *VM, err_type: []const u8, message: []const u8) void {
+    pub fn raiseError(self: *VM, err_type: []const u8, message: []const u8) void {
         self.has_error = true;
         self.error_type = err_type;
         _ = message;
     }
 
-    fn evaluateExpression(self: *VM, expr: *ast.Expr) !value_mod.Value {
-        if (self.has_returned or self.has_error) return value_mod.Value{ .null = {} };
-
-        return switch (expr.*) {
-            .literal => |lit| self.evaluateLiteral(lit),
-            .identifier => |name| self.evaluateIdentifier(name),
-            .binary => |bin| self.evaluateBinary(bin),
-            .unary => |unary| self.evaluateUnary(unary),
-            .call => |call| self.evaluateCall(call),
-            .member_access => |ma| self.evaluateMemberAccess(ma),
-            .index_access => |ia| self.evaluateIndexAccess(ia),
-            .system_tag => |st| self.evaluateSystemTag(st),
-            .input_expr => |ie| self.evaluateInput(ie),
-            .now_expr => |ne| self.evaluateNow(ne),
-        };
+    pub fn evaluateExpression(self: *VM, expr: *ast.Expr) !value_mod.Value {
+        return @import("vm_value_ops.zig").evaluateExpression(self, expr);
     }
 
-    fn unescape(self: *VM, raw: []const u8) ![]u8 {
-        var result = std.array_list.Managed(u8).init(self.allocator);
-        var i: usize = 0;
-        while (i < raw.len) {
-            if (raw[i] == '\\' and i + 1 < raw.len) {
-                const next = raw[i + 1];
-                switch (next) {
-                    'n' => try result.append('\n'),
-                    't' => try result.append('\t'),
-                    'r' => try result.append('\r'),
-                    '\\' => try result.append('\\'),
-                    '"' => try result.append('"'),
-                    '\'' => try result.append('\''),
-                    '0' => try result.append('\x00'),
-                    else => {
-                        // For unknown escapes, keep the backslash and the character
-                        try result.append('\\');
-                        try result.append(next);
-                    },
-                }
-                i += 2;
-            } else {
-                try result.append(raw[i]);
-                i += 1;
+    pub fn unescape(self: *VM, raw: []const u8) ![]u8 {
+        return @import("vm_value_ops.zig").unescape(self, raw);
+    }
+
+    pub fn evaluateLiteral(self: *VM, lit: ast.Literal) !value_mod.Value {
+        return @import("vm_value_ops.zig").evaluateLiteral(self, lit);
+    }
+
+    pub fn evaluateIdentifier(self: *VM, name: []const u8) !value_mod.Value {
+        return @import("vm_value_ops.zig").evaluateIdentifier(self, name);
+    }
+
+    pub fn evaluateBinary(self: *VM, bin: *ast.BinaryExpr) !value_mod.Value {
+        return @import("vm_value_ops.zig").evaluateBinary(self, bin);
+    }
+
+    pub fn printInterpolated(self: *VM, s: []const u8) !void {
+        return @import("vm_value_ops.zig").printInterpolated(self, s);
+    }
+
+    pub fn evaluateUnary(self: *VM, unary: *ast.UnaryExpr) !value_mod.Value {
+        return @import("vm_value_ops.zig").evaluateUnary(self, unary);
+    }
+
+    pub fn instantiateClassByName(self: *VM, name: []const u8) !value_mod.Value {
+        return @import("vm_value_ops.zig").instantiateClassByName(self, name);
+    }
+
+    pub fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr) anyerror!value_mod.Value {
+        return @import("vm_value_ops.zig").callUserFunction(self, func, args);
+    }
+
+    pub fn callUserFunctionValues(self: *VM, func: *value_mod.Function, args: []const value_mod.Value) anyerror!value_mod.Value {
+        return @import("vm_value_ops.zig").callUserFunctionValues(self, func, args);
+    }
+
+    pub fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Value {
+        return @import("vm_value_ops.zig").evaluateCall(self, call);
+    }
+
+    pub fn evaluateMemberAccess(self: *VM, ma: *ast.MemberAccess) !value_mod.Value {
+        return @import("vm_value_ops.zig").evaluateMemberAccess(self, ma);
+    }
+
+    pub fn evaluateIndexAccess(self: *VM, ia: *ast.IndexAccess) !value_mod.Value {
+        return @import("vm_value_ops.zig").evaluateIndexAccess(self, ia);
+    }
+
+    pub fn dispatchLoop(self: *VM) void {
+        if (!self.loop_lib_checked) {
+            self.loop_lib_checked = true;
+            const candidates = [_][]const u8{
+                "zig-out/lib/libko_loop.so",
+                "./libs/libko_loop.so",
+                "./libko_loop.so",
+                "/usr/lib/libko_loop.so",
+                "/usr/local/lib/libko_loop.so",
+            };
+            for (candidates) |path| {
+                const lib = std.DynLib.open(path) catch continue;
+                self.loop_lib = lib;
+                break;
             }
         }
-        return result.toOwnedSlice();
-    }
 
-    fn evaluateLiteral(self: *VM, lit: ast.Literal) !value_mod.Value {
-        return switch (lit.kind) {
-            .int => value_mod.Value{ .int = lit.int_value },
-            .freal => value_mod.Value{ .freal = lit.freal_value },
-            .string => blk: {
-                const unescaped = try self.unescape(lit.raw);
-                break :blk value_mod.Value{ .string = unescaped };
-            },
-            .bool_true => value_mod.Value{ .booling = true },
-            .bool_false => value_mod.Value{ .booling = false },
-            .none => value_mod.Value{ .none = {} },
-            .tuple => value_mod.Value{ .tuple = &[_]value_mod.Value{} },
-            .dict => blk: {
-                const d = try self.allocator.create(std.StringHashMap(value_mod.Value));
-                d.* = std.StringHashMap(value_mod.Value).init(self.allocator);
-                for (lit.dict_entries) |entry| {
-                    const val = try self.evaluateExpression(entry.value);
-                    _ = try d.put(entry.key, val);
-                }
-                break :blk value_mod.Value{ .dict = d };
-            },
-        };
-    }
-
-    fn evaluateIdentifier(self: *VM, name: []const u8) !value_mod.Value {
-        var scope: ?*value_mod.Scope = self.current_scope;
-        while (scope) |s| {
-            if (s.variables.get(name)) |val| {
-                return try val.clone(self.allocator);
-            }
-            if (s.functions.get(name)) |func| {
-                return value_mod.Value{ .function = func };
-            }
-            scope = s.parent;
-        }
-        if (self.global_scope.variables.get(name)) |val| {
-            return try val.clone(self.allocator);
-        }
-        if (self.global_scope.functions.get(name)) |func| {
-            return value_mod.Value{ .function = func };
-        }
-        return error.UndefinedVariable;
-    }
-
-    fn evaluateBinary(self: *VM, bin: *ast.BinaryExpr) !value_mod.Value {
-        const left = try self.evaluateExpression(bin.left);
-        const right = try self.evaluateExpression(bin.right);
-
-        return try operator.applyBinary(bin.op, left, right, self.allocator);
-    }
-
-    fn printInterpolated(self: *VM, s: []const u8) !void {
-        var out = std.array_list.Managed(u8).init(self.allocator);
-        defer out.deinit();
-
-        var i: usize = 0;
-        while (i < s.len) {
-            if (s[i] == '\\' and i + 1 < s.len and s[i + 1] == 'n') {
-                try out.append('\n');
-                i += 2;
-            } else if (s[i] == '{') {
-                if (i + 1 < s.len) {
-                    var j = i + 1;
-                    while (j < s.len and s[j] != '}') : (j += 1) {}
-                    if (j < s.len and s[j] == '}') {
-                        const var_name = s[i + 1 .. j];
-                        if (self.current_scope.variables.get(var_name)) |var_val| {
-                            try self.appendValueToString(&out, var_val);
-                        } else if (self.global_scope.variables.get(var_name)) |var_val| {
-                            try self.appendValueToString(&out, var_val);
-                        } else {
-                            try out.appendSlice("{");
-                            try out.appendSlice(var_name);
-                            try out.append('}');
-                        }
-                        i = j + 1;
-                        continue;
-                    }
-                }
-                try out.append(s[i]);
-                i += 1;
-            } else {
-                try out.append(s[i]);
-                i += 1;
-            }
-        }
         const writer = self.stdoutWriter();
-        try writer.print("{s}", .{out.items});
-        try writer.flush();
-    }
-
-    fn evaluateUnary(self: *VM, unary: *ast.UnaryExpr) !value_mod.Value {
-        const val = try self.evaluateExpression(unary.expr);
-        return try operator.applyUnary(unary.op, val);
-    }
-
-    fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr) anyerror!value_mod.Value {
-        if (args.len != func.params.len) {
-            self.raiseError("ArgumentError", "Argument count mismatch");
-            return error.RuntimeError;
-        }
-
-        var new_scope = try self.allocator.create(value_mod.Scope);
-        new_scope.* = value_mod.Scope.init(self.allocator, func.closure_scope);
-
-        for (args, func.params) |arg_expr, param| {
-            const arg_val = try self.evaluateExpression(@constCast(&arg_expr));
-            const param_name = try self.allocator.dupe(u8, param.name);
-            try new_scope.variables.put(param_name, arg_val);
-        }
-
-        const prev_scope = self.current_scope;
-        const prev_has_returned = self.has_returned;
-        const prev_return_value = self.return_value;
-        const prev_has_error = self.has_error;
-        const prev_error_type = self.error_type;
-        const prev_function = self.current_function;
-        self.current_scope = new_scope;
-        self.current_function = func.name;
-        self.exposeProcess();
-        self.has_returned = false;
-        self.return_value = null;
-        self.has_error = false;
-        self.error_type = null;
-
-        var body_stmts: []ast.Statement = undefined;
-        body_stmts.ptr = @ptrCast(@alignCast(func.body_ptr));
-        body_stmts.len = func.body_len;
-
-        for (body_stmts) |*body_stmt| {
-            try self.executeStatement(body_stmt);
-            if (self.has_returned or self.has_error) break;
-        }
-
-        if (self.has_error) {
-            for (func.catch_stmts) |*cs| {
-                if (self.error_type) |err_type| {
-                    if (std.mem.eql(u8, err_type, cs.error_type)) {
-                        self.has_error = false;
-                        self.error_type = null;
-                        for (cs.body) |s| try self.executeStatement(&s);
-                        break;
-                    }
-                }
+        if (self.loop_lib) |*lib| {
+            const create_fn = lib.lookup(KoLoopCreateFn, "ko_loop_engine_create");
+            const destroy_fn = lib.lookup(KoLoopDestroyFn, "ko_loop_engine_destroy");
+            if (create_fn == null or destroy_fn == null) {
+                writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
+                writer.flush() catch {};
+                return;
             }
-        }
-
-        const ret = self.return_value orelse value_mod.Value{ .null = {} };
-
-        new_scope.deinit();
-        self.allocator.destroy(new_scope);
-        self.current_scope = prev_scope;
-        self.current_function = prev_function;
-        self.has_returned = prev_has_returned;
-        self.return_value = prev_return_value;
-        self.has_error = prev_has_error;
-        self.error_type = prev_error_type;
-
-        return ret;
-    }
-
-    fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Value {
-        if (std.mem.eql(u8, call.callee, "Import")) {
-            const writer = self.stdoutWriter();
-            try writer.print("Warning: Import subsystem is not yet integrated. Skipping import.\n", .{});
-            try writer.flush();
-            return value_mod.Value{ .null = {} };
-        }
-        if (std.mem.eql(u8, call.callee, "printf")) {
-            for (call.args) |arg| {
-                var val = try self.evaluateExpression(@constCast(&arg));
-                if (val == .string) {
-                    try self.printInterpolated(val.string);
-                } else {
-                    const writer = self.stdoutWriter();
-                    try val.print(writer);
-                    try writer.print("\n", .{});
-                    try writer.flush();
-                }
-                val.deinit(self.allocator);
+            const eng = create_fn.?() orelse {
+                writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
+                writer.flush() catch {};
+                return;
+            };
+            if (lib.lookup(KoLoopOptimizeForFn, "ko_loop_optimize_for")) |opt_fn| {
+                _ = opt_fn(eng, "ko_loop", 0, 4, 1, 4);
             }
-            return value_mod.Value{ .null = {} };
-        }
-
-        const callee_val = if (call.target) |target_expr| try self.evaluateExpression(target_expr) else try self.evaluateIdentifier(call.callee);
-        var func: ?*value_mod.Function = null;
-        switch (callee_val) {
-            .function => |f| func = f,
-            .class_instance => |ci| {
-                if (ci.methods.get(call.callee)) |f| {
-                    func = f;
-                } else {
-                    self.raiseError("MemberError", "Method not found");
-                    return error.RuntimeError;
-                }
-            },
-            else => {
-                var class_def: ?*value_mod.ClassDef = null;
-                if (self.current_scope.classes.get(call.callee)) |cd| {
-                    class_def = cd;
-                } else if (self.global_scope.classes.get(call.callee)) |cd| {
-                    class_def = cd;
-                }
-
-                if (class_def) |cd| {
-                    const instance = try self.allocator.create(value_mod.ClassInstance);
-                    instance.* = value_mod.ClassInstance{
-                        .class_name = try self.allocator.dupe(u8, cd.name),
-                        .fields = std.StringHashMap(value_mod.Value).init(self.allocator),
-                        .methods = std.StringHashMap(*value_mod.Function).init(self.allocator),
-                        .allocator = self.allocator,
-                    };
-
-                    var piter = cd.public_fields.iterator();
-                    while (piter.next()) |entry| {
-                        const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
-                        const cloned_val = try entry.value_ptr.*.clone(self.allocator);
-                        try instance.fields.put(key_copy, cloned_val);
-                    }
-                    var miter = cd.public_methods.iterator();
-                    while (miter.next()) |entry| {
-                        const method_copy = entry.value_ptr.*;
-                        const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
-                        try instance.methods.put(key_copy, method_copy);
-                    }
-
-                    return value_mod.Value{ .class_instance = instance };
-                }
-
-                self.raiseError("CallError", "Cannot call non-function");
-                return error.RuntimeError;
-            },
-        }
-        if (func) |f| {
-            return try self.callUserFunction(f, call.args);
-        }
-        return error.RuntimeError;
-    }
-
-    fn evaluateMemberAccess(self: *VM, ma: *ast.MemberAccess) !value_mod.Value {
-        const owned = ma.object.* == .identifier;
-        const obj = try self.evaluateExpression(ma.object);
-        switch (obj) {
-            .class_instance => |ci| {
-                if (ci.fields.get(ma.member)) |val| {
-                    const cloned = try val.clone(self.allocator);
-                    if (owned) @constCast(&obj).deinit(self.allocator);
-                    return cloned;
-                }
-                if (ci.methods.get(ma.member)) |func| {
-                    if (owned) @constCast(&obj).deinit(self.allocator);
-                    return value_mod.Value{ .function = func };
-                }
-                if (owned) @constCast(&obj).deinit(self.allocator);
-                self.raiseError("MemberError", "Member not found");
-                return error.RuntimeError;
-            },
-            .dict => |d| {
-                if (d.get(ma.member)) |val| {
-                    const cloned = try val.clone(self.allocator);
-                    if (owned) @constCast(&obj).deinit(self.allocator);
-                    return cloned;
-                }
-                if (owned) @constCast(&obj).deinit(self.allocator);
-                self.raiseError("KeyError", "Key not found");
-                return error.RuntimeError;
-            },
-            else => {
-                if (owned) @constCast(&obj).deinit(self.allocator);
-                self.raiseError("TypeError", "Cannot access member of this type");
-                return error.RuntimeError;
-            },
-        }
-    }
-
-    fn evaluateIndexAccess(self: *VM, ia: *ast.IndexAccess) !value_mod.Value {
-        const obj = try self.evaluateExpression(ia.object);
-        const idx = try self.evaluateExpression(ia.index);
-
-        switch (obj) {
-            .tuple, .list => |arr| {
-                if (idx == .int) {
-                    const i = idx.int;
-                    const idx_usize: usize = @intCast(i);
-                    if (idx_usize < arr.len) {
-                        return try arr[idx_usize].clone(self.allocator);
-                    }
-                    self.raiseError("IndexError", "Index out of bounds");
-                    return error.RuntimeError;
-                }
-                self.raiseError("TypeError", "Index must be integer");
-                return error.RuntimeError;
-            },
-            .dict => |d| {
-                if (idx == .string) {
-                    const key = idx.string;
-                    if (d.get(key)) |val| {
-                        return try val.clone(self.allocator);
-                    }
-                    self.raiseError("KeyError", "Key not found");
-                    return error.RuntimeError;
-                }
-                self.raiseError("TypeError", "Dict key must be string");
-                return error.RuntimeError;
-            },
-            .string => |s| {
-                if (idx == .int) {
-                    const i = idx.int;
-                    const idx_usize: usize = @intCast(i);
-                    if (idx_usize < s.len) {
-                        const ch = try self.allocator.dupe(u8, s[idx_usize..idx_usize + 1]);
-                        return value_mod.Value{ .string = ch };
-                    }
-                    self.raiseError("IndexError", "Index out of bounds");
-                    return error.RuntimeError;
-                }
-                self.raiseError("TypeError", "Index must be integer");
-                return error.RuntimeError;
-            },
-            else => {
-                self.raiseError("TypeError", "Cannot index this type");
-                return error.RuntimeError;
-            },
-        }
-    }
-
-    fn evaluateSystemTag(self: *VM, st: *ast.SystemTagExpr) !value_mod.Value {
-        if (st.args.len > 0) {
-            const arg = try self.evaluateExpression(&st.args[0]);
-            if (std.mem.eql(u8, st.tag, "printf")) {
-                if (arg == .string) {
-                    try self.printInterpolated(arg.string);
-                } else {
-                    const writer = self.stdoutWriter();
-                    try arg.print(writer);
-                    try writer.print("\n", .{});
-                    try writer.flush();
-                }
-                @constCast(&arg).deinit(self.allocator);
-                return value_mod.Value{ .null = {} };
+            if (lib.lookup(KoLoopExecuteFn, "ko_loop_execute_optimized_loop")) |exec_fn| {
+                const body_fn = struct {
+                    fn f(_: u64, _: ?*anyopaque) callconv(.c) void {}
+                }.f;
+                _ = exec_fn(eng, "ko_loop", body_fn, null, 4);
             }
-            if (std.mem.eql(u8, st.tag, "len")) {
-                const result = switch (arg) {
-                    .string => |s| value_mod.Value{ .int = @intCast(s.len) },
-                    .tuple, .list => |v| value_mod.Value{ .int = @intCast(v.len) },
-                    .bytes => |b| value_mod.Value{ .int = @intCast(b.len) },
-                    .dict => |d| value_mod.Value{ .int = @intCast(d.count()) },
-                    else => value_mod.Value{ .int = 0 },
-                };
-                @constCast(&arg).deinit(self.allocator);
-                return result;
+            if (lib.lookup(KoLoopGetStatsFn, "ko_loop_get_stats")) |stats_fn| {
+                var buf: [256]u8 = undefined;
+                _ = stats_fn(eng, &buf, buf.len);
             }
-            if (std.mem.eql(u8, st.tag, "memory")) {
-                @constCast(&arg).deinit(self.allocator);
-                return value_mod.Value{ .int = 0 };
-            }
-            if (std.mem.eql(u8, st.tag, "encode")) {
-                if (arg == .string) {
-                    const bytes = try self.allocator.dupe(u8, arg.string);
-                    @constCast(&arg).deinit(self.allocator);
-                    return value_mod.Value{ .bytes = bytes };
-                }
-                @constCast(&arg).deinit(self.allocator);
-                return value_mod.Value{ .bytes = &[_]u8{} };
-            }
+            destroy_fn.?(eng);
+        } else {
+            writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
+            writer.flush() catch {};
         }
-        return value_mod.Value{ .null = {} };
     }
 
-fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
-    const line = self.readInputLine() catch |err| switch (err) {
-        error.EndOfStream => return error.EndOfInput,
-        else => |e| return e,
-    };
-    if (ie.target_name.len > 0) {
-        const name_copy = try self.allocator.dupe(u8, ie.target_name);
-        const owned = try self.allocator.dupe(u8, line);
-        try self.current_scope.variables.put(name_copy, value_mod.Value{ .string = owned });
+    pub fn evaluateSystemTag(self: *VM, st: *ast.SystemTagExpr) !value_mod.Value {
+        return @import("vm_value_ops.zig").evaluateSystemTag(self, st);
     }
-    if (ie.target) |target_expr| {
-        const owned = try self.allocator.dupe(u8, line);
-        try self.assignValue(target_expr, value_mod.Value{ .string = owned });
-    }
-    return value_mod.Value{ .string = try self.allocator.dupe(u8, line) };
+
+pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
+    return @import("vm_value_ops.zig").evaluateInput(self, ie);
 }
 
-    fn evaluateNow(self: *VM, ne: *ast.NowExpr) !value_mod.Value {
-        const val = try self.evaluateExpression(ne.expr);
-        errdefer @constCast(&val).deinit(self.allocator);
-        try self.assignValue(ne.target, val);
-        return val;
+    pub fn evaluateNow(self: *VM, ne: *ast.NowExpr) !value_mod.Value {
+        return @import("vm_value_ops.zig").evaluateNow(self, ne);
     }
 
     pub fn executeChunk(self: *VM, chunk: *bytecode.Chunk) !void {
@@ -1136,7 +818,7 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
         try self.runFunction(main_fn, chunk);
     }
 
-    fn runFunction(self: *VM, func: *bytecode.Function, chunk: *bytecode.Chunk) !void {
+    pub fn runFunction(self: *VM, func: *bytecode.Function, chunk: *bytecode.Chunk) !void {
         var stack: [1024]value_mod.Value = undefined;
         var sp: usize = 0;
         var ip: usize = 0;
@@ -1192,10 +874,53 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     const arg_count = @as(usize, @intCast(arity & 0xFFFF));
                     const callee_name = chunk.constants.items[name_idx].string;
                     const args = stack[sp - arg_count .. sp];
-                    const result = try self.callBuiltin(callee_name, args);
-                    sp -= arg_count;
-                    stack[sp] = result;
-                    sp += 1;
+                    if (self.current_scope.classes.get(callee_name) != null or self.global_scope.classes.get(callee_name) != null) {
+                        const instance_val = try self.instantiateClassByName(callee_name);
+                        sp -= arg_count;
+                        stack[sp] = instance_val;
+                        sp += 1;
+                    } else {
+                        const result = try self.callBuiltin(callee_name, args);
+                        sp -= arg_count;
+                        stack[sp] = result;
+                        sp += 1;
+                    }
+                },
+                .call_method => |arg_count| {
+                    const ac = @as(usize, arg_count);
+                    if (sp < 2 + ac) return error.StackUnderflow;
+                    const args = stack[sp - ac .. sp];
+                    const method_val = stack[sp - ac - 1];
+                    const target_val = stack[sp - ac - 2];
+                    const method_name = switch (method_val) {
+                        .string => |s| s,
+                        else => {
+                            self.raiseError("TypeError", "Method name must be string");
+                            return error.RuntimeError;
+                        },
+                    };
+                    var method_func: ?*value_mod.Function = null;
+                    switch (target_val) {
+                        .class_instance => |ci| {
+                            if (ci.methods.get(method_name)) |f| {
+                                method_func = f;
+                            } else {
+                                self.raiseError("MemberError", "Method not found");
+                                return error.RuntimeError;
+                            }
+                        },
+                        .function => |f| method_func = f,
+                        else => {
+                            self.raiseError("CallError", "Cannot call method on non-object");
+                            return error.RuntimeError;
+                        },
+                    }
+                    if (method_func) |f| {
+                        const result = try self.callUserFunctionValues(f, args);
+                        sp -= ac + 2;
+                        stack[sp] = result;
+                        sp += 1;
+                    }
                 },
                 .ret => {
                     return;
@@ -1245,6 +970,34 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     stack[sp] = value_mod.Value{ .string = text };
                     sp += 1;
                 },
+                .make_dict => {
+                    const d = try self.allocator.create(std.StringHashMap(value_mod.Value));
+                    d.* = std.StringHashMap(value_mod.Value).init(self.allocator);
+                    stack[sp] = value_mod.Value{ .dict = d };
+                    sp += 1;
+                },
+                .dict_set => {
+                    if (sp < 3) return error.StackUnderflow;
+                    const value = stack[sp - 1];
+                    const key_val = stack[sp - 2];
+                    const dict_val = stack[sp - 3];
+                    const key_str = switch (key_val) {
+                        .string => |s| s,
+                        else => return error.TypeError,
+                    };
+                    sp -= 3;
+                    const d = dict_val.dict;
+                    const duped_key = try self.allocator.dupe(u8, key_str);
+                    if (try d.fetchPut(duped_key, value)) |old| {
+                        self.allocator.free(old.key);
+                        var v = old.value;
+                        v.deinit(self.allocator);
+                    }
+                    var kv = key_val;
+                    kv.deinit(self.allocator);
+                    stack[sp] = dict_val;
+                    sp += 1;
+                },
                 .catch_start => {},
                 .catch_end => {},
                 .import => {
@@ -1265,38 +1018,16 @@ fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
         }
     }
 
-    fn binaryOp(self: *VM, op: u8, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
-        return try operator.applyBinaryOpcode(op, lhs, rhs, self.allocator);
+    pub fn binaryOp(self: *VM, op: u8, lhs: value_mod.Value, rhs: value_mod.Value) !value_mod.Value {
+        return @import("vm_value_ops.zig").binaryOp(self, op, lhs, rhs);
     }
 
-    fn evaluateUnaryOp(_: *VM, op: u8, val: value_mod.Value) !value_mod.Value {
-        return try operator.applyUnaryOpcode(op, val);
+    pub fn evaluateUnaryOp(self: *VM, op: u8, val: value_mod.Value) !value_mod.Value {
+        return @import("vm_value_ops.zig").evaluateUnaryOp(self, op, val);
     }
 
-    fn callBuiltin(self: *VM, name: []const u8, args: []value_mod.Value) !value_mod.Value {
-        if (std.mem.eql(u8, name, "printf")) {
-            for (args) |arg| {
-                try arg.print(self.stdoutWriter());
-                try self.stdoutWriter().print(" ", .{});
-            }
-            try self.stdoutWriter().print("\n", .{});
-            return value_mod.Value{ .null = {} };
-        }
-        if (std.mem.eql(u8, name, "int")) {
-            return switch (args[0]) {
-                .int => |v| value_mod.Value{ .int = v },
-                .freal => |v| value_mod.Value{ .int = @intFromFloat(v) },
-                else => error.TypeError,
-            };
-        }
-        if (std.mem.eql(u8, name, "string")) {
-            return switch (args[0]) {
-                .string => |s| value_mod.Value{ .string = s },
-                .int => |v| value_mod.Value{ .string = try std.fmt.allocPrint(self.allocator, "{d}", .{v}) },
-                else => error.TypeError,
-            };
-        }
-        return error.UndefinedFunction;
+    pub fn callBuiltin(self: *VM, name: []const u8, args: []value_mod.Value) !value_mod.Value {
+        return @import("vm_value_ops.zig").callBuiltin(self, name, args);
     }
 
 };

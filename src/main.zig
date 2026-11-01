@@ -274,6 +274,12 @@ fn mainInner(it: std.process.Init) !u8 {
         for (dirs) |d| {
             scanPluginDir(writer, it.io, d);
         }
+        // Convention path: ~/.ko/plugins
+        var home_buf: [4096]u8 = undefined;
+        if (it.minimal.environ.getPosix("HOME")) |home| {
+            const home_path = std.fmt.bufPrint(&home_buf, "{s}/.ko/plugins", .{home}) catch null;
+            if (home_path) |hp| scanPluginDir(writer, it.io, hp);
+        }
         writer.flush() catch {};
         return 0;
     }
@@ -451,23 +457,34 @@ fn readSourceFile(allocator: std.mem.Allocator, io: std.Io, path: []const u8) ![
 
 fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, source_name: []const u8) !u8 {
     var lx = lexer.Lexer.init(source);
-    const tokens = blk: {
+    const lex_result = blk: {
         const t = lx.tokenize(allocator) catch |err| {
             std.debug.print("Lexer error: {any}\n", .{err});
             return 2;
         };
         break :blk t;
     };
+    const tokens = lex_result.tokens;
+    const positions = lex_result.positions;
     defer allocator.free(tokens);
+    defer allocator.free(positions);
 
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
-    var pr = parser.Parser.init(allocator, &arena, tokens);
+    var pr = parser.Parser.init(allocator, &arena, tokens, positions);
     const program = pr.parse() catch |err| {
         std.debug.print("Parser error: {any}\n", .{err});
         return 2;
     };
+    if (pr.errors.len > 0) {
+        for (pr.errors) |pe| {
+            std.debug.print("error: {s} at {d}:{d}..{d}:{d}\n", .{
+                pe.message, pe.span.start.line, pe.span.start.col, pe.span.end.line, pe.span.end.col,
+            });
+        }
+        return 2;
+    }
     defer {
         for (program) |*stmt| stmt.deinit();
     }

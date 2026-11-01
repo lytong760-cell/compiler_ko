@@ -669,34 +669,41 @@ public class Import {
     }
     
     private String extractJsonField(String json, String field) {
+        if (json == null || field == null || field.isEmpty()) return "";
         String search = "\"" + field + "\"";
         int idx = json.indexOf(search);
-        if (idx == -1) return "";
-        
-        int valueStart = json.indexOf(':', idx + search.length());
-        if (valueStart == -1) return "";
-        
+        if (idx < 0) return "";
+
+        int searchEnd = idx + search.length();
+        if (searchEnd > json.length()) return "";
+
+        int valueStart = json.indexOf(':', searchEnd);
+        if (valueStart < 0) return "";
+
         valueStart++;
+        if (valueStart > json.length()) return "";
+
         while (valueStart < json.length() && Character.isWhitespace(json.charAt(valueStart))) {
             valueStart++;
         }
-        
+
         if (valueStart >= json.length()) return "";
-        
+
         if (json.charAt(valueStart) == '"') {
             int endQuote = findUnescapedQuote(json, valueStart + 1);
-            if (endQuote == -1) return "";
+            if (endQuote < 0 || endQuote < valueStart + 1) return "";
             return json.substring(valueStart + 1, endQuote);
         } else if (json.charAt(valueStart) == '{') {
             int endBrace = findMatchingBrace(json, valueStart);
-            if (endBrace == -1) return "";
+            if (endBrace < 0 || endBrace < valueStart) return "";
             return json.substring(valueStart, endBrace + 1);
         }
-        
+
         return "";
     }
     
     private int findUnescapedQuote(String json, int start) {
+        if (json == null || start < 0 || start > json.length()) return -1;
         for (int i = start; i < json.length(); i++) {
             if (json.charAt(i) == '"') {
                 int backslashCount = 0;
@@ -740,6 +747,7 @@ public class Import {
     }
     
     private int findMatchingBrace(String json, int start) {
+        if (json == null || start < 0 || start >= json.length() || json.charAt(start) != '{') return -1;
         int depth = 0;
         for (int i = start; i < json.length(); i++) {
             char c = json.charAt(i);

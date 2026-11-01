@@ -129,6 +129,13 @@ const KeywordMap = std.StaticStringMap(Token.Keyword).initComptime(&.{
     .{ "Execute", .execute_kw },
 });
 
+pub const Position = struct {
+    line: usize,
+    col: usize,
+    column: usize,
+    offset: usize = 0,
+};
+
 pub const Lexer = struct {
     source: []const u8,
     pos: usize,
@@ -363,16 +370,23 @@ pub const Lexer = struct {
         return Token.eof;
     }
 
-    pub fn tokenize(self: *Lexer, allocator: std.mem.Allocator) ![]Token {
+    pub fn tokenize(self: *Lexer, allocator: std.mem.Allocator) !struct { tokens: []Token, positions: []Position } {
         var tokens = std.array_list.Managed(Token).init(allocator);
         defer tokens.deinit();
+        var positions = std.array_list.Managed(Position).init(allocator);
+        defer positions.deinit();
 
         while (true) {
+            const start_pos = Position{ .line = self.line, .col = self.col, .column = self.col, .offset = self.pos };
             const tok = (try self.next()) orelse Token.eof;
-            if (tok == Token.eof) break;
-            try tokens.append(tok);
+            const token = tok;
+            try tokens.append(token);
+            try positions.append(start_pos);
+            if (token == Token.eof) break;
         }
-        try tokens.append(Token.eof);
-        return tokens.toOwnedSlice();
+        return .{
+            .tokens = try tokens.toOwnedSlice(),
+            .positions = try positions.toOwnedSlice(),
+        };
     }
 };

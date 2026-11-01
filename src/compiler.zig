@@ -206,12 +206,44 @@ pub const Compiler = struct {
                 try self.emit(.{ .unary = op });
             },
             .call => |c| {
-                for (c.args) |arg| {
-                    try self.compileExpression(&arg);
+                if (c.target) |target_expr| {
+                    if (target_expr.* == .member_access) {
+                        const ma = target_expr.*.member_access;
+                        try self.compileExpression(ma.object);
+                        const method_duped = try self.allocator.dupe(u8, ma.member);
+                        const method_idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = method_duped });
+                        try self.emit(.{ .load_const = @intCast(method_idx) });
+                        for (c.args) |arg| {
+                            try self.compileExpression(&arg);
+                        }
+                        try self.emit(.{ .call_method = @intCast(c.args.len) });
+                    } else {
+                        return error.UnsupportedBytecode;
+                    }
+                } else {
+                    for (c.args) |arg| {
+                        try self.compileExpression(&arg);
+                    }
+                    const callee_duped = try self.allocator.dupe(u8, c.callee);
+                    const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = callee_duped });
+                    try self.emit(.{ .call = @intCast((idx << 16) | c.args.len) });
                 }
-                const callee_duped = try self.allocator.dupe(u8, c.callee);
-                const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = callee_duped });
-                try self.emit(.{ .call = @intCast((idx << 16) | c.args.len) });
+            },
+            .input_expr => |ie| {
+                try self.emit(.{ .input = {} });
+                if (ie.target) |target_expr| {
+                    if (target_expr.* == .identifier) {
+                        const name_duped = try self.allocator.dupe(u8, target_expr.*.identifier);
+                        const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped });
+                        try self.emit(.{ .store_var = @intCast(idx) });
+                    } else {
+                        return error.UnsupportedBytecode;
+                    }
+                } else if (ie.target_name.len > 0) {
+                    const name_duped = try self.allocator.dupe(u8, ie.target_name);
+                    const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped });
+                    try self.emit(.{ .store_var = @intCast(idx) });
+                }
             },
             .system_tag => |st| {
                 if (std.mem.eql(u8, st.tag, "printf")) {
@@ -231,6 +263,8 @@ pub const Compiler = struct {
                 } else if (std.mem.eql(u8, st.tag, "encode")) {
                     try self.compileExpression(&st.args[0]);
                     try self.emit(.{ .encode = {} });
+                } else {
+                    return error.UnsupportedBytecode;
                 }
             },
             else => return error.UnsupportedBytecode,
@@ -274,7 +308,17 @@ pub const Compiler = struct {
         try self.emit(.{ .load_var = @intCast(idx) });
     }
 
-    fn emitLiteral(self: *Compiler, lit: ast.Literal) !void {
+    fn emitLiteral(self: *Compiler, lit: ast.Literal) anyerror!void {
+        if (lit.kind == .dict) {
+            try self.emit(.{ .make_dict = {} });
+            for (lit.dict_entries) |entry| {
+                const key_lit = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = entry.key, .dict_entries = &.{}, .allocator = self.allocator };
+                try self.emitLiteral(key_lit);
+                try self.compileExpression(entry.value);
+                try self.emit(.{ .dict_set = {} });
+            }
+            return;
+        }
         const val = switch (lit.kind) {
             .int => value_mod.Value{ .int = lit.int_value },
             .freal => value_mod.Value{ .freal = lit.freal_value },
@@ -285,8 +329,9 @@ pub const Compiler = struct {
             .bool_true => value_mod.Value{ .booling = true },
             .bool_false => value_mod.Value{ .booling = false },
             .none => value_mod.Value{ .none = {} },
+            .null => value_mod.Value{ .null = {} },
             .tuple => value_mod.Value{ .null = {} },
-            .dict => return error.UnsupportedBytecode,
+            .dict => unreachable,
         };
         const idx = self.chunk.constants.items.len; try self.chunk.constants.append(val);
         try self.emit(.{ .load_const = @intCast(idx) });

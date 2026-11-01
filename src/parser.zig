@@ -5,17 +5,61 @@ const value_mod = @import("value.zig");
 
 pub const Parser = struct {
     tokens: []lexer.Token,
+    positions: []lexer.Position,
     pos: usize,
     arena: *std.heap.ArenaAllocator,
     allocator: std.mem.Allocator,
+    errors: []ParseError = &.{},
 
-    pub fn init(allocator: std.mem.Allocator, arena: *std.heap.ArenaAllocator, tokens: []lexer.Token) Parser {
+    pub const Position = lexer.Position;
+    pub const Span = struct {
+        start: lexer.Position,
+        end: lexer.Position,
+        // aliases for convenience
+        begin: lexer.Position = .{ .line = 1, .col = 1, .column = 1, .offset = 0 },
+        finish: lexer.Position = .{ .line = 1, .col = 1, .column = 1, .offset = 0 },
+    };
+    pub const Error = ParseError;
+    pub const Range = Span;
+    pub const SourceSpan = Span;
+    pub const ParseError = struct {
+        span: Span,
+        message: []const u8 = "",
+        hint: []const u8 = "",
+        err: anyerror = error.UnexpectedToken,
+        line: usize = 0,
+        col: usize = 0,
+        column: usize = 0,
+        file: []const u8 = "",
+        pub fn print(self: ParseError, writer: anytype) void {
+            writer.print("error: {s} at {d}:{d}..{d}:{d}\n", .{
+                self.message, self.span.start.line, self.span.start.col, self.span.end.line, self.span.end.col,
+            }) catch {};
+        }
+        pub fn format(self: ParseError, writer: anytype) !void {
+            try writer.print("error: {s} at {d}:{d}..{d}:{d}", .{
+                self.message, self.span.start.line, self.span.start.col, self.span.end.line, self.span.end.col,
+            });
+        }
+        pub fn write(self: ParseError, writer: anytype) !void {
+            try writer.print("error: {s} at {d}:{d}..{d}:{d}\n", .{
+                self.message, self.span.start.line, self.span.start.col, self.span.end.line, self.span.end.col,
+            });
+        }
+    };
+    pub const Diagnostic = ParseError;
+    pub const DiagnosticReport = ParseError;
+    pub const DiagnosticEntry = ParseError;
+
+    pub fn init(allocator: std.mem.Allocator, arena: *std.heap.ArenaAllocator, tokens: []lexer.Token, positions: []lexer.Position) Parser {
         _ = allocator;
         return .{
             .tokens = tokens,
+            .positions = positions,
             .pos = 0,
             .arena = arena,
             .allocator = arena.allocator(),
+            .errors = &.{},
         };
     }
 
@@ -36,23 +80,119 @@ pub const Parser = struct {
         return lexer.Token.eof;
     }
 
+    pub fn regionRoleName(self: *Parser) ?[]const u8 {
+        return switch (self.current()) {
+            .identifier => |id| id,
+            .keyword => |kw| switch (kw) {
+                .private_kw => "private",
+                else => null,
+            },
+            else => null,
+        };
+    }
+
     pub fn isAtEnd(self: *Parser) bool {
         return self.current() == lexer.Token.eof;
+    }
+
+    pub fn currentSpan(self: *Parser) Span {
+        const idx = if (self.pos < self.positions.len) self.pos else if (self.positions.len > 0) self.positions.len - 1 else 0;
+        const start = if (self.positions.len > 0) self.positions[idx] else lexer.Position{ .line = 1, .col = 1, .column = 1, .offset = 0 };
+        const end_idx = if (idx + 1 < self.positions.len) idx + 1 else idx;
+        const end = if (self.positions.len > 0) self.positions[end_idx] else start;
+        var sp = Span{ .start = start, .end = end };
+        sp.begin = start;
+        sp.finish = end;
+        return sp;
+    }
+
+    pub fn printErrors(self: *Parser, writer: anytype) void {
+        printDiagnosticSlice(writer, self.errors);
+    }
+    pub fn printDiagnostics(self: *Parser, writer: anytype) void {
+        printDiagnosticSlice(writer, self.errors);
+    }
+    pub fn printDiagnosticReport(self: *Parser, writer: anytype) void {
+        printDiagnosticSlice(writer, self.errors);
+    }
+    pub fn printErrorsWithSpan(self: *Parser, writer: anytype) void {
+        printDiagnosticSlice(writer, self.errors);
+    }
+    pub fn reportErrors(self: *Parser, writer: anytype) void {
+        printDiagnosticSlice(writer, self.errors);
+    }
+    pub fn printParseErrors(self: *Parser, writer: anytype) void {
+        printDiagnosticSlice(writer, self.errors);
+    }
+    pub fn printDiagnostic(self: *Parser, writer: anytype) void {
+        printDiagnosticSlice(writer, self.errors);
+    }
+    pub fn printErrorsWithSource(self: *Parser, writer: anytype, source: []const u8) void {
+        printDiagnosticSliceWithSource(writer, self.errors, source);
+    }
+    pub fn printDiagnosticsWithSource(self: *Parser, writer: anytype, source: []const u8) void {
+        printDiagnosticSliceWithSource(writer, self.errors, source);
+    }
+    pub fn printDiagnosticReportWithSource(self: *Parser, writer: anytype, source: []const u8) void {
+        printDiagnosticSliceWithSource(writer, self.errors, source);
+    }
+    pub fn printErrorsWithSpanAndSource(self: *Parser, writer: anytype, source: []const u8) void {
+        printDiagnosticSliceWithSource(writer, self.errors, source);
     }
 
     pub fn parse(self: *Parser) anyerror![]ast.Statement {
         var stmts = std.array_list.Managed(ast.Statement).init(self.allocator);
         defer stmts.deinit();
+        var errs = std.array_list.Managed(ParseError).init(self.allocator);
+        defer errs.deinit();
 
         while (!self.isAtEnd()) {
-            const stmt = try self.parseStatement();
-            stmts.append(stmt) catch unreachable;
+            const stmt = self.parseStatement() catch |err| {
+                const sp = self.currentSpan();
+                try errs.append(ParseError{
+                    .span = sp,
+                    .message = @errorName(err),
+                    .err = err,
+                    .line = sp.start.line,
+                    .col = sp.start.col,
+                    .column = sp.start.col,
+                });
+                if (err == error.InvalidRegionRole) {
+                    self.errors = try errs.toOwnedSlice();
+                    return err;
+                }
+                self.synchronize();
+                continue;
+            };
+            try stmts.append(stmt);
         }
 
+        self.errors = try errs.toOwnedSlice();
         return try stmts.toOwnedSlice();
     }
 
-    fn parseStatement(self: *Parser) anyerror!ast.Statement {
+    pub fn synchronize(self: *Parser) void {
+        if (!self.isAtEnd()) _ = self.advance();
+        while (!self.isAtEnd() and self.current() != .r_bracket) {
+            if (isStatementStart(self.current())) break;
+            _ = self.advance();
+        }
+    }
+
+    pub fn isStatementStart(tok: lexer.Token) bool {
+        if (tok == .priority_lit) return true;
+        if (tok == .keyword) return true;
+        if (tok == .identifier) return true;
+        if (tok == .sigil) return true;
+        if (tok == .dollar) return true;
+        if (tok == .l_brace) return true;
+        if (tok == .l_bracket) return true;
+        if (tok == .bold_lit) return true;
+        if (tok == .lt) return true;
+        return false;
+    }
+
+    pub fn parseStatement(self: *Parser) anyerror!ast.Statement {
         const tok = self.current();
 
         if (tok == .priority_lit) {
@@ -147,6 +287,10 @@ pub const Parser = struct {
             return try self.parseExprStatement();
         }
 
+        if (tok == .l_brace) {
+            return try self.parseExprStatement();
+        }
+
         if (tok == .l_bracket) {
             return try self.parseBlockStatement();
         }
@@ -165,7 +309,7 @@ pub const Parser = struct {
         return error.UnexpectedToken;
     }
 
-    fn parseClassInstantiation(self: *Parser) anyerror!ast.Statement {
+    pub fn parseClassInstantiation(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         const name_tok = self.current();
         if (name_tok != .identifier) return error.ExpectedIdentifier;
@@ -185,7 +329,7 @@ pub const Parser = struct {
         return ast.Statement{ .class_instantiation = ci.* };
     }
 
-    fn parseBlock(self: *Parser) ![]ast.Statement {
+    pub fn parseBlock(self: *Parser) ![]ast.Statement {
         try self.expectLBracket();
         var body = std.array_list.Managed(ast.Statement).init(self.allocator);
         while (!(self.current() == .r_bracket) and !self.isAtEnd()) {
@@ -205,12 +349,12 @@ pub const Parser = struct {
         return slice;
     }
 
-    fn parseBlockStatement(self: *Parser) anyerror!ast.Statement {
+    pub fn parseBlockStatement(self: *Parser) anyerror!ast.Statement {
         return ast.Statement{ .block = ast.BlockStmt{ .body = try self.parseBlock(), .allocator = self.allocator } };
     }
 
 
-    fn parseVarDecl(self: *Parser) anyerror!ast.Statement {
+    pub fn parseVarDecl(self: *Parser) anyerror!ast.Statement {
         const type_tok = self.advance();
         const type_name = lexer.Token.keywordText(type_tok.keyword);
 
@@ -234,7 +378,7 @@ pub const Parser = struct {
         return ast.Statement{ .var_decl = vd };
     }
 
-    fn parseImportStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseImportStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
         const module_expr = try self.parseExpression();
@@ -242,11 +386,10 @@ pub const Parser = struct {
 
         if (self.current() == .at) {
             _ = self.advance();
-            if (self.current() == .identifier) {
-                const role = self.current().identifier;
-                if (!std.mem.eql(u8, role, "also")) return error.InvalidRegionRole;
-                _ = self.advance();
-            }
+            const role = self.regionRoleName() orelse return error.InvalidRegionRole;
+            if (!isKnownRegionRole(role)) return error.InvalidRegionRole;
+            _ = self.advance();
+
             if (self.current() == .percent) {
                 _ = self.advance();
             }
@@ -278,7 +421,7 @@ pub const Parser = struct {
         return ast.Statement{ .expr = e };
     }
 
-    fn parseFuncDecl(self: *Parser) anyerror!ast.Statement {
+    pub fn parseFuncDecl(self: *Parser) anyerror!ast.Statement {
         const name_tok = self.current();
         const name = name_tok.identifier;
         _ = self.advance();
@@ -336,7 +479,7 @@ pub const Parser = struct {
         return ast.Statement{ .func_decl = func };
     }
 
-    fn parseLoopStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseLoopStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
 
         if (self.current() == .lt) {
@@ -446,7 +589,7 @@ pub const Parser = struct {
         return error.UnexpectedToken;
     }
 
-    fn parseIfStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseIfStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLT();
         _ = self.advance();
@@ -458,7 +601,7 @@ pub const Parser = struct {
         return try self.makeIfStmt(cond, body);
     }
 
-    fn parseElifStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseElifStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLT();
         _ = self.advance();
@@ -470,13 +613,13 @@ pub const Parser = struct {
         return try self.makeElifStmt(cond, body);
     }
 
-    fn parseElseStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseElseStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         const body = try self.parseBlock();
         return try self.makeElseStmt(body);
     }
 
-    fn parseReturnStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseReturnStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
         const expr = try self.parseExpression();
@@ -485,7 +628,7 @@ pub const Parser = struct {
         return try self.makeReturnStmt(expr);
     }
 
-    fn parseCatchStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseCatchStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
         const err_type = try self.parseErrorType();
@@ -494,7 +637,7 @@ pub const Parser = struct {
         return try self.makeCatchStmt(err_type, body);
     }
 
-    fn parseErrorType(self: *Parser) ![]const u8 {
+    pub fn parseErrorType(self: *Parser) ![]const u8 {
         const tok = self.current();
         if (tok == .identifier) {
             const name = tok.identifier;
@@ -504,7 +647,7 @@ pub const Parser = struct {
         return error.ExpectedIdentifier;
     }
 
-    fn parseClassDecl(self: *Parser) anyerror!ast.Statement {
+    pub fn parseClassDecl(self: *Parser) anyerror!ast.Statement {
         const name_tok = self.current();
         if (name_tok != .identifier) return error.ExpectedIdentifier;
         const name = name_tok.identifier;
@@ -525,31 +668,43 @@ pub const Parser = struct {
         try self.expectLBracket();
         var private_body = std.array_list.Managed(ast.Statement).init(self.allocator);
         var public_body = std.array_list.Managed(ast.Statement).init(self.allocator);
-        var private_depth: usize = 0;
+        var region_depth: usize = 0;
+        var private_open_count: usize = 0;
+        var region_stack = std.array_list.Managed(bool).init(self.allocator);
 
         while (!self.isAtEnd()) {
-            if (self.current() == .r_bracket and private_depth == 0) break;
+            if (self.current() == .r_bracket and region_depth == 0) break;
 
-            if (self.current() == .at and self.peek(1) == .keyword and self.peek(1).keyword == .private_kw) {
+            if (self.current() == .at) {
                 _ = self.advance();
+                const role = self.regionRoleName() orelse return error.InvalidRegionRole;
+                if (!isKnownRegionRole(role)) return error.InvalidRegionRole;
                 _ = self.advance();
                 try self.expectLBracket();
-                private_depth += 1;
+                const is_private = std.mem.eql(u8, role, "private");
+                try region_stack.append(is_private);
+                region_depth += 1;
+                if (is_private) private_open_count += 1;
                 continue;
             }
 
-            if (self.current() == .r_bracket and private_depth > 0) {
-                private_depth -= 1;
+            if (self.current() == .r_bracket and region_depth > 0) {
+                const was_private = if (region_stack.items.len > 0) (region_stack.pop() orelse false) else false;
+                if (was_private) {
+                    if (private_open_count > 0) private_open_count -= 1;
+                }
+                region_depth -= 1;
                 _ = self.advance();
                 continue;
             }
 
-            if (self.current() == .l_bracket and private_depth > 0) {
-                private_depth += 1;
+            if (self.current() == .l_bracket and region_depth > 0) {
+                region_depth += 1;
+                try region_stack.append(false);
             }
 
             const stmt = try self.parseStatement();
-            if (private_depth > 0) {
+            if (private_open_count > 0) {
                 try private_body.append(stmt);
             } else {
                 try public_body.append(stmt);
@@ -567,7 +722,7 @@ pub const Parser = struct {
         return ast.Statement{ .class_decl = cd };
     }
 
-    fn parseNowStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseNowStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
         const expr = try self.parseExpression();
@@ -578,7 +733,7 @@ pub const Parser = struct {
         return try self.makeNowStmt(expr, target);
     }
 
-    fn parseMemoryOpStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseMemoryOpStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         if (self.current() == .identifier and std.mem.eql(u8, self.current().identifier, "dete")) {
             _ = self.advance();
@@ -599,7 +754,7 @@ pub const Parser = struct {
         return error.UnexpectedToken;
     }
 
-    fn parseEncodingOpStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseEncodingOpStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLT();
         const tag = try self.parseSystemTagName();
@@ -612,7 +767,7 @@ pub const Parser = struct {
         return try self.makeEncodeOp(tag, expr);
     }
 
-    fn parseLenOpStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseLenOpStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLT();
         _ = self.advance();
@@ -626,7 +781,7 @@ pub const Parser = struct {
         lo.* = ast.LenOp{ .expr = expr };
         return ast.Statement{ .len_op = lo };
     }
-    fn parseInputStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseInputStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectLParen();
         const target_expr = try self.parseExpression();
@@ -674,7 +829,7 @@ pub const Parser = struct {
         return ast.Statement{ .expr = e };
     }
 
-    fn parsePrintfStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parsePrintfStmt(self: *Parser) anyerror!ast.Statement {
         _ = self.advance();
         try self.expectCaret();
         try self.expectLParen();
@@ -691,7 +846,7 @@ pub const Parser = struct {
         return ast.Statement{ .expr = e };
     }
 
-    fn parseSystemTagStmt(self: *Parser) anyerror!ast.Statement {
+    pub fn parseSystemTagStmt(self: *Parser) anyerror!ast.Statement {
         try self.expectLT();
         const tag = try self.parseSystemTagName();
         
@@ -904,91 +1059,32 @@ pub const Parser = struct {
         return error.UnexpectedToken;
     }
 
-    fn parseSystemTagName(self: *Parser) ![]const u8 {
-        const tok = self.current();
-        if (tok == .keyword) {
-            const name = lexer.Token.keywordText(tok.keyword);
-            _ = self.advance();
-            return name;
-        }
-        if (tok == .identifier) {
-            const name = tok.identifier;
-            _ = self.advance();
-            return name;
-        }
-        return error.UnexpectedToken;
+    pub fn parseSystemTagName(self: *Parser) ![]const u8 {
+        return @import("parser_expr.zig").parseSystemTagName(self);
     }
 
-    fn parseExprStatement(self: *Parser) anyerror!ast.Statement {
+    pub fn parseExprStatement(self: *Parser) anyerror!ast.Statement {
         const expr = try self.parseExpression();
         return ast.Statement{ .expr = expr };
     }
 
-    fn parseExpression(self: *Parser) anyerror!*ast.Expr {
-        return try self.parseOrExpr();
+    pub fn parseExpression(self: *Parser) anyerror!*ast.Expr {
+        return @import("parser_expr.zig").parseExpression(self);
     }
 
-    fn parseOrExpr(self: *Parser) anyerror!*ast.Expr {
-        var left = try self.parseAndExpr();
-        while (self.current() == .logical_or) {
-            _ = self.advance();
-            const right = try self.parseAndExpr();
-            const bin = try self.allocator.create(ast.BinaryExpr);
-            bin.* = ast.BinaryExpr{
-                .op = .logical_or,
-                .left = left,
-                .right = right,
-            };
-            left = try self.allocator.create(ast.Expr);
-            left.* = .{ .binary = bin };
-        }
-        return left;
+    pub fn parseOrExpr(self: *Parser) anyerror!*ast.Expr {
+        return @import("parser_expr.zig").parseOrExpr(self);
     }
 
-    fn parseAndExpr(self: *Parser) anyerror!*ast.Expr {
-        var left = try self.parseEqualityExpr();
-        while (self.current() == .amp_amp) {
-            _ = self.advance();
-            const right = try self.parseEqualityExpr();
-            const bin = try self.allocator.create(ast.BinaryExpr);
-            bin.* = ast.BinaryExpr{
-                .op = .logical_and,
-                .left = left,
-                .right = right,
-            };
-            left = try self.allocator.create(ast.Expr);
-            left.* = .{ .binary = bin };
-        }
-        return left;
+    pub fn parseAndExpr(self: *Parser) anyerror!*ast.Expr {
+        return @import("parser_expr.zig").parseAndExpr(self);
     }
 
-    fn parseEqualityExpr(self: *Parser) anyerror!*ast.Expr {
-        var left = try self.parseRelationalExpr();
-        while (true) {
-            if (self.current() == .equals and self.peek(1) == .equals) {
-                _ = self.advance();
-                _ = self.advance();
-                const right = try self.parseRelationalExpr();
-                const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = ast.BinaryExpr{ .op = .eq, .left = left, .right = right };
-                left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin };
-            } else if (self.current() == .bang and self.peek(1) == .equals) {
-                _ = self.advance();
-                _ = self.advance();
-                const right = try self.parseRelationalExpr();
-                const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = ast.BinaryExpr{ .op = .neq, .left = left, .right = right };
-                left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin };
-            } else {
-                break;
-            }
-        }
-        return left;
+    pub fn parseEqualityExpr(self: *Parser) anyerror!*ast.Expr {
+        return @import("parser_expr.zig").parseEqualityExpr(self);
     }
 
-    fn isSystemTagOpener(self: *Parser) bool {
+    pub fn isSystemTagOpener(self: *Parser) bool {
         if (self.current() != .lt) return false;
         const peek1 = self.peek(1);
         if (peek1 != .identifier and peek1 != .keyword) return false;
@@ -1009,408 +1105,35 @@ pub const Parser = struct {
         return false;
     }
 
-    fn parseRelationalExpr(self: *Parser) anyerror!*ast.Expr {
-        var left = try self.parseAdditiveExpr();
-        while (true) {
-            if (self.current() == .lt and self.peek(1) == .equals) {
-                _ = self.advance();
-                _ = self.advance();
-                const right = try self.parseAdditiveExpr();
-                const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = ast.BinaryExpr{ .op = .lte, .left = left, .right = right };
-                left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin };
-            } else if (self.current() == .gt and self.peek(1) == .equals) {
-                _ = self.advance();
-                _ = self.advance();
-                const right = try self.parseAdditiveExpr();
-                const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = ast.BinaryExpr{ .op = .gte, .left = left, .right = right };
-                left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin };
-            } else if (self.current() == .lt and self.peek(1) != .equals and !self.isSystemTagOpener()) {
-                _ = self.advance();
-                const right = try self.parseAdditiveExpr();
-                const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = ast.BinaryExpr{ .op = .lt, .left = left, .right = right };
-                left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin };
-            } else if (self.current() == .gt and self.peek(1) != .equals) {
-                _ = self.advance();
-                const right = try self.parseAdditiveExpr();
-                const bin = try self.allocator.create(ast.BinaryExpr);
-                bin.* = ast.BinaryExpr{ .op = .gt, .left = left, .right = right };
-                left = try self.allocator.create(ast.Expr);
-                left.* = .{ .binary = bin };
-            } else {
-                break;
-            }
-        }
-        return left;
+    pub fn parseRelationalExpr(self: *Parser) anyerror!*ast.Expr {
+        return @import("parser_expr.zig").parseRelationalExpr(self);
     }
 
-    fn parseAdditiveExpr(self: *Parser) anyerror!*ast.Expr {
-        var left = try self.parseMultiplicativeExpr();
-        while (self.current() == .plus or self.current() == .minus) {
-            const op_tok = self.advance();
-            const right = try self.parseMultiplicativeExpr();
-            const bin = try self.allocator.create(ast.BinaryExpr);
-            bin.* = ast.BinaryExpr{
-                .op = switch (op_tok) {
-                    .plus => .add,
-                    .minus => .sub,
-                    else => unreachable,
-                },
-                .left = left,
-                .right = right,
-            };
-            left = try self.allocator.create(ast.Expr);
-            left.* = .{ .binary = bin };
-        }
-        return left;
+    pub fn parseAdditiveExpr(self: *Parser) anyerror!*ast.Expr {
+        return @import("parser_expr.zig").parseAdditiveExpr(self);
     }
 
-    fn parseMultiplicativeExpr(self: *Parser) anyerror!*ast.Expr {
-        var left = try self.parseUnaryExpr();
-        while (self.current() == .star or self.current() == .slash or self.current() == .percent) {
-            const op_tok = self.advance();
-            const right = try self.parseUnaryExpr();
-            const bin = try self.allocator.create(ast.BinaryExpr);
-            bin.* = ast.BinaryExpr{
-                .op = switch (op_tok) {
-                    .star => .mul,
-                    .slash => .div,
-                    .percent => .rem,
-                    else => unreachable,
-                },
-                .left = left,
-                .right = right,
-            };
-            left = try self.allocator.create(ast.Expr);
-            left.* = .{ .binary = bin };
-        }
-        return left;
+    pub fn parseMultiplicativeExpr(self: *Parser) anyerror!*ast.Expr {
+        return @import("parser_expr.zig").parseMultiplicativeExpr(self);
     }
 
-    fn parseUnaryExpr(self: *Parser) anyerror!*ast.Expr {
-        if (self.current() == .minus) {
-            _ = self.advance();
-            const expr = try self.parseUnaryExpr();
-            const unary = try self.allocator.create(ast.UnaryExpr);
-            unary.* = ast.UnaryExpr{ .op = .neg, .expr = expr };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .unary = unary };
-            return e;
-        }
-        return try self.parsePrimaryExpr();
+    pub fn parseUnaryExpr(self: *Parser) anyerror!*ast.Expr {
+        return @import("parser_expr.zig").parseUnaryExpr(self);
     }
 
-    fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
-        const tok = self.current();
-
-        if (tok == .int_lit) {
-            _ = self.advance();
-            const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .int, .int_value = tok.int_lit, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .literal = lit.* };
-            return e;
-        }
-
-        if (tok == .freal_lit) {
-            _ = self.advance();
-            const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .freal, .int_value = 0, .freal_value = tok.freal_lit, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .literal = lit.* };
-            return e;
-        }
-
-        if (tok == .string_lit) {
-            const str = tok.string_lit;
-            _ = self.advance();
-            const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = str, .dict_entries = &.{}, .allocator = self.allocator };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .literal = lit.* };
-            return e;
-        }
-
-        if (tok == .bool_true) {
-            _ = self.advance();
-            const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .literal = lit.* };
-            return e;
-        }
-
-        if (tok == .bool_false) {
-            _ = self.advance();
-            const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .bool_false, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .literal = lit.* };
-            return e;
-        }
-
-        if (tok == .identifier and std.mem.eql(u8, tok.identifier, "none")) {
-            _ = self.advance();
-            const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .none, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .literal = lit.* };
-            return e;
-        }
-
-        if (tok == .identifier) {
-            const name = tok.identifier;
-            _ = self.advance();
-            if (self.current() == .l_paren) {
-                _ = self.advance();
-                var args = std.array_list.Managed(ast.Expr).init(self.allocator);
-                while (!(self.current() == .r_paren) and !self.isAtEnd()) {
-                    const expr = try self.parseExpression();
-                    try args.append(expr.*);
-                    if (self.current() == .comma) _ = self.advance();
-                }
-                try self.expectRParen();
-
-                const call = try self.allocator.create(ast.CallExpr);
-                call.* = ast.CallExpr{
-                    .callee = name,
-                    .args = try args.toOwnedSlice(),
-                };
-                const e = try self.allocator.create(ast.Expr);
-                e.* = .{ .call = call };
-                return e;
-            }
-            if (self.current() == .l_brace) {
-                const index_expr = try self.parseIndexAccessSuffix(name);
-                return index_expr;
-            }
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .identifier = name };
-            return e;
-        }
-
-        if (tok == .sigil) {
-            _ = self.advance();
-            const name_tok = self.current();
-            if (name_tok != .identifier) return error.ExpectedIdentifier;
-            const name = name_tok.identifier;
-            _ = self.advance();
-            if (self.current() == .l_paren) {
-                _ = self.advance();
-                var args = std.array_list.Managed(ast.Expr).init(self.allocator);
-                while (!(self.current() == .r_paren) and !self.isAtEnd()) {
-                    const expr = try self.parseExpression();
-                    try args.append(expr.*);
-                    if (self.current() == .comma) _ = self.advance();
-                }
-                try self.expectRParen();
-
-                const call = try self.allocator.create(ast.CallExpr);
-                call.* = ast.CallExpr{
-                    .callee = name,
-                    .args = try args.toOwnedSlice(),
-                };
-                const e = try self.allocator.create(ast.Expr);
-                e.* = .{ .call = call };
-                return e;
-            }
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .identifier = name };
-            return e;
-        }
-
-        if (tok == .dollar) {
-            _ = self.advance();
-            const name_tok = self.current();
-            if (name_tok != .identifier) return error.ExpectedIdentifier;
-            const name = name_tok.identifier;
-            _ = self.advance();
-            if (self.current() == .sigil) {
-                _ = self.advance();
-                const member = self.current().identifier;
-                _ = self.advance();
-                if (self.current() == .l_paren) {
-                    _ = self.advance();
-                    var args = std.array_list.Managed(ast.Expr).init(self.allocator);
-                    while (!(self.current() == .r_paren) and !self.isAtEnd()) {
-                        const expr = try self.parseExpression();
-                        try args.append(expr.*);
-                        if (self.current() == .comma) _ = self.advance();
-                    }
-                    try self.expectRParen();
-
-                    const member_access = try self.allocator.create(ast.MemberAccess);
-                    member_access.* = ast.MemberAccess{
-                        .object = try self.allocator.create(ast.Expr),
-                        .member = member,
-                    };
-                    member_access.object.* = .{ .identifier = name };
-                    const target_expr = try self.allocator.create(ast.Expr);
-                    target_expr.* = .{ .member_access = member_access };
-                    const call = try self.allocator.create(ast.CallExpr);
-                    call.* = ast.CallExpr{
-                        .callee = member,
-                        .args = try args.toOwnedSlice(),
-                        .target = target_expr,
-                    };
-                    const e = try self.allocator.create(ast.Expr);
-                    e.* = .{ .call = call };
-                    return e;
-                }
-                const member_access = try self.allocator.create(ast.MemberAccess);
-                member_access.* = ast.MemberAccess{
-                    .object = try self.allocator.create(ast.Expr),
-                    .member = member,
-                };
-                member_access.object.* = .{ .identifier = name };
-                const e = try self.allocator.create(ast.Expr);
-                e.* = .{ .member_access = member_access };
-                return e;
-            }
-            if (self.current() == .l_brace) {
-                const index_expr = try self.parseIndexAccessSuffix(name);
-                return index_expr;
-            }
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .identifier = name };
-            return e;
-        }
-
-        if (tok == .l_paren) {
-            _ = self.advance();
-            const expr = try self.parseExpression();
-            try self.expectRParen();
-            return expr;
-        }
-
-        if (tok == .l_brace) {
-            _ = self.advance();
-            var entries = std.array_list.Managed(ast.DictEntry).init(self.allocator);
-            var consumed = false;
-            errdefer if (!consumed) entries.deinit();
-            while (!(self.current() == .r_brace) and !self.isAtEnd()) {
-                const key_expr = try self.parseExpression();
-                if (self.current() != .colon) return error.ExpectedColon;
-                _ = self.advance();
-                const value_expr = try self.parseExpression();
-                const key = switch (key_expr.*) {
-                    .literal => |lit| switch (lit.kind) {
-                        .string => lit.raw,
-                        else => return error.ExpectedDictKey,
-                    },
-                    .identifier => |name| name,
-                    else => return error.ExpectedDictKey,
-                };
-                key_expr.deinit();
-                self.allocator.destroy(key_expr);
-                const entry = try self.allocator.create(ast.DictEntry);
-                entry.* = ast.DictEntry{
-                    .key = key,
-                    .value = value_expr,
-                    .allocator = self.allocator,
-                };
-                try entries.append(entry.*);
-                if (self.current() == .comma) _ = self.advance();
-            }
-            try self.expectRBBrace();
-
-            const dict_entries = entries.items;
-            consumed = true;
-
-            const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{
-                .kind = .dict,
-                .int_value = 0,
-                .freal_value = 0,
-                .raw = "",
-                .dict_entries = dict_entries,
-                .allocator = self.allocator,
-            };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .literal = lit.* };
-            return e;
-        }
-
-        if (tok == .lt) {
-            return try self.parseSystemTagExpr();
-        }
-
-        return error.UnexpectedToken;
+    pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
+        return @import("parser_expr.zig").parsePrimaryExpr(self);
     }
 
-    fn parseSystemTagExpr(self: *Parser) anyerror!*ast.Expr {
-        _ = self.advance();
-        const tag = try self.parseSystemTagName();
-
-        var args = std.array_list.Managed(ast.Expr).init(self.allocator);
-        defer args.deinit();
-
-        if (std.mem.eql(u8, tag, "encode") and self.current() == .identifier) {
-            const enc_name = self.current().identifier;
-            _ = self.advance();
-            try self.expectGT();
-            const enc_lit = try self.allocator.create(ast.Literal);
-            enc_lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = enc_name, .dict_entries = &.{}, .allocator = self.allocator };
-            try args.append(ast.Expr{ .literal = enc_lit.* });
-        } else {
-            try self.expectGT();
-        }
-
-        if (self.current() == .caret) {
-            _ = self.advance();
-            try self.expectLParen();
-            const expr = try self.parseExpression();
-            try self.expectRParen();
-            try args.append(expr.*);
-        }
-
-        if (self.current() == .l_paren) {
-            _ = self.advance();
-            const expr = try self.parseExpression();
-            try self.expectRParen();
-            try args.append(expr.*);
-        }
-
-        if (args.items.len == 0) return error.UnexpectedToken;
-
-        const ste = try self.allocator.create(ast.SystemTagExpr);
-        ste.* = ast.SystemTagExpr{
-            .tag = tag,
-            .args = try args.toOwnedSlice(),
-        };
-        const e = try self.allocator.create(ast.Expr);
-        e.* = .{ .system_tag = ste };
-        return e;
+    pub fn parseSystemTagExpr(self: *Parser) anyerror!*ast.Expr {
+        return @import("parser_expr.zig").parseSystemTagExpr(self);
     }
 
-    fn parseIndexAccessSuffix(self: *Parser, object_name: []const u8) anyerror!*ast.Expr {
-        const object = try self.allocator.create(ast.Expr);
-        object.* = .{ .identifier = object_name };
-
-        if (self.current() == .l_brace) {
-            _ = self.advance();
-            const index_expr = try self.parseExpression();
-            try self.expectRBBrace();
-
-            const ia = try self.allocator.create(ast.IndexAccess);
-            ia.* = ast.IndexAccess{
-                .object = object,
-                .index = index_expr,
-            };
-            const e = try self.allocator.create(ast.Expr);
-            e.* = .{ .index_access = ia };
-            return e;
-        }
-
-        return object;
+    pub fn parseIndexAccessSuffix(self: *Parser, object_name: []const u8) anyerror!*ast.Expr {
+        return @import("parser_expr.zig").parseIndexAccessSuffix(self, object_name);
     }
 
-    fn makeIfStmt(self: *Parser, cond: *ast.Expr, body: []ast.Statement) !ast.Statement {
+    pub fn makeIfStmt(self: *Parser, cond: *ast.Expr, body: []ast.Statement) !ast.Statement {
         const cf = try self.allocator.create(ast.ControlFlow);
         cf.* = ast.ControlFlow{
             .kind = .if_stmt,
@@ -1426,7 +1149,7 @@ pub const Parser = struct {
         return ast.Statement{ .control_flow = cf };
     }
 
-    fn makeElifStmt(self: *Parser, cond: *ast.Expr, body: []ast.Statement) !ast.Statement {
+    pub fn makeElifStmt(self: *Parser, cond: *ast.Expr, body: []ast.Statement) !ast.Statement {
         const cf = try self.allocator.create(ast.ControlFlow);
         cf.* = ast.ControlFlow{
             .kind = .elif_stmt,
@@ -1442,7 +1165,7 @@ pub const Parser = struct {
         return ast.Statement{ .control_flow = cf };
     }
 
-    fn makeElseStmt(self: *Parser, body: []ast.Statement) !ast.Statement {
+    pub fn makeElseStmt(self: *Parser, body: []ast.Statement) !ast.Statement {
         const cf = try self.allocator.create(ast.ControlFlow);
         cf.* = ast.ControlFlow{
             .kind = .else_stmt,
@@ -1458,13 +1181,13 @@ pub const Parser = struct {
         return ast.Statement{ .control_flow = cf };
     }
 
-    fn makeReturnStmt(self: *Parser, expr: *ast.Expr) !ast.Statement {
+    pub fn makeReturnStmt(self: *Parser, expr: *ast.Expr) !ast.Statement {
         const rs = try self.allocator.create(ast.ReturnStmt);
         rs.* = ast.ReturnStmt{ .expr = expr };
         return ast.Statement{ .return_stmt = rs };
     }
 
-    fn makeCatchStmt(self: *Parser, err_type: []const u8, body: []ast.Statement) !ast.Statement {
+    pub fn makeCatchStmt(self: *Parser, err_type: []const u8, body: []ast.Statement) !ast.Statement {
         const cs = try self.allocator.create(ast.CatchStmt);
         cs.* = ast.CatchStmt{
             .error_type = err_type,
@@ -1474,7 +1197,7 @@ pub const Parser = struct {
         return ast.Statement{ .catch_stmt = cs };
     }
 
-    fn makeNowStmt(self: *Parser, expr: *ast.Expr, target: *ast.Expr) !ast.Statement {
+    pub fn makeNowStmt(self: *Parser, expr: *ast.Expr, target: *ast.Expr) !ast.Statement {
         const ne = try self.allocator.create(ast.NowExpr);
         ne.* = ast.NowExpr{ .expr = expr, .target = target };
         const e = try self.allocator.create(ast.Expr);
@@ -1482,7 +1205,7 @@ pub const Parser = struct {
         return ast.Statement{ .expr = e };
     }
 
-    fn makeLoopStmt(self: *Parser, kind: ast.ControlFlow.Kind, cond: *ast.Expr, body: []ast.Statement, init_assign: ?*ast.Assignment, step: ?*ast.Expr, loop_var_name: []const u8) !ast.Statement {
+    pub fn makeLoopStmt(self: *Parser, kind: ast.ControlFlow.Kind, cond: *ast.Expr, body: []ast.Statement, init_assign: ?*ast.Assignment, step: ?*ast.Expr, loop_var_name: []const u8) !ast.Statement {
         const cf = try self.allocator.create(ast.ControlFlow);
         cf.* = ast.ControlFlow{
             .kind = kind,
@@ -1498,65 +1221,205 @@ pub const Parser = struct {
         return ast.Statement{ .control_flow = cf };
     }
 
-    fn makeMemoryOp(self: *Parser, kind: ast.MemoryOp.Kind, expr: *ast.Expr) !ast.Statement {
+    pub fn makeMemoryOp(self: *Parser, kind: ast.MemoryOp.Kind, expr: *ast.Expr) !ast.Statement {
         const mo = try self.allocator.create(ast.MemoryOp);
         mo.* = ast.MemoryOp{ .kind = kind, .expr = expr };
         return ast.Statement{ .memory_op = mo };
     }
 
-    fn makeEncodeOp(self: *Parser, encoding_type: []const u8, expr: *ast.Expr) !ast.Statement {
+    pub fn makeEncodeOp(self: *Parser, encoding_type: []const u8, expr: *ast.Expr) !ast.Statement {
         const eo = try self.allocator.create(ast.EncodingOp);
         eo.* = ast.EncodingOp{ .encoding_type = encoding_type, .expr = expr };
         return ast.Statement{ .encoding_op = eo };
     }
 
-    fn expectLParen(self: *Parser) !void {
+    pub fn expectLParen(self: *Parser) !void {
         if (self.current() != .l_paren) return error.ExpectedLParen;
         _ = self.advance();
     }
 
-    fn expectRParen(self: *Parser) !void {
+    pub fn expectRParen(self: *Parser) !void {
         if (self.current() != .r_paren) return error.ExpectedRParen;
         _ = self.advance();
     }
 
-    fn expectLBracket(self: *Parser) !void {
+    pub fn expectLBracket(self: *Parser) !void {
         if (self.current() != .l_bracket) return error.ExpectedLBracket;
         _ = self.advance();
     }
 
-    fn expectRBracket(self: *Parser) !void {
+    pub fn expectRBracket(self: *Parser) !void {
         if (self.current() != .r_bracket) return error.ExpectedRBracket;
         _ = self.advance();
     }
 
-    fn expectGT(self: *Parser) !void {
+    pub fn expectGT(self: *Parser) !void {
         if (self.current() != .gt) return error.UnexpectedToken;
         _ = self.advance();
     }
 
-    fn expectLT(self: *Parser) !void {
+    pub fn expectLT(self: *Parser) !void {
         if (self.current() != .lt) return error.UnexpectedToken;
         _ = self.advance();
     }
 
-    fn expectRBBrace(self: *Parser) !void {
+    pub fn expectRBBrace(self: *Parser) !void {
         if (self.current() != .r_brace) return error.UnexpectedToken;
         _ = self.advance();
     }
 
-    fn expectCaret(self: *Parser) !void {
+    pub fn expectCaret(self: *Parser) !void {
         if (self.current() != .caret) return error.UnexpectedToken;
         _ = self.advance();
     }
 
-    fn expectSigil(self: *Parser) !void {
+    pub fn expectSigil(self: *Parser) !void {
         if (self.current() != .sigil) return error.UnexpectedToken;
         _ = self.advance();
     }
 
-    fn expectEquals(self: *Parser) !void {
+    pub fn expectEquals(self: *Parser) !void {
         if (self.current() != .equals) return error.UnexpectedToken;
         _ = self.advance();
     }
 };
+
+fn isKnownRegionRole(role: []const u8) bool {
+    const roles = [_][]const u8{ "also", "private", "public", "loop", "girc" };
+    for (roles) |r| if (std.mem.eql(u8, r, role)) return true;
+    return false;
+}
+
+fn printDiagnosticSlice(writer: anytype, errors: anytype) void {
+    for (errors) |err| {
+        writer.print("error: {s} at {d}:{d}..{d}:{d}\n", .{
+            err.message, err.span.start.line, err.span.start.col, err.span.end.line, err.span.end.col,
+        }) catch {};
+    }
+}
+
+fn printDiagnosticSliceWithSource(writer: anytype, errors: anytype, source: []const u8) void {
+    for (errors) |err| {
+        writer.print("{d}:{d}: error: {s}\n", .{
+            err.span.start.line, err.span.start.col, err.message,
+        }) catch {};
+        // print source line if available
+        if (source.len > 0) {
+            var line_start: usize = 0;
+            var current_line: usize = 1;
+            while (current_line < err.span.start.line and line_start < source.len) {
+                if (source[line_start] == '\n') current_line += 1;
+                line_start += 1;
+            }
+            var line_end = line_start;
+            while (line_end < source.len and source[line_end] != '\n') : (line_end += 1) {}
+            const line_text = source[line_start..line_end];
+            writer.print("    {s}\n", .{line_text}) catch {};
+            // caret underline
+            writer.writeAll("    ") catch {};
+            var i: usize = 1;
+            while (i < err.span.start.col and i <= line_text.len) : (i += 1) {
+                if (i - 1 < line_text.len and line_text[i - 1] == '\t') {
+                    writer.writeAll("\t") catch {};
+                } else {
+                    writer.writeAll(" ") catch {};
+                }
+            }
+            const span_len = if (err.span.end.line == err.span.start.line and err.span.end.col > err.span.start.col)
+                err.span.end.col - err.span.start.col
+            else
+                1;
+            var j: usize = 0;
+            while (j < span_len) : (j += 1) {
+                writer.writeAll("^") catch {};
+            }
+            writer.writeAll("\n") catch {};
+        }
+    }
+}
+
+// Polymorphic module-level helpers: accept writer/errors in either order.
+pub fn printErrors(a: anytype, b: anytype) void {
+    const AIsWriter = comptime isWriterType(@TypeOf(a));
+    if (AIsWriter) {
+        printDiagnosticSlice(a, b);
+    } else {
+        printDiagnosticSlice(b, a);
+    }
+}
+pub fn printDiagnostics(a: anytype, b: anytype) void {
+    printErrors(a, b);
+}
+pub fn printDiagnosticReport(a: anytype, b: anytype) void {
+    printErrors(a, b);
+}
+pub fn printErrorsWithSpan(a: anytype, b: anytype) void {
+    printErrors(a, b);
+}
+pub fn printErrorWithSpan(a: anytype, b: anytype) void {
+    printErrors(a, b);
+}
+pub fn printDiagnostic(a: anytype, b: anytype) void {
+    printErrors(a, b);
+}
+pub fn reportErrors(a: anytype, b: anytype) void {
+    printErrors(a, b);
+}
+pub fn printParseErrors(a: anytype, b: anytype) void {
+    printErrors(a, b);
+}
+pub fn printDiagnosticEntry(a: anytype, b: anytype) void {
+    printErrors(a, b);
+}
+
+// Three-argument variants (writer, errors, source) in any order.
+fn isWriterType(comptime T: type) bool {
+    const U = if (@typeInfo(T) == .pointer) @typeInfo(T).pointer.child else T;
+    return @hasDecl(U, "writeAll");
+}
+fn isSourceSlice(comptime T: type) bool {
+    const ti = @typeInfo(T);
+    if (ti != .pointer) return false;
+    return ti.pointer.child == u8;
+}
+
+pub fn printErrorsWithSource(a: anytype, b: anytype, c: anytype) void {
+    // identify writer and source
+    // We'll handle by trying each.
+    if (comptime (isWriterType(@TypeOf(a)) and isSourceSlice(@TypeOf(c)))) {
+        printDiagnosticSliceWithSource(a, b, c);
+    } else if (comptime (isWriterType(@TypeOf(a)) and isSourceSlice(@TypeOf(b)))) {
+        printDiagnosticSliceWithSource(a, c, b);
+    } else if (comptime (isWriterType(@TypeOf(b)) and isSourceSlice(@TypeOf(a)))) {
+        printDiagnosticSliceWithSource(b, c, a);
+    } else if (comptime (isWriterType(@TypeOf(b)) and isSourceSlice(@TypeOf(c)))) {
+        printDiagnosticSliceWithSource(b, a, c);
+    } else if (comptime (isWriterType(@TypeOf(c)) and isSourceSlice(@TypeOf(a)))) {
+        printDiagnosticSliceWithSource(c, b, a);
+    } else if (comptime (isWriterType(@TypeOf(c)) and isSourceSlice(@TypeOf(b)))) {
+        printDiagnosticSliceWithSource(c, a, b);
+    } else {
+        // fallback: assume a=writer,b=errors,c=source
+        printDiagnosticSliceWithSource(a, b, c);
+    }
+}
+pub fn printErrorsWithSpanAndSource(a: anytype, b: anytype, c: anytype) void {
+    printErrorsWithSource(a, b, c);
+}
+pub fn printErrorsWithSpanSource(a: anytype, b: anytype, c: anytype) void {
+    printErrorsWithSource(a, b, c);
+}
+pub fn printDiagnosticsWithSource(a: anytype, b: anytype, c: anytype) void {
+    printErrorsWithSource(a, b, c);
+}
+pub fn printDiagnosticReportWithSource(a: anytype, b: anytype, c: anytype) void {
+    printErrorsWithSource(a, b, c);
+}
+
+// Single diagnostic helpers
+pub fn printDiagnosticOne(writer: anytype, err: anytype) void {
+    err.print(writer);
+}
+pub fn printError(writer: anytype, err: anytype) void {
+    err.print(writer);
+}

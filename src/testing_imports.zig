@@ -1,6 +1,8 @@
 pub const lexer = @import("lexer.zig");
 pub const parser = @import("parser.zig");
+pub const parser_expr = @import("parser_expr.zig");
 pub const vm = @import("vm.zig");
+pub const vm_value_ops = @import("vm_value_ops.zig");
 pub const ast = @import("ast.zig");
 pub const value = @import("value.zig");
 pub const operator = @import("operator.zig");

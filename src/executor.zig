@@ -50,7 +50,7 @@ pub const Executor = struct {
     }
 
     pub fn execute(self: *Executor, program: []ast.Statement) !void {
-        if (!hasFuncOrClassDef(program)) {
+        if (!hasFuncOrClassDef(program) and !hasImportStmt(program)) {
             var chunk = try bytecode_mod.Chunk.init(self.allocator);
             errdefer chunk.deinit(self.allocator);
             var comp = try compiler_mod.Compiler.init(self.allocator, &chunk, "main", 0);
@@ -86,6 +86,22 @@ pub const Executor = struct {
         };
     }
 };
+
+
+fn hasImportStmt(program: []ast.Statement) bool {
+    for (program) |stmt| {
+        switch (stmt) {
+            .expr => |e| {
+                if (e.* == .call and std.mem.eql(u8, e.call.callee, "Import")) return true;
+            },
+            .block => |b| {
+                if (hasImportStmt(b.body)) return true;
+            },
+            else => {},
+        }
+    }
+    return false;
+}
 
 fn hasFuncOrClassDef(program: []ast.Statement) bool {
     for (program) |stmt| {

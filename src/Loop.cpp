@@ -178,7 +178,6 @@ public:
         } else {
             executeForLoop(rec, body, bodyCtx, maxIterations);
         }
-        regs.dump();
         return 0;
     }
 

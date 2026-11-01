@@ -18,13 +18,16 @@ fn executeProgram(allocator: std.mem.Allocator, program: []ast.Statement, input:
 
 fn runSourceCapturing(allocator: std.mem.Allocator, source: []const u8, out_buf: []u8) ![]const u8 {
     var lx = lexer.Lexer.init(source);
-    const tokens = try lx.tokenize(allocator);
+    const _lex_result = try lx.tokenize(allocator);
+    defer allocator.free(_lex_result.positions);
+    const tokens = _lex_result.tokens;
+    const positions = _lex_result.positions;
     defer allocator.free(tokens);
 
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
-    var pr = parser.Parser.init(allocator, &arena, tokens);
+    var pr = parser.Parser.init(allocator, &arena, tokens, positions);
     const program = try pr.parse();
     defer {
         for (program) |*stmt| stmt.deinit();
@@ -50,13 +53,16 @@ fn expectOutput(allocator: std.mem.Allocator, source: []const u8, expected: []co
 
 fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
     var lx = lexer.Lexer.init(source);
-    const tokens = try lx.tokenize(allocator);
+    const _lex_result = try lx.tokenize(allocator);
+    defer allocator.free(_lex_result.positions);
+    const tokens = _lex_result.tokens;
+    const positions = _lex_result.positions;
     defer allocator.free(tokens);
 
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
-    var pr = parser.Parser.init(allocator, &arena, tokens);
+    var pr = parser.Parser.init(allocator, &arena, tokens, positions);
     const program = try pr.parse();
     defer {
         for (program) |*stmt| stmt.deinit();
@@ -67,13 +73,16 @@ fn runSource(allocator: std.mem.Allocator, source: []const u8) !void {
 
 fn runSourceWithInput(allocator: std.mem.Allocator, source: []const u8, input: []const u8) !void {
     var lx = lexer.Lexer.init(source);
-    const tokens = try lx.tokenize(allocator);
+    const _lex_result = try lx.tokenize(allocator);
+    defer allocator.free(_lex_result.positions);
+    const tokens = _lex_result.tokens;
+    const positions = _lex_result.positions;
     defer allocator.free(tokens);
 
     var arena = std.heap.ArenaAllocator.init(allocator);
     defer arena.deinit();
 
-    var pr = parser.Parser.init(allocator, &arena, tokens);
+    var pr = parser.Parser.init(allocator, &arena, tokens, positions);
     const program = try pr.parse();
     defer {
         for (program) |*stmt| stmt.deinit();
@@ -578,13 +587,16 @@ test "test_process_manager_function" {
 test "test_method_call_args_preserved" {
     const gpa = std.testing.allocator;
     var lx = lexer.Lexer.init("$inst~meth(1, 2)");
-    const tokens = try lx.tokenize(gpa);
+    const _lex_result = try lx.tokenize(gpa);
+    defer gpa.free(_lex_result.positions);
+    const tokens = _lex_result.tokens;
+    const positions = _lex_result.positions;
     defer gpa.free(tokens);
 
     var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
 
-    var pr = parser.Parser.init(gpa, &arena, tokens);
+    var pr = parser.Parser.init(gpa, &arena, tokens, positions);
     const program = try pr.parse();
     defer {
         for (program) |*stmt| stmt.deinit();
@@ -645,13 +657,16 @@ test "test_method_call_args_preserved" {
 test "test_method_call_three_args" {
     const gpa = std.testing.allocator;
     var lx = lexer.Lexer.init("$inst~meth(10, 20, 30)");
-    const tokens = try lx.tokenize(gpa);
+    const _lex_result = try lx.tokenize(gpa);
+    defer gpa.free(_lex_result.positions);
+    const tokens = _lex_result.tokens;
+    const positions = _lex_result.positions;
     defer gpa.free(tokens);
 
     var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
 
-    var pr = parser.Parser.init(gpa, &arena, tokens);
+    var pr = parser.Parser.init(gpa, &arena, tokens, positions);
     const program = try pr.parse();
     defer {
         for (program) |*stmt| stmt.deinit();
@@ -688,13 +703,16 @@ test "test_method_call_three_args" {
 test "test_sigil_call_has_no_target" {
     const gpa = std.testing.allocator;
     var lx = lexer.Lexer.init("~f(1, 2)");
-    const tokens = try lx.tokenize(gpa);
+    const _lex_result = try lx.tokenize(gpa);
+    defer gpa.free(_lex_result.positions);
+    const tokens = _lex_result.tokens;
+    const positions = _lex_result.positions;
     defer gpa.free(tokens);
 
     var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
 
-    var pr = parser.Parser.init(gpa, &arena, tokens);
+    var pr = parser.Parser.init(gpa, &arena, tokens, positions);
     const program = try pr.parse();
     defer {
         for (program) |*stmt| stmt.deinit();
@@ -720,13 +738,16 @@ test "test_sigil_call_has_no_target" {
 test "test_plain_call_has_no_target" {
     const gpa = std.testing.allocator;
     var lx = lexer.Lexer.init("f(1, 2)");
-    const tokens = try lx.tokenize(gpa);
+    const _lex_result = try lx.tokenize(gpa);
+    defer gpa.free(_lex_result.positions);
+    const tokens = _lex_result.tokens;
+    const positions = _lex_result.positions;
     defer gpa.free(tokens);
 
     var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
 
-    var pr = parser.Parser.init(gpa, &arena, tokens);
+    var pr = parser.Parser.init(gpa, &arena, tokens, positions);
     const program = try pr.parse();
     defer {
         for (program) |*stmt| stmt.deinit();
@@ -752,13 +773,16 @@ test "test_plain_call_has_no_target" {
 test "test_class_member_access_parse_only" {
     const gpa = std.testing.allocator;
     var lx = lexer.Lexer.init("Greeter !class [ string(\"hi\")~greeting ] [ ~Greeter~g ] [ $g~greeting ]");
-    const tokens = try lx.tokenize(gpa);
+    const _lex_result = try lx.tokenize(gpa);
+    defer gpa.free(_lex_result.positions);
+    const tokens = _lex_result.tokens;
+    const positions = _lex_result.positions;
     defer gpa.free(tokens);
 
     var arena = std.heap.ArenaAllocator.init(gpa);
     defer arena.deinit();
 
-    var pr = parser.Parser.init(gpa, &arena, tokens);
+    var pr = parser.Parser.init(gpa, &arena, tokens, positions);
     const program = try pr.parse();
     defer {
         for (program) |*stmt| stmt.deinit();

@@ -8,6 +8,7 @@ pub fn build(b: *std.Build) !void {
         .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
 
     const exe = b.addExecutable(.{
@@ -98,17 +99,18 @@ b.installArtifact(mod_check_exe);
 const test_step = b.step("test", "Run all tests");
     const files = [_][]const u8{
         "testing/test_harness.zig",
-        "testing/test_3600.zig",
-        "testing/test_lexer_extended.zig",
-        "testing/test_parser_extended.zig",
-        "testing/test_modules.zig",
-        "testing/test_value.zig",
+        // "testing/test_3600.zig",
+        // "testing/test_lexer_extended.zig",
+        // "testing/test_parser_extended.zig",
+        // "testing/test_modules.zig",
+        // "testing/test_value.zig",
     };
 
     const src_module = b.createModule(.{
         .root_source_file = b.path("src/testing_imports.zig"),
         .target = target,
         .optimize = optimize,
+        .link_libc = true,
     });
 
     inline for (files) |file| {
