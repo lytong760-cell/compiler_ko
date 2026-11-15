@@ -1,0 +1,4916 @@
+{
+  ".github/workflows/ci.yml": {
+    "mtime": 1793874421.1453886,
+    "seen": 1793967103.8260474,
+    "ast_hash": "2b47ddcc197cb1deb31fcfbfd15c43fd",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/aside/index.json": {
+    "mtime": 1793874421.1533887,
+    "seen": 1793967103.8260593,
+    "ast_hash": "32174502acc5a26c99cabc2c7e689cd8",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/auto-update/index.json": {
+    "mtime": 1793874421.1543887,
+    "seen": 1793967103.8260648,
+    "ast_hash": "4723ba5ebc784f06e00a5e5f75618ccd",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/build-fix/index.json": {
+    "mtime": 1793874421.1543887,
+    "seen": 1793967103.8260686,
+    "ast_hash": "365716d6d5ac3ea60fda986680be9ed8",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/checkpoint/index.json": {
+    "mtime": 1793874421.1543887,
+    "seen": 1793967103.8260727,
+    "ast_hash": "3d6d33457ccf53927662e24f841a5133",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/code-review/index.json": {
+    "mtime": 1793874421.1543887,
+    "seen": 1793967103.8260756,
+    "ast_hash": "183470d28b1792e28b4e0f7728cb70e9",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/cost-report/index.json": {
+    "mtime": 1793874421.1553886,
+    "seen": 1793967103.8260796,
+    "ast_hash": "19c3d2ec7776a3bc3afd4d8878540897",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/cpp-build/index.json": {
+    "mtime": 1793874421.1553886,
+    "seen": 1793967103.8260827,
+    "ast_hash": "921f6f1ae359bf59dd4e684723d82513",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/cpp-review/index.json": {
+    "mtime": 1793874421.1553886,
+    "seen": 1793967103.826086,
+    "ast_hash": "f09a95b7573afcaf17e0bbc4ffe7d6f4",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/cpp-test/index.json": {
+    "mtime": 1793874421.1553886,
+    "seen": 1793967103.8260896,
+    "ast_hash": "83ad4ba60d0e85aa1e9a1acaff83f442",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/ecc-guide/index.json": {
+    "mtime": 1793874421.1563888,
+    "seen": 1793967103.8260927,
+    "ast_hash": "b2a4742520d86ed7337caf2d658da297",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-claim/index.json": {
+    "mtime": 1793874421.1563888,
+    "seen": 1793967103.8260965,
+    "ast_hash": "34f57641ef24923e2c5da85413e68c0b",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-decompose/index.json": {
+    "mtime": 1793874421.1563888,
+    "seen": 1793967103.8260996,
+    "ast_hash": "c1f6a77ecbcb8be5a5227c5d2d76e05b",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-publish/index.json": {
+    "mtime": 1793874421.1563888,
+    "seen": 1793967103.8261025,
+    "ast_hash": "a7beaf43b5a21c6b34d9b1136922c8b3",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-review/index.json": {
+    "mtime": 1793874421.1573887,
+    "seen": 1793967103.8261054,
+    "ast_hash": "75370f81ecd1d877ed9d5af9360b37f7",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-sync/index.json": {
+    "mtime": 1793874421.1573887,
+    "seen": 1793967103.8261085,
+    "ast_hash": "938b173df3018c64f91df9411991c3fa",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-unblock/index.json": {
+    "mtime": 1793874421.1573887,
+    "seen": 1793967103.8261113,
+    "ast_hash": "c23b03786f42b2ef706ad2e6916cd443",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-validate/index.json": {
+    "mtime": 1793874421.1573887,
+    "seen": 1793967103.826115,
+    "ast_hash": "451456dd1af262043a527f7585211f95",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/evolve/index.json": {
+    "mtime": 1793874421.1573887,
+    "seen": 1793967103.826118,
+    "ast_hash": "5860987d07ee85536a0ed53e8c8b75a0",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/fastapi-review/index.json": {
+    "mtime": 1793874421.1583886,
+    "seen": 1793967103.8261216,
+    "ast_hash": "b3557bbba9a0666d0c6e8e2d07765c44",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/feature-dev/index.json": {
+    "mtime": 1793874421.1583886,
+    "seen": 1793967103.8261244,
+    "ast_hash": "ef09394d8861f1aa87ea20b4d4cf2d0f",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/flutter-build/index.json": {
+    "mtime": 1793874421.1583886,
+    "seen": 1793967103.8261275,
+    "ast_hash": "2e1808cf49214f7008f0b34472f832cd",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/flutter-review/index.json": {
+    "mtime": 1793874421.1583886,
+    "seen": 1793967103.8261313,
+    "ast_hash": "e3bc3b66e8ba48aece5922792eae835d",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/flutter-test/index.json": {
+    "mtime": 1793874421.1593888,
+    "seen": 1793967103.8261347,
+    "ast_hash": "b15e78d169a1dabdfb4a2d8e280cc00b",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/gan-build/index.json": {
+    "mtime": 1793874421.1593888,
+    "seen": 1793967103.826175,
+    "ast_hash": "5207697a9c2fd1e6e227737ff399cdf5",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/gan-design/index.json": {
+    "mtime": 1793874421.1593888,
+    "seen": 1793967103.8261788,
+    "ast_hash": "4c7c92f03f12bdb48af277c50f1014db",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/go-build/index.json": {
+    "mtime": 1793874421.1593888,
+    "seen": 1793967103.8261821,
+    "ast_hash": "6ade8362ba99afb1dcdea2188ce63e8a",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/go-review/index.json": {
+    "mtime": 1793874421.1593888,
+    "seen": 1793967103.8261852,
+    "ast_hash": "cae247a2871cea8aed32a53dbcc36e3e",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/go-test/index.json": {
+    "mtime": 1793874421.1603887,
+    "seen": 1793967103.826188,
+    "ast_hash": "6db051a393bef6a1ff00fa9e2d51e887",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/gradle-build/index.json": {
+    "mtime": 1793874421.1603887,
+    "seen": 1793967103.8261912,
+    "ast_hash": "ec5557633103e4d9a2c85445cb35338f",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/harness-audit/index.json": {
+    "mtime": 1793874421.1603887,
+    "seen": 1793967103.8261943,
+    "ast_hash": "f69eb49452bdc4852f6ab2f958ceb06f",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/hookify-configure/index.json": {
+    "mtime": 1793874421.1603887,
+    "seen": 1793967103.8261971,
+    "ast_hash": "7fd34d9092945f9405af7d6affea9553",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/hookify-help/index.json": {
+    "mtime": 1793874421.1603887,
+    "seen": 1793967103.8262005,
+    "ast_hash": "5fe13d50ef3fa8a6ab3d78e8677ac547",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/hookify-list/index.json": {
+    "mtime": 1793874421.1613886,
+    "seen": 1793967103.8262038,
+    "ast_hash": "5724444a7e4af68588ded84736874863",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/hookify/index.json": {
+    "mtime": 1793874421.1613886,
+    "seen": 1793967103.8262072,
+    "ast_hash": "d5c888ffa01e2c44d9b19355a9c309b8",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/instinct-export/index.json": {
+    "mtime": 1793874421.1613886,
+    "seen": 1793967103.82621,
+    "ast_hash": "d4d1d35a4307fd4bd8a6e5ae01722162",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/instinct-import/index.json": {
+    "mtime": 1793874421.1613886,
+    "seen": 1793967103.8262131,
+    "ast_hash": "dc07c8f9ba7a94fcc62c7a01d7a26a06",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/instinct-status/index.json": {
+    "mtime": 1793874421.1613886,
+    "seen": 1793967103.8262162,
+    "ast_hash": "9267ea3f6313cb31d5d39d9a0b7c54a2",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/jira/index.json": {
+    "mtime": 1793874421.1623888,
+    "seen": 1793967103.8262193,
+    "ast_hash": "6a18b9a567751d2a71fbb5fc09acb0a7",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/kotlin-build/index.json": {
+    "mtime": 1793874421.1623888,
+    "seen": 1793967103.8262227,
+    "ast_hash": "09d3ea222b72eea945604e964afe8e54",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/kotlin-review/index.json": {
+    "mtime": 1793874421.1623888,
+    "seen": 1793967103.8262255,
+    "ast_hash": "f86ea373dfbaa8854a7ebfe662feef35",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/kotlin-test/index.json": {
+    "mtime": 1793874421.1623888,
+    "seen": 1793967103.8262284,
+    "ast_hash": "4bd7e30d17e2b1b3e7880493f741b363",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/learn-eval/index.json": {
+    "mtime": 1793874421.1623888,
+    "seen": 1793967103.8262315,
+    "ast_hash": "0c03c9fc2ceb35d3a066b43123406afb",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/learn/index.json": {
+    "mtime": 1793874421.1633887,
+    "seen": 1793967103.8262372,
+    "ast_hash": "6f4ba9d620a1ad9d4c4352e012f18807",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/loop-start/index.json": {
+    "mtime": 1793874421.1633887,
+    "seen": 1793967103.8262403,
+    "ast_hash": "b66dada7e5bb1c6c8b163de9da36123e",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/loop-status/index.json": {
+    "mtime": 1793874421.1633887,
+    "seen": 1793967103.8262436,
+    "ast_hash": "975689bd601cffa2730cb485cf4e6b6d",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/marketing-campaign/index.json": {
+    "mtime": 1793874421.1633887,
+    "seen": 1793967103.8262465,
+    "ast_hash": "27d73f974350a7da1bff9fb9f101b626",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/memory/index.json": {
+    "mtime": 1793874421.1643887,
+    "seen": 1793967103.8262494,
+    "ast_hash": "4dc8fc9dddf3c21980833d9403cd3654",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/model-route/index.json": {
+    "mtime": 1793874421.1643887,
+    "seen": 1793967103.8262525,
+    "ast_hash": "5bc3a734383c05296237392c8bd5a8f2",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/multi-backend/index.json": {
+    "mtime": 1793874421.1643887,
+    "seen": 1793967103.8262553,
+    "ast_hash": "5eccbeb332934300da9f431391c1fbcb",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/multi-execute/index.json": {
+    "mtime": 1793874421.1653886,
+    "seen": 1793967103.8262584,
+    "ast_hash": "e4f239025094336afbf678b6ed1bb9c3",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/multi-frontend/index.json": {
+    "mtime": 1793874421.1653886,
+    "seen": 1793967103.8262613,
+    "ast_hash": "dd0389d184027e074da79acd7ebfd2c3",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/multi-plan/index.json": {
+    "mtime": 1793874421.1653886,
+    "seen": 1793967103.8262644,
+    "ast_hash": "6bc95b3f764132f8cdfff6f78d4faa63",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/multi-workflow/index.json": {
+    "mtime": 1793874421.1653886,
+    "seen": 1793967103.8262677,
+    "ast_hash": "49a10bdcc3e42cc14f1adc706dcfe47a",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-add-feature/index.json": {
+    "mtime": 1793874421.1663888,
+    "seen": 1793967103.8262708,
+    "ast_hash": "e4e6462ca3f736987a6e076973361c05",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-build-mvp/index.json": {
+    "mtime": 1793874421.1673887,
+    "seen": 1793967103.8262742,
+    "ast_hash": "2bf47f425198837ce5eef48af77fbf9e",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-change-feature/index.json": {
+    "mtime": 1793874421.1673887,
+    "seen": 1793967103.826277,
+    "ast_hash": "fc65d664a380eb051659e3a34bf84703",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-fix-defect/index.json": {
+    "mtime": 1793874421.1683886,
+    "seen": 1793967103.8262799,
+    "ast_hash": "3d8b902eb3c0b4272e5de8b883e95243",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-refine-code/index.json": {
+    "mtime": 1793874421.1683886,
+    "seen": 1793967103.826283,
+    "ast_hash": "249d16c35bc00867588725e715ce605d",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-review/index.json": {
+    "mtime": 1793874421.1683886,
+    "seen": 1793967103.8262866,
+    "ast_hash": "c6910f9a871f3530c53e22de60947f67",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/plan-canvas/index.json": {
+    "mtime": 1793874421.1683886,
+    "seen": 1793967103.8262894,
+    "ast_hash": "a167f12d80c5b15bee7b4b3ba83fe29d",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/plan-prd/index.json": {
+    "mtime": 1793874421.1683886,
+    "seen": 1793967103.8262923,
+    "ast_hash": "3d6f3bbe364186d59db3a11f240dcdd5",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/plan/index.json": {
+    "mtime": 1793874421.1693888,
+    "seen": 1793967103.8262951,
+    "ast_hash": "fb6dab2d5b519a3c88ad064f95509c0e",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/pm2/index.json": {
+    "mtime": 1793874421.1693888,
+    "seen": 1793967103.826298,
+    "ast_hash": "3a469fa170074b794705a9208fab3b70",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/pr/index.json": {
+    "mtime": 1793874421.1693888,
+    "seen": 1793967103.8263013,
+    "ast_hash": "d0c2eeae1550a697bb71e947a0cae973",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/project-init/index.json": {
+    "mtime": 1793874421.1693888,
+    "seen": 1793967103.8263044,
+    "ast_hash": "9c466f07e301cc8371338ba93b9a462b",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/projects/index.json": {
+    "mtime": 1793874421.1703887,
+    "seen": 1793967103.8263075,
+    "ast_hash": "62ac072a5d47574e61a9868fe098d456",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/promote/index.json": {
+    "mtime": 1793874421.1703887,
+    "seen": 1793967103.8263106,
+    "ast_hash": "07092c9fb765997acf797366da1fe8ea",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prp-commit/index.json": {
+    "mtime": 1793874421.1703887,
+    "seen": 1793967103.8263133,
+    "ast_hash": "d6648ccd3aa5ef46f3d18f765e7859ab",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prp-implement/index.json": {
+    "mtime": 1793874421.1703887,
+    "seen": 1793967103.826316,
+    "ast_hash": "596ba0764bb31b5234e66b283678ca80",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prp-plan/index.json": {
+    "mtime": 1793874421.1703887,
+    "seen": 1793967103.8263192,
+    "ast_hash": "3549cbb46f0a583b809e43bb7cb75798",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prp-pr/index.json": {
+    "mtime": 1793874421.1713886,
+    "seen": 1793967103.8263218,
+    "ast_hash": "d173b174fa19e74401e579d08399d115",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prp-prd/index.json": {
+    "mtime": 1793874421.1713886,
+    "seen": 1793967103.826325,
+    "ast_hash": "dcb1f075a540ffd48eba691b915ae89b",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prune/index.json": {
+    "mtime": 1793874421.1713886,
+    "seen": 1793967103.8263283,
+    "ast_hash": "321b53843ba900d403f9bb76b8f7bfd4",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/python-review/index.json": {
+    "mtime": 1793874421.1713886,
+    "seen": 1793967103.8263314,
+    "ast_hash": "dfef6ef103c8a75f223fef99fe102a6e",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/quality-gate/index.json": {
+    "mtime": 1793874421.1723888,
+    "seen": 1793967103.8263342,
+    "ast_hash": "7434b67cedd52523fcab9eae10c9f78d",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/react-build/index.json": {
+    "mtime": 1793874421.1723888,
+    "seen": 1793967103.8263373,
+    "ast_hash": "90880461b67656d66a6283cc7ad04a6f",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/react-review/index.json": {
+    "mtime": 1793874421.1723888,
+    "seen": 1793967103.8263402,
+    "ast_hash": "691e556628b0c4f41178b7f4b37b99b2",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/react-test/index.json": {
+    "mtime": 1793874421.1723888,
+    "seen": 1793967103.8263435,
+    "ast_hash": "6d934fc4431681856456e39a8063d622",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/refactor-clean/index.json": {
+    "mtime": 1793874421.1733887,
+    "seen": 1793967103.826347,
+    "ast_hash": "07566b56c13a0976bb67c6abd7a717b3",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/resume-session/index.json": {
+    "mtime": 1793874421.1733887,
+    "seen": 1793967103.8263497,
+    "ast_hash": "57be77e94b82deac136915a38b0f6246",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/review-pr/index.json": {
+    "mtime": 1793874421.1733887,
+    "seen": 1793967103.826353,
+    "ast_hash": "14d4b931faac14d968465dce7a221b76",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/rust-build/index.json": {
+    "mtime": 1793874421.1733887,
+    "seen": 1793967103.826356,
+    "ast_hash": "dc974b7620bf5d91f50a43b3b4c9673f",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/rust-review/index.json": {
+    "mtime": 1793874421.1733887,
+    "seen": 1793967103.8263593,
+    "ast_hash": "1f68bd28ba722e4da3757385434e145c",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/rust-test/index.json": {
+    "mtime": 1793874421.1743886,
+    "seen": 1793967103.8263624,
+    "ast_hash": "ca6d5668663009b9a948ada36c5f694a",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/santa-loop/index.json": {
+    "mtime": 1793874421.1743886,
+    "seen": 1793967103.8263657,
+    "ast_hash": "8f85ac14d9082e59f59d1bfc81f43a27",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/save-session/index.json": {
+    "mtime": 1793874421.1743886,
+    "seen": 1793967103.8263707,
+    "ast_hash": "1114550865f4fc4e7850987e7643c0a1",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/security-scan/index.json": {
+    "mtime": 1793874421.1743886,
+    "seen": 1793967103.8263736,
+    "ast_hash": "16582cbe55e62e01fdd4dcdc29df25fe",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/sessions/index.json": {
+    "mtime": 1793874421.1753888,
+    "seen": 1793967103.8263767,
+    "ast_hash": "736be8455e776f2d08483021aa594d53",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/setup-pm/index.json": {
+    "mtime": 1793874421.1753888,
+    "seen": 1793967103.8263798,
+    "ast_hash": "9219f505d521831b907115aeab8f974c",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/skill-create/index.json": {
+    "mtime": 1793874421.1753888,
+    "seen": 1793967103.8263826,
+    "ast_hash": "651c35425bc1eeb07790a8661db970ac",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/skill-health/index.json": {
+    "mtime": 1793874421.1753888,
+    "seen": 1793967103.826386,
+    "ast_hash": "202dac989aaacf3ecb17e57530cfc8e8",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/test-coverage/index.json": {
+    "mtime": 1793874421.1753888,
+    "seen": 1793967103.8263893,
+    "ast_hash": "673b2d1af1fa500509b5880a7d5fad72",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/update-codemaps/index.json": {
+    "mtime": 1793874421.1763887,
+    "seen": 1793967103.8263924,
+    "ast_hash": "b6dd79cadaa9390ba86fec87f3e02446",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/update-docs/index.json": {
+    "mtime": 1793874421.1763887,
+    "seen": 1793967103.826396,
+    "ast_hash": "e20cfa01b79786a3e882f8da6d634d78",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/vue-review/index.json": {
+    "mtime": 1793874421.1763887,
+    "seen": 1793967103.8263986,
+    "ast_hash": "06fba1eca181fb744706f2f35ba9817e",
+    "semantic_hash": ""
+  },
+  ".kilo/run-script": {
+    "mtime": 1793874421.1773887,
+    "seen": 1793967103.826402,
+    "ast_hash": "8508340a89863027084498f35200bf5a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ask-matt/agents/openai.yaml": {
+    "mtime": 1793874421.1813886,
+    "seen": 1793967103.826405,
+    "ast_hash": "d3bb94e3fa14e921edcc984fcc8ddbe7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/code-review/agents/openai.yaml": {
+    "mtime": 1793874421.1853888,
+    "seen": 1793967103.8264081,
+    "ast_hash": "41726fb93a74bbeab2f643a27d6452d2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/codebase-design/agents/openai.yaml": {
+    "mtime": 1793874421.1863887,
+    "seen": 1793967103.826411,
+    "ast_hash": "c27ba4232198f8b0318014a8c715cc01",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/diagnosing-bugs/agents/openai.yaml": {
+    "mtime": 1793874421.1933887,
+    "seen": 1793967103.8264139,
+    "ast_hash": "52e474f87cddee193c6d9f0bca1fcdb4",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/diagnosing-bugs/scripts/hitl-loop.template.sh": {
+    "mtime": 1793874421.1933887,
+    "seen": 1793967103.826417,
+    "ast_hash": "4e3e2b4d5dc8101655dd6ad33fb5ce41",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/domain-modeling/agents/openai.yaml": {
+    "mtime": 1793874421.1963887,
+    "seen": 1793967103.82642,
+    "ast_hash": "e68374ca79182d08c013ce592a4b429c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/grill-me/agents/openai.yaml": {
+    "mtime": 1793874421.2033887,
+    "seen": 1793967103.8264234,
+    "ast_hash": "aff7b6f7b10220e3b4537c42a2d08917",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/grill-with-docs/agents/openai.yaml": {
+    "mtime": 1793874421.2033887,
+    "seen": 1793967103.826426,
+    "ast_hash": "d50e6a6a53801a48192dde963945affc",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/grilling/agents/openai.yaml": {
+    "mtime": 1793874421.2043886,
+    "seen": 1793967103.8264291,
+    "ast_hash": "d419e97c73f1073f678e284cfdd904dc",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/handoff/agents/openai.yaml": {
+    "mtime": 1793874421.2043886,
+    "seen": 1793967103.826432,
+    "ast_hash": "4be8ae2848843907cb2c73c3abed107c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/implement-spec/agents/openai.yaml": {
+    "mtime": 1793874421.2073886,
+    "seen": 1793967103.8264356,
+    "ast_hash": "35f602adf7b8fb90506af82b90e96a62",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/implement/agents/openai.yaml": {
+    "mtime": 1793874421.2073886,
+    "seen": 1793967103.8264387,
+    "ast_hash": "67981219ee02544ca054221195e85d41",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/improve-codebase-architecture/agents/openai.yaml": {
+    "mtime": 1793874421.2073886,
+    "seen": 1793967103.8264418,
+    "ast_hash": "e73ee28ebe885ee90bec6f34554efdd1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/pr/agents/openai.yaml": {
+    "mtime": 1793874421.2223887,
+    "seen": 1793967103.8264449,
+    "ast_hash": "5d53ced569cac67543caad14f27cb3c7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/prototype/agents/openai.yaml": {
+    "mtime": 1793874421.2253888,
+    "seen": 1793967103.826448,
+    "ast_hash": "f52e5df8465a544537396ffa1d2a11a4",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/research/agents/openai.yaml": {
+    "mtime": 1793874421.2363887,
+    "seen": 1793967103.826451,
+    "ast_hash": "ea8c2769bf46410cc6b302b291bb7b9d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/retro/agents/openai.yaml": {
+    "mtime": 1793874421.2363887,
+    "seen": 1793967103.8264537,
+    "ast_hash": "0ba0bed65c58b66add3748519ada28a3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/setup-matt-pocock-skills/agents/openai.yaml": {
+    "mtime": 1793874421.2423887,
+    "seen": 1793967103.826457,
+    "ast_hash": "a9d2c63bccc70831e36cc011557a6b38",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/tdd/agents/openai.yaml": {
+    "mtime": 1793874421.2473886,
+    "seen": 1793967103.8264601,
+    "ast_hash": "e37e499fa0b017cde536bacb0ebaae67",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/teach/agents/openai.yaml": {
+    "mtime": 1793874421.2483888,
+    "seen": 1793967103.8264632,
+    "ast_hash": "9728d722d80350f8a1e6f96fdcbf8db5",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/to-questionnaire/agents/openai.yaml": {
+    "mtime": 1793874421.2493887,
+    "seen": 1793967103.8264663,
+    "ast_hash": "f9bb141c3ec013fc2ac4197a93f2ce3f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/to-spec/agents/openai.yaml": {
+    "mtime": 1793874421.2493887,
+    "seen": 1793967103.8264692,
+    "ast_hash": "886d06b1f83b51e39bd2874b75730f87",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/to-tickets/agents/openai.yaml": {
+    "mtime": 1793874421.2503886,
+    "seen": 1793967103.8264725,
+    "ast_hash": "6c4d19c426617a41441e84aacf2786d6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/triage/agents/openai.yaml": {
+    "mtime": 1793874421.2503886,
+    "seen": 1793967103.826476,
+    "ast_hash": "fc03336314c293aa703724167625f4b1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/wait-what/agents/openai.yaml": {
+    "mtime": 1793874421.2533886,
+    "seen": 1793967103.826479,
+    "ast_hash": "bd652fbd4d7a04e91c5c0a35791c6259",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/wayfinder/agents/openai.yaml": {
+    "mtime": 1793874421.2533886,
+    "seen": 1793967103.8264818,
+    "ast_hash": "05e37f0188c1e7d2f1cdf4143c0a5c75",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/wizard/agents/openai.yaml": {
+    "mtime": 1793874421.2543886,
+    "seen": 1793967103.8264847,
+    "ast_hash": "d613906658820c197488b4a616ce773d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/wizard/template.sh": {
+    "mtime": 1793874421.2543886,
+    "seen": 1793967103.8264875,
+    "ast_hash": "1053ead340576aa5e2221be01724f119",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/writing-for-agents/agents/openai.yaml": {
+    "mtime": 1793874421.2553887,
+    "seen": 1793967103.8264906,
+    "ast_hash": "1ec4866a3ad2fba3e9a44c6db860efd7",
+    "semantic_hash": ""
+  },
+  ".my_pass/auto.bash": {
+    "mtime": 1793874421.2553887,
+    "seen": 1793967103.8264935,
+    "ast_hash": "15923628859e20cb432712a9171617dd",
+    "semantic_hash": ""
+  },
+  "build.zig": {
+    "mtime": 1793874421.2573886,
+    "seen": 1793967103.8264966,
+    "ast_hash": "17d19cb27080dac795db87f19a0d4d76",
+    "semantic_hash": ""
+  },
+  "docs/backlog/issues-snapshot.json": {
+    "mtime": 1793874421.2573886,
+    "seen": 1793967103.8265,
+    "ast_hash": "87a82e3be4e0ff8b409564e291f29467",
+    "semantic_hash": ""
+  },
+  "src/Import.java": {
+    "mtime": 1793874421.2893887,
+    "seen": 1793967103.8265028,
+    "ast_hash": "97f82cb250521a65ed4ce9ab791f1fec",
+    "semantic_hash": ""
+  },
+  "src/Loop.cpp": {
+    "mtime": 1793874421.2893887,
+    "seen": 1793967103.826506,
+    "ast_hash": "b31980cb333f3d2d90572cac28d173d7",
+    "semantic_hash": ""
+  },
+  "src/api_server.py": {
+    "mtime": 1793874421.2903886,
+    "seen": 1793967103.8265092,
+    "ast_hash": "f680c995cb1b70514e94ff9781cf7d8d",
+    "semantic_hash": ""
+  },
+  "src/ast.zig": {
+    "mtime": 1793874421.2903886,
+    "seen": 1793967103.8265123,
+    "ast_hash": "5ffd55ae2effc08c38d9d6d6c879dab2",
+    "semantic_hash": ""
+  },
+  "src/builtins.zig": {
+    "mtime": 1793874421.2903886,
+    "seen": 1793967103.8265152,
+    "ast_hash": "28a0189689ac3b1fac3b8933659b63a7",
+    "semantic_hash": ""
+  },
+  "src/bytecode.zig": {
+    "mtime": 1793874421.2903886,
+    "seen": 1793967103.8265188,
+    "ast_hash": "a7fb383edd9a4f5884facb25cb99aa90",
+    "semantic_hash": ""
+  },
+  "src/compiler.zig": {
+    "mtime": 1793874421.2903886,
+    "seen": 1793967103.8265219,
+    "ast_hash": "322572d387d3b0f20b6746b387f083be",
+    "semantic_hash": ""
+  },
+  "src/executor.zig": {
+    "mtime": 1793874421.2903886,
+    "seen": 1793967103.826525,
+    "ast_hash": "e8911b4d9a5b369cc68c62590a96ca85",
+    "semantic_hash": ""
+  },
+  "src/installer.zig": {
+    "mtime": 1793874421.2903886,
+    "seen": 1793967103.826528,
+    "ast_hash": "764130ee4e1cc645bf9ccd498cfe34a0",
+    "semantic_hash": ""
+  },
+  "src/lexer.zig": {
+    "mtime": 1793874421.2903886,
+    "seen": 1793967103.8265312,
+    "ast_hash": "9094835fd48b5c2dd11aff87108c5f53",
+    "semantic_hash": ""
+  },
+  "src/main.zig": {
+    "mtime": 1793874421.2903886,
+    "seen": 1793967103.8265345,
+    "ast_hash": "da02c1048859771fe07de9d4423e2617",
+    "semantic_hash": ""
+  },
+  "src/module/Os/Os.c": {
+    "mtime": 1793874421.2913888,
+    "seen": 1793967103.8265376,
+    "ast_hash": "2b9838e55c96b8fb72c9a5f9b5a52d33",
+    "semantic_hash": ""
+  },
+  "src/module/Os/Os.h": {
+    "mtime": 1793874421.2913888,
+    "seen": 1793967103.826547,
+    "ast_hash": "7810d1baf31ca0cfa144045f9049ada8",
+    "semantic_hash": ""
+  },
+  "src/module/Os/module.json": {
+    "mtime": 1793874421.2913888,
+    "seen": 1793967103.82655,
+    "ast_hash": "a639781444e91cb2a32b0e0ed438d07a",
+    "semantic_hash": ""
+  },
+  "src/module/Random/Random.c": {
+    "mtime": 1793874421.2913888,
+    "seen": 1793967103.8265529,
+    "ast_hash": "18a5d6becf9421341d611822d59e8e72",
+    "semantic_hash": ""
+  },
+  "src/module/Random/Random.h": {
+    "mtime": 1793874421.2913888,
+    "seen": 1793967103.826556,
+    "ast_hash": "22f59e21669ce4d5ff2be9e7d918a551",
+    "semantic_hash": ""
+  },
+  "src/module/Random/module.json": {
+    "mtime": 1793874421.2913888,
+    "seen": 1793967103.8265588,
+    "ast_hash": "74ea01cf2501345593e538851cd01e07",
+    "semantic_hash": ""
+  },
+  "src/module/Website/Website.c": {
+    "mtime": 1793874421.2913888,
+    "seen": 1793967103.8265622,
+    "ast_hash": "3e0fceaa9fd98afe2ecb0d5a4f152f07",
+    "semantic_hash": ""
+  },
+  "src/module/Website/Website.h": {
+    "mtime": 1793874421.2913888,
+    "seen": 1793967103.8265653,
+    "ast_hash": "787eef9f834251815dcc03b58a30d807",
+    "semantic_hash": ""
+  },
+  "src/module/Website/module.json": {
+    "mtime": 1793874421.2913888,
+    "seen": 1793967103.8265681,
+    "ast_hash": "44862cf3f655071f30a3a07f18856b4d",
+    "semantic_hash": ""
+  },
+  "src/operator.zig": {
+    "mtime": 1793874421.2923887,
+    "seen": 1793967103.8265715,
+    "ast_hash": "09b3c710e45eb0872f53311171030ecb",
+    "semantic_hash": ""
+  },
+  "src/parser.zig": {
+    "mtime": 1793874421.2923887,
+    "seen": 1793967103.8265743,
+    "ast_hash": "4bab146bd27718bba3bf2e983233b7fe",
+    "semantic_hash": ""
+  },
+  "src/parser_expr.zig": {
+    "mtime": 1793874421.2923887,
+    "seen": 1793967103.8265774,
+    "ast_hash": "577a3df6cdb97f5ab4cd980f05816f47",
+    "semantic_hash": ""
+  },
+  "src/testing_imports.zig": {
+    "mtime": 1793874421.2923887,
+    "seen": 1793967103.8265808,
+    "ast_hash": "8e0bc233fd1535ebdf52df553d70def2",
+    "semantic_hash": ""
+  },
+  "src/value.zig": {
+    "mtime": 1793874421.2923887,
+    "seen": 1793967103.8265839,
+    "ast_hash": "c627fc085df92dc7cdc236645242a457",
+    "semantic_hash": ""
+  },
+  "src/vm.zig": {
+    "mtime": 1793874421.2923887,
+    "seen": 1793967103.826587,
+    "ast_hash": "7181c431cfdc0654a6425e6674f1c344",
+    "semantic_hash": ""
+  },
+  "src/vm_value_ops.zig": {
+    "mtime": 1793874421.2933886,
+    "seen": 1793967103.82659,
+    "ast_hash": "7bff708a64a479dd3f2a9618b1fad86e",
+    "semantic_hash": ""
+  },
+  "testing/mod_check.c": {
+    "mtime": 1793874421.3063886,
+    "seen": 1793967103.826593,
+    "ast_hash": "f7c9fb155ec0b16d3569dad1721fa763",
+    "semantic_hash": ""
+  },
+  "testing/test_3600.zig": {
+    "mtime": 1793874421.3063886,
+    "seen": 1793967103.8265963,
+    "ast_hash": "2deb46598c4559b6154bfc308e51e7aa",
+    "semantic_hash": ""
+  },
+  "testing/test_harness.zig": {
+    "mtime": 1793874421.3063886,
+    "seen": 1793967103.8265994,
+    "ast_hash": "1b3dee23437551df0dbbc5fc8fc9ed08",
+    "semantic_hash": ""
+  },
+  "testing/test_lexer_extended.zig": {
+    "mtime": 1793874421.3063886,
+    "seen": 1793967103.8266025,
+    "ast_hash": "29436c8be4a86784f30d8bfb3611c421",
+    "semantic_hash": ""
+  },
+  "testing/test_modules.zig": {
+    "mtime": 1793874421.3063886,
+    "seen": 1793967103.8266058,
+    "ast_hash": "cb452206892d683e5fe006ee60c02c35",
+    "semantic_hash": ""
+  },
+  "testing/test_parser_extended.zig": {
+    "mtime": 1793874421.3063886,
+    "seen": 1793967103.8266084,
+    "ast_hash": "4ee9ebd65e21ae6eda4b02658672e494",
+    "semantic_hash": ""
+  },
+  "testing/test_value.zig": {
+    "mtime": 1793874421.3073888,
+    "seen": 1793967103.8266115,
+    "ast_hash": "448dc730084c99da6fea183c6f6b04b8",
+    "semantic_hash": ""
+  },
+  ".github/ISSUE_TEMPLATE/bug_report.md": {
+    "mtime": 1793874421.1453886,
+    "seen": 1793967103.8266144,
+    "ast_hash": "594465b4e2eccd366c7e69563dd7965c",
+    "semantic_hash": ""
+  },
+  ".github/ISSUE_TEMPLATE/feature_request.md": {
+    "mtime": 1793874421.1453886,
+    "seen": 1793967103.8266172,
+    "ast_hash": "1b0316c03a5abf023ff49c61187cd4b3",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/a11y-architect.md": {
+    "mtime": 1793874421.1453886,
+    "seen": 1793967103.8266203,
+    "ast_hash": "b449d0620a803902f208f06f43130edc",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/agent-evaluator.md": {
+    "mtime": 1793874421.1453886,
+    "seen": 1793967103.8266234,
+    "ast_hash": "69e92e104aadbf34e47603e065e917c6",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/architect.md": {
+    "mtime": 1793874421.1463888,
+    "seen": 1793967103.8266268,
+    "ast_hash": "211ff592c48f52dfc2d68e54bdc3f319",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/build-error-resolver.md": {
+    "mtime": 1793874421.1463888,
+    "seen": 1793967103.8266299,
+    "ast_hash": "af5fcb25cdc8c954883b005897728aa2",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/chief-of-staff.md": {
+    "mtime": 1793874421.1463888,
+    "seen": 1793967103.826633,
+    "ast_hash": "87eaed9b782de8424a2cc9091c7bd62c",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/code-architect.md": {
+    "mtime": 1793874421.1463888,
+    "seen": 1793967103.826636,
+    "ast_hash": "746189e4392e09b587aac28a9528e36a",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/code-explorer.md": {
+    "mtime": 1793874421.1463888,
+    "seen": 1793967103.8266423,
+    "ast_hash": "7efc1f8203a168f44e3f033b244759b7",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/code-reviewer.md": {
+    "mtime": 1793874421.1463888,
+    "seen": 1793967103.8266456,
+    "ast_hash": "69532df582304a510fcc39648ae61233",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/code-simplifier.md": {
+    "mtime": 1793874421.1463888,
+    "seen": 1793967103.8266482,
+    "ast_hash": "cc539b0a50fad1772e0a42b52a3d0eab",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/comment-analyzer.md": {
+    "mtime": 1793874421.1463888,
+    "seen": 1793967103.8266513,
+    "ast_hash": "3245822f917ed8a06d291f83f8b45d3c",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/conversation-analyzer.md": {
+    "mtime": 1793874421.1463888,
+    "seen": 1793967103.8266544,
+    "ast_hash": "a818c317d1f4bb290b7e9e3bd88e0821",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/cpp-build-resolver.md": {
+    "mtime": 1793874421.1463888,
+    "seen": 1793967103.8266575,
+    "ast_hash": "59b817bafaf2a03f5a1aa4a32bf8d7ce",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/cpp-reviewer.md": {
+    "mtime": 1793874421.1473887,
+    "seen": 1793967103.8266604,
+    "ast_hash": "2e583fbc9025d8a7a0a94ab8289838c8",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/csharp-reviewer.md": {
+    "mtime": 1793874421.1473887,
+    "seen": 1793967103.8266635,
+    "ast_hash": "2a5c9e37369e94648537aa8fc4c5dcf4",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/dart-build-resolver.md": {
+    "mtime": 1793874421.1473887,
+    "seen": 1793967103.8266664,
+    "ast_hash": "534d97f255ee2d07a9299dff98ab407c",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/database-reviewer.md": {
+    "mtime": 1793874421.1473887,
+    "seen": 1793967103.8266695,
+    "ast_hash": "b6eb22b5beb96654900b3bd394b62a7c",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/django-build-resolver.md": {
+    "mtime": 1793874421.1473887,
+    "seen": 1793967103.8266723,
+    "ast_hash": "33f2cb85e4cbfa968f8d1ed583db463c",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/django-reviewer.md": {
+    "mtime": 1793874421.1473887,
+    "seen": 1793967103.8266757,
+    "ast_hash": "9f58a5965b6e148b355ee5b28d9246da",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/doc-updater.md": {
+    "mtime": 1793874421.1473887,
+    "seen": 1793967103.8266788,
+    "ast_hash": "8035145cab9c0c1f6ddd24f78a6f6376",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/docs-lookup.md": {
+    "mtime": 1793874421.1473887,
+    "seen": 1793967103.826751,
+    "ast_hash": "1e46af6c7c68b9bfda122f7d3dc89799",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/e2e-runner.md": {
+    "mtime": 1793874421.1473887,
+    "seen": 1793967103.826755,
+    "ast_hash": "34f5dfb221a6ee3560d81e132497e0b9",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/fastapi-reviewer.md": {
+    "mtime": 1793874421.1473887,
+    "seen": 1793967103.8267581,
+    "ast_hash": "e3def1b2005f324c29e9df22343fec29",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/flutter-reviewer.md": {
+    "mtime": 1793874421.1483886,
+    "seen": 1793967103.8267612,
+    "ast_hash": "642f33571a4de562b8804f317104277b",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/fsharp-reviewer.md": {
+    "mtime": 1793874421.1483886,
+    "seen": 1793967103.8267639,
+    "ast_hash": "3d45e7b5e0f320297468e26231a9e4a6",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/gan-evaluator.md": {
+    "mtime": 1793874421.1483886,
+    "seen": 1793967103.8267665,
+    "ast_hash": "5cc8af18a9a8dfc03078b85ba1ced67e",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/gan-generator.md": {
+    "mtime": 1793874421.1483886,
+    "seen": 1793967103.826769,
+    "ast_hash": "24bfa0a8a31cbd9e17e496abf87df5ea",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/gan-planner.md": {
+    "mtime": 1793874421.1483886,
+    "seen": 1793967103.8267725,
+    "ast_hash": "658b6064c0a6a4f35987bca8613e8ddb",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/go-build-resolver.md": {
+    "mtime": 1793874421.1483886,
+    "seen": 1793967103.8267748,
+    "ast_hash": "849404b76b73343349a3951cc53b7e95",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/go-reviewer.md": {
+    "mtime": 1793874421.1483886,
+    "seen": 1793967103.826777,
+    "ast_hash": "2cff7c6ede3cb9f4796a74d67ee3b9a6",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/harmonyos-app-resolver.md": {
+    "mtime": 1793874421.1493888,
+    "seen": 1793967103.8267794,
+    "ast_hash": "001640c830b9e87acdf81c8d3a08baf8",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/harness-optimizer.md": {
+    "mtime": 1793874421.1493888,
+    "seen": 1793967103.8267825,
+    "ast_hash": "03aee0505fcf0eddc8aa9e4c6f0a1dd1",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/healthcare-reviewer.md": {
+    "mtime": 1793874421.1493888,
+    "seen": 1793967103.8267853,
+    "ast_hash": "72285cc8e947589f757da573bc1c1ab2",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/homelab-architect.md": {
+    "mtime": 1793874421.1493888,
+    "seen": 1793967103.826788,
+    "ast_hash": "5080ed858c5597273f8bca6aeaa50ccf",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/java-build-resolver.md": {
+    "mtime": 1793874421.1493888,
+    "seen": 1793967103.8267906,
+    "ast_hash": "09133be037d9ea5eea1d6729fe00112f",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/java-reviewer.md": {
+    "mtime": 1793874421.1493888,
+    "seen": 1793967103.8267937,
+    "ast_hash": "e03192f08b9cdea2771f42d8e46ef517",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/kotlin-build-resolver.md": {
+    "mtime": 1793874421.1493888,
+    "seen": 1793967103.8267968,
+    "ast_hash": "3ca4c2c7e9447049304173535e17c564",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/kotlin-reviewer.md": {
+    "mtime": 1793874421.1493888,
+    "seen": 1793967103.8267996,
+    "ast_hash": "e54d711a88037d02342695678327114d",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/loop-operator.md": {
+    "mtime": 1793874421.1503887,
+    "seen": 1793967103.826802,
+    "ast_hash": "3947350e03236d58f0836d4464b800a1",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/marketing-agent.md": {
+    "mtime": 1793874421.1503887,
+    "seen": 1793967103.8268044,
+    "ast_hash": "7ba7ad49c60ecd555a89325a426ea7bd",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/mle-reviewer.md": {
+    "mtime": 1793874421.1503887,
+    "seen": 1793967103.826807,
+    "ast_hash": "4724759c9b9f1c453d6909189d07c08a",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/network-architect.md": {
+    "mtime": 1793874421.1503887,
+    "seen": 1793967103.82681,
+    "ast_hash": "dac8e755d0422d0b7ec0f3c49b1d8740",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/network-config-reviewer.md": {
+    "mtime": 1793874421.1503887,
+    "seen": 1793967103.8268123,
+    "ast_hash": "6572d119a1b45a3398defbb328b78ccc",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/network-troubleshooter.md": {
+    "mtime": 1793874421.1503887,
+    "seen": 1793967103.8268147,
+    "ast_hash": "2240f16889001aa8d59521754f8c663b",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/opensource-forker.md": {
+    "mtime": 1793874421.1503887,
+    "seen": 1793967103.8268168,
+    "ast_hash": "4520a17090563be67ba4291e376a5af4",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/opensource-packager.md": {
+    "mtime": 1793874421.1503887,
+    "seen": 1793967103.8268192,
+    "ast_hash": "3608453b3ee22819df7bfeb463af9861",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/opensource-sanitizer.md": {
+    "mtime": 1793874421.1513886,
+    "seen": 1793967103.8268216,
+    "ast_hash": "0fa02cba66f364acac5bb5ad73ad81d8",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/performance-optimizer.md": {
+    "mtime": 1793874421.1513886,
+    "seen": 1793967103.826824,
+    "ast_hash": "cc88bf51ea875f6dffb5f333f0a1374f",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/php-reviewer.md": {
+    "mtime": 1793874421.1513886,
+    "seen": 1793967103.8268263,
+    "ast_hash": "ce907341a518e59ac4f4296f00942b90",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/planner.md": {
+    "mtime": 1793874421.1513886,
+    "seen": 1793967103.8268287,
+    "ast_hash": "bf9e3fd56ebc6eb6de7d2d3aa25a9e81",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/pr-test-analyzer.md": {
+    "mtime": 1793874421.1513886,
+    "seen": 1793967103.8268313,
+    "ast_hash": "14eab48c9c85dcbdee4961ce99d30114",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/python-reviewer.md": {
+    "mtime": 1793874421.1513886,
+    "seen": 1793967103.8268342,
+    "ast_hash": "42d1792fd416070de1f1e35d336260ed",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/pytorch-build-resolver.md": {
+    "mtime": 1793874421.1513886,
+    "seen": 1793967103.826837,
+    "ast_hash": "801cd965809d8fa035407eb7e0931414",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/rag-pipeline-reviewer.md": {
+    "mtime": 1793874421.1513886,
+    "seen": 1793967103.8268392,
+    "ast_hash": "4973097aed7ecb75c69984f3b5d55254",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/react-build-resolver.md": {
+    "mtime": 1793874421.1523888,
+    "seen": 1793967103.8268416,
+    "ast_hash": "bf03f16597873649e42f3d8010a2eaec",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/react-reviewer.md": {
+    "mtime": 1793874421.1523888,
+    "seen": 1793967103.826844,
+    "ast_hash": "7cbd46089c373ca6fd30b3cd815107d2",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/refactor-cleaner.md": {
+    "mtime": 1793874421.1523888,
+    "seen": 1793967103.8268464,
+    "ast_hash": "f58c362f3346f96fc3c6b35c91c2f9fe",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/rust-build-resolver.md": {
+    "mtime": 1793874421.1523888,
+    "seen": 1793967103.8268487,
+    "ast_hash": "8caac4c91679a6cb42c90e533b59f145",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/rust-reviewer.md": {
+    "mtime": 1793874421.1523888,
+    "seen": 1793967103.8268514,
+    "ast_hash": "903894174464a6853250db9d7fa70ae3",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/security-reviewer.md": {
+    "mtime": 1793874421.1523888,
+    "seen": 1793967103.826854,
+    "ast_hash": "052f5f7245f03c67bd08ef4108704b17",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/seo-specialist.md": {
+    "mtime": 1793874421.1523888,
+    "seen": 1793967103.8268561,
+    "ast_hash": "99adb775abd48375605068da850f912b",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/silent-failure-hunter.md": {
+    "mtime": 1793874421.1523888,
+    "seen": 1793967103.8268588,
+    "ast_hash": "fd289f1d68c986b73634650929a03366",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/spec-miner.md": {
+    "mtime": 1793874421.1523888,
+    "seen": 1793967103.8268611,
+    "ast_hash": "13771086f28e1c3084b5654a140b0f54",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/swift-build-resolver.md": {
+    "mtime": 1793874421.1533887,
+    "seen": 1793967103.8268638,
+    "ast_hash": "1a0611e4eb5fd1ebd791819e28838242",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/swift-reviewer.md": {
+    "mtime": 1793874421.1533887,
+    "seen": 1793967103.8268664,
+    "ast_hash": "9003ac2682280508736a5ba196f89cd1",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/tdd-guide.md": {
+    "mtime": 1793874421.1533887,
+    "seen": 1793967103.826869,
+    "ast_hash": "b75da545e73828f1bf892775af627c6d",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/type-design-analyzer.md": {
+    "mtime": 1793874421.1533887,
+    "seen": 1793967103.8268714,
+    "ast_hash": "eb1885cef75208b23d73e9486f20eb2a",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/typescript-reviewer.md": {
+    "mtime": 1793874421.1533887,
+    "seen": 1793967103.8268738,
+    "ast_hash": "5a9a721085ba4b8b358e6810534ea61e",
+    "semantic_hash": ""
+  },
+  ".kilo/agents/vue-reviewer.md": {
+    "mtime": 1793874421.1533887,
+    "seen": 1793967103.8268764,
+    "ast_hash": "00a02e6303043693e73cb36973de05e8",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/aside/aside.md": {
+    "mtime": 1793874421.1533887,
+    "seen": 1793967103.8268788,
+    "ast_hash": "97b19ed78d64a00023bff27ea6727fc4",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/auto-update/auto-update.md": {
+    "mtime": 1793874421.1543887,
+    "seen": 1793967103.8268812,
+    "ast_hash": "fe8805ee4431734f67e5e8de0235c1d9",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/build-fix/build-fix.md": {
+    "mtime": 1793874421.1543887,
+    "seen": 1793967103.826884,
+    "ast_hash": "8c07e909e59af2fe469a2628b1622dd6",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/checkpoint/checkpoint.md": {
+    "mtime": 1793874421.1543887,
+    "seen": 1793967103.8268864,
+    "ast_hash": "6e2ccb2cb251bce5e765b78f16e17c8d",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/code-review/code-review.md": {
+    "mtime": 1793874421.1543887,
+    "seen": 1793967103.8268888,
+    "ast_hash": "2e3e3888b04c549eb59d9ec1d57f435a",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/cost-report/cost-report.md": {
+    "mtime": 1793874421.1553886,
+    "seen": 1793967103.8268912,
+    "ast_hash": "1af080c64d82b7520e47c8bb126e22ae",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/cpp-build/cpp-build.md": {
+    "mtime": 1793874421.1553886,
+    "seen": 1793967103.826894,
+    "ast_hash": "cd30e1bbc61aad93a31d39de6160727f",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/cpp-review/cpp-review.md": {
+    "mtime": 1793874421.1553886,
+    "seen": 1793967103.8268974,
+    "ast_hash": "7747a1b17831ccb587753c62c93f73d9",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/cpp-test/cpp-test.md": {
+    "mtime": 1793874421.1553886,
+    "seen": 1793967103.8269002,
+    "ast_hash": "e7a481505cfc0458adf9041a4a74096c",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/ecc-guide/ecc-guide.md": {
+    "mtime": 1793874421.1563888,
+    "seen": 1793967103.826903,
+    "ast_hash": "4c17e0866589d55fcf7bd70ef7d711da",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-claim/epic-claim.md": {
+    "mtime": 1793874421.1563888,
+    "seen": 1793967103.826906,
+    "ast_hash": "4459bc6f3ec41e25dfa7ae8b02b46aad",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-decompose/epic-decompose.md": {
+    "mtime": 1793874421.1563888,
+    "seen": 1793967103.8269083,
+    "ast_hash": "5dd991a9000832a946bbf8c6aa929d0a",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-publish/epic-publish.md": {
+    "mtime": 1793874421.1563888,
+    "seen": 1793967103.8269107,
+    "ast_hash": "369ee98866f5acde11f0c99e764472e7",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-review/epic-review.md": {
+    "mtime": 1793874421.1563888,
+    "seen": 1793967103.8269136,
+    "ast_hash": "2d013d6ff0b4bcc87a546607b0732b4b",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-sync/epic-sync.md": {
+    "mtime": 1793874421.1573887,
+    "seen": 1793967103.8269165,
+    "ast_hash": "214afeb97a3ab78447f8eb4324a8ecae",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-unblock/epic-unblock.md": {
+    "mtime": 1793874421.1573887,
+    "seen": 1793967103.826919,
+    "ast_hash": "194f9026185874066cb71d61e1050843",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/epic-validate/epic-validate.md": {
+    "mtime": 1793874421.1573887,
+    "seen": 1793967103.8269217,
+    "ast_hash": "ee768fc53b36211a79113f3c716ec9e1",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/evolve/evolve.md": {
+    "mtime": 1793874421.1573887,
+    "seen": 1793967103.826924,
+    "ast_hash": "1c2495d30e9aab9f20d8d1877d461559",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/fastapi-review/fastapi-review.md": {
+    "mtime": 1793874421.1583886,
+    "seen": 1793967103.8269267,
+    "ast_hash": "6997960b6441670bd6fa9ee0be024a72",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/feature-dev/feature-dev.md": {
+    "mtime": 1793874421.1583886,
+    "seen": 1793967103.826929,
+    "ast_hash": "95516c8ad99778b9c783cab7981d8772",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/flutter-build/flutter-build.md": {
+    "mtime": 1793874421.1583886,
+    "seen": 1793967103.8269317,
+    "ast_hash": "659e26481a2af9ceda1b77cd6b9df46f",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/flutter-review/flutter-review.md": {
+    "mtime": 1793874421.1583886,
+    "seen": 1793967103.8269343,
+    "ast_hash": "d339939edfc407cd0f0f80a7441781c7",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/flutter-test/flutter-test.md": {
+    "mtime": 1793874421.1583886,
+    "seen": 1793967103.8269367,
+    "ast_hash": "f47fc8007426a16220b0ca529809f922",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/gan-build/gan-build.md": {
+    "mtime": 1793874421.1593888,
+    "seen": 1793967103.8269393,
+    "ast_hash": "7f166efd80c83a004af9d224dad69243",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/gan-design/gan-design.md": {
+    "mtime": 1793874421.1593888,
+    "seen": 1793967103.8269417,
+    "ast_hash": "5117174e1504483fdedd43d32883d7f1",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/go-build/go-build.md": {
+    "mtime": 1793874421.1593888,
+    "seen": 1793967103.8269446,
+    "ast_hash": "a49a99b412445bd22f7e125b75e39933",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/go-review/go-review.md": {
+    "mtime": 1793874421.1593888,
+    "seen": 1793967103.8269467,
+    "ast_hash": "76b570125d07a0cf717af08839e2afe4",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/go-test/go-test.md": {
+    "mtime": 1793874421.1603887,
+    "seen": 1793967103.8269491,
+    "ast_hash": "8343d2270facfc0626faf2d1b713d168",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/gradle-build/gradle-build.md": {
+    "mtime": 1793874421.1603887,
+    "seen": 1793967103.8269517,
+    "ast_hash": "834ea5fd63bda35f43f9f1c38dec0a1f",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/harness-audit/harness-audit.md": {
+    "mtime": 1793874421.1603887,
+    "seen": 1793967103.8269541,
+    "ast_hash": "08ff03dd1cb1fa9a0a1926a615a1811e",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/hookify-configure/hookify-configure.md": {
+    "mtime": 1793874421.1603887,
+    "seen": 1793967103.8269565,
+    "ast_hash": "1877df241fd8621f9967a468db3b531d",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/hookify-help/hookify-help.md": {
+    "mtime": 1793874421.1603887,
+    "seen": 1793967103.826959,
+    "ast_hash": "47dc06db980a72c653a5b90b2f5405a3",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/hookify-list/hookify-list.md": {
+    "mtime": 1793874421.1613886,
+    "seen": 1793967103.826961,
+    "ast_hash": "81e09287ceb62ff519cbd774652f0c80",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/hookify/hookify.md": {
+    "mtime": 1793874421.1613886,
+    "seen": 1793967103.8269637,
+    "ast_hash": "ab4e0c4807f8cbfd0b3716051109185f",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/instinct-export/instinct-export.md": {
+    "mtime": 1793874421.1613886,
+    "seen": 1793967103.826966,
+    "ast_hash": "6abae1e2112d6f0df4212e299326fb00",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/instinct-import/instinct-import.md": {
+    "mtime": 1793874421.1613886,
+    "seen": 1793967103.8269684,
+    "ast_hash": "ba62895d95bd6713f816a0e9ae6424ae",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/instinct-status/instinct-status.md": {
+    "mtime": 1793874421.1613886,
+    "seen": 1793967103.8269708,
+    "ast_hash": "014bed7c2e11ecef872b530a24380103",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/jira/jira.md": {
+    "mtime": 1793874421.1623888,
+    "seen": 1793967103.8269732,
+    "ast_hash": "2f714d9652feea90471a7a1591b33d50",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/kotlin-build/kotlin-build.md": {
+    "mtime": 1793874421.1623888,
+    "seen": 1793967103.8269756,
+    "ast_hash": "05a1090f4c30fc7078e6549dedcf7764",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/kotlin-review/kotlin-review.md": {
+    "mtime": 1793874421.1623888,
+    "seen": 1793967103.8269777,
+    "ast_hash": "008021523bad325455171c2f509efeb4",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/kotlin-test/kotlin-test.md": {
+    "mtime": 1793874421.1623888,
+    "seen": 1793967103.82698,
+    "ast_hash": "b5ee6a1d6d8805abb712ba93ed9abfb6",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/learn-eval/learn-eval.md": {
+    "mtime": 1793874421.1633887,
+    "seen": 1793967103.8269825,
+    "ast_hash": "2674c4f11d46f0bbefe459eb7f51bcd5",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/learn/learn.md": {
+    "mtime": 1793874421.1633887,
+    "seen": 1793967103.8269846,
+    "ast_hash": "35cba435f38baaace25cb6e140b647ca",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/loop-start/loop-start.md": {
+    "mtime": 1793874421.1633887,
+    "seen": 1793967103.8269873,
+    "ast_hash": "6e390c211f45893118e7bc976435d8e7",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/loop-status/loop-status.md": {
+    "mtime": 1793874421.1633887,
+    "seen": 1793967103.8269897,
+    "ast_hash": "89fe3fc29cd977ab76abde759ba54b08",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/marketing-campaign/marketing-campaign.md": {
+    "mtime": 1793874421.1643887,
+    "seen": 1793967103.826992,
+    "ast_hash": "d4079ea8a405d788f038e0806a3d3a25",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/memory/CHECKPOINT.md": {
+    "mtime": 1793874421.1643887,
+    "seen": 1793967103.8269944,
+    "ast_hash": "ad65cb05e6432cd075268df3e5c2e907",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/memory/MEMORY.md": {
+    "mtime": 1793874421.1643887,
+    "seen": 1793967103.8269968,
+    "ast_hash": "4cc8ddc6719016bc8118e2174664b036",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/memory/memory.md": {
+    "mtime": 1793874421.1643887,
+    "seen": 1793967103.826999,
+    "ast_hash": "a01c54bb131a85f42edb024413c40abd",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/model-route/model-route.md": {
+    "mtime": 1793874421.1643887,
+    "seen": 1793967103.8270016,
+    "ast_hash": "dc28618eba26525cef56c781b1db9edb",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/multi-backend/multi-backend.md": {
+    "mtime": 1793874421.1643887,
+    "seen": 1793967103.8270042,
+    "ast_hash": "e43fc236c7b95e86bae3adc59d1a7e1d",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/multi-execute/multi-execute.md": {
+    "mtime": 1793874421.1653886,
+    "seen": 1793967103.8270068,
+    "ast_hash": "cc7dc3b056c5f5d2863e3190cd7e15ab",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/multi-frontend/multi-frontend.md": {
+    "mtime": 1793874421.1653886,
+    "seen": 1793967103.827009,
+    "ast_hash": "2241945607fcd16898a391dff8cd15e7",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/multi-plan/multi-plan.md": {
+    "mtime": 1793874421.1653886,
+    "seen": 1793967103.8270116,
+    "ast_hash": "17706153dbb79eefac1e78060d25d4c6",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/multi-workflow/multi-workflow.md": {
+    "mtime": 1793874421.1653886,
+    "seen": 1793967103.827014,
+    "ast_hash": "1c8a97e52b49f6810258fc822c97b497",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-add-feature/orch-add-feature.md": {
+    "mtime": 1793874421.1673887,
+    "seen": 1793967103.8270166,
+    "ast_hash": "778f4145ce85ea6bd08efe92b9809a31",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-build-mvp/orch-build-mvp.md": {
+    "mtime": 1793874421.1673887,
+    "seen": 1793967103.8270192,
+    "ast_hash": "a51442b71c397b5575e0f0eae9800929",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-change-feature/orch-change-feature.md": {
+    "mtime": 1793874421.1673887,
+    "seen": 1793967103.8270218,
+    "ast_hash": "571dacf457a41983ae8fc9b29e95903f",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-fix-defect/orch-fix-defect.md": {
+    "mtime": 1793874421.1683886,
+    "seen": 1793967103.8270242,
+    "ast_hash": "99671b9f6f803d9c1158544f707ceeb1",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-refine-code/orch-refine-code.md": {
+    "mtime": 1793874421.1683886,
+    "seen": 1793967103.8270264,
+    "ast_hash": "3e0217b234a9525e65f85382606f1c32",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/orch-review/orch-review.md": {
+    "mtime": 1793874421.1683886,
+    "seen": 1793967103.827029,
+    "ast_hash": "23ad3aaddad137c4dffd865658e7471e",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/plan-canvas/plan-canvas.md": {
+    "mtime": 1793874421.1683886,
+    "seen": 1793967103.8270314,
+    "ast_hash": "3d374d393aaa5262900eb5b03edc2a01",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/plan-prd/plan-prd.md": {
+    "mtime": 1793874421.1693888,
+    "seen": 1793967103.8270338,
+    "ast_hash": "5f73014e1051582d953e97020cdc81df",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/plan/plan.md": {
+    "mtime": 1793874421.1693888,
+    "seen": 1793967103.8270364,
+    "ast_hash": "dab0bd200afeaf7784caeffb0b300ae7",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/pm2/pm2.md": {
+    "mtime": 1793874421.1693888,
+    "seen": 1793967103.8270388,
+    "ast_hash": "8d1e1029a6e474c3f8af2ac01e3ede30",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/pr/pr.md": {
+    "mtime": 1793874421.1693888,
+    "seen": 1793967103.827041,
+    "ast_hash": "1d7d48eb199081042a966f2ec1748732",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/project-init/project-init.md": {
+    "mtime": 1793874421.1693888,
+    "seen": 1793967103.8270438,
+    "ast_hash": "a8e442383b70b09c5007a3da51d481ce",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/projects/projects.md": {
+    "mtime": 1793874421.1703887,
+    "seen": 1793967103.8270464,
+    "ast_hash": "e7f0404c78d8a7bffa7cdf497c924c64",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/promote/promote.md": {
+    "mtime": 1793874421.1703887,
+    "seen": 1793967103.8270488,
+    "ast_hash": "0a2ca33730bcbfcc8a7134ca3356e592",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prp-commit/prp-commit.md": {
+    "mtime": 1793874421.1703887,
+    "seen": 1793967103.827051,
+    "ast_hash": "df917f79e8c2f711c89a99143ae2c879",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prp-implement/prp-implement.md": {
+    "mtime": 1793874421.1703887,
+    "seen": 1793967103.8270535,
+    "ast_hash": "f5d050ea6aca7bb24a36236799553cd1",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prp-plan/prp-plan.md": {
+    "mtime": 1793874421.1713886,
+    "seen": 1793967103.8270562,
+    "ast_hash": "864e9ff7546c463ab32de13a910b61a6",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prp-pr/prp-pr.md": {
+    "mtime": 1793874421.1713886,
+    "seen": 1793967103.8270583,
+    "ast_hash": "6254c0b6d99efc49f3f5e86b7d279d73",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prp-prd/prp-prd.md": {
+    "mtime": 1793874421.1713886,
+    "seen": 1793967103.8270607,
+    "ast_hash": "3e93b76a5e0eb2214ba4e0ec301ba0de",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/prune/prune.md": {
+    "mtime": 1793874421.1713886,
+    "seen": 1793967103.8270633,
+    "ast_hash": "7186e2f2eb551faa75b0f2c5d2928904",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/python-review/python-review.md": {
+    "mtime": 1793874421.1723888,
+    "seen": 1793967103.8270657,
+    "ast_hash": "efe1fa1858035aef157a93ef66c54e2b",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/quality-gate/quality-gate.md": {
+    "mtime": 1793874421.1723888,
+    "seen": 1793967103.827068,
+    "ast_hash": "93edc1605d40dd101d2c2bfd0102a35d",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/react-build/react-build.md": {
+    "mtime": 1793874421.1723888,
+    "seen": 1793967103.8270707,
+    "ast_hash": "9c2e00df77276c276008711afd4f948b",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/react-review/react-review.md": {
+    "mtime": 1793874421.1723888,
+    "seen": 1793967103.8270733,
+    "ast_hash": "895d257a220e5350ff6c6990610edaf2",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/react-test/react-test.md": {
+    "mtime": 1793874421.1723888,
+    "seen": 1793967103.8270762,
+    "ast_hash": "504b9df472302949c8e47ac9495503a1",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/refactor-clean/refactor-clean.md": {
+    "mtime": 1793874421.1733887,
+    "seen": 1793967103.8270786,
+    "ast_hash": "5f48769ccca7698f2ca1a89a6ab4cd30",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/resume-session/resume-session.md": {
+    "mtime": 1793874421.1733887,
+    "seen": 1793967103.827081,
+    "ast_hash": "d5f94cf4d621658ea759fbd8faa11774",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/review-pr/review-pr.md": {
+    "mtime": 1793874421.1733887,
+    "seen": 1793967103.8270836,
+    "ast_hash": "dba2156648d6ee78f9b52dc0db8826f5",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/rust-build/rust-build.md": {
+    "mtime": 1793874421.1733887,
+    "seen": 1793967103.827086,
+    "ast_hash": "558efa698437c98c8822bbb706f22894",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/rust-review/rust-review.md": {
+    "mtime": 1793874421.1743886,
+    "seen": 1793967103.8270886,
+    "ast_hash": "074e4186ad5de1677723f0e1f74312ff",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/rust-test/rust-test.md": {
+    "mtime": 1793874421.1743886,
+    "seen": 1793967103.8270912,
+    "ast_hash": "c0334d97b1d8f1818fc1823f7e8e3695",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/santa-loop/santa-loop.md": {
+    "mtime": 1793874421.1743886,
+    "seen": 1793967103.8270938,
+    "ast_hash": "6331c026fa62723133c467769e89ee28",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/save-session/save-session.md": {
+    "mtime": 1793874421.1743886,
+    "seen": 1793967103.827096,
+    "ast_hash": "ffa0a79193f3582b08142cb4362e4396",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/security-scan/security-scan.md": {
+    "mtime": 1793874421.1743886,
+    "seen": 1793967103.8270986,
+    "ast_hash": "fa8560832f7794720478b7f26a009969",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/sessions/sessions.md": {
+    "mtime": 1793874421.1753888,
+    "seen": 1793967103.827101,
+    "ast_hash": "8410e08dd1aac3d27a88bb10ff0bc627",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/setup-pm/setup-pm.md": {
+    "mtime": 1793874421.1753888,
+    "seen": 1793967103.8271034,
+    "ast_hash": "94a107099532c45a1c5e0dfae58c99cf",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/skill-create/skill-create.md": {
+    "mtime": 1793874421.1753888,
+    "seen": 1793967103.827106,
+    "ast_hash": "9dff0834623dba07be6f0b08dc5fa587",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/skill-health/skill-health.md": {
+    "mtime": 1793874421.1753888,
+    "seen": 1793967103.8271084,
+    "ast_hash": "1ef526c2e062a17b7e77591ec12138ec",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/test-coverage/test-coverage.md": {
+    "mtime": 1793874421.1763887,
+    "seen": 1793967103.827111,
+    "ast_hash": "9ddbc72960e876ed674813af93cb7335",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/update-codemaps/update-codemaps.md": {
+    "mtime": 1793874421.1763887,
+    "seen": 1793967103.8271134,
+    "ast_hash": "fcd146a0cd427c9f010d2ab0bb225782",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/update-docs/update-docs.md": {
+    "mtime": 1793874421.1763887,
+    "seen": 1793967103.827116,
+    "ast_hash": "9e8cc4b5e6f97fc394a15d55484a7213",
+    "semantic_hash": ""
+  },
+  ".kilo/commands/vue-review/vue-review.md": {
+    "mtime": 1793874421.1763887,
+    "seen": 1793967103.8271186,
+    "ast_hash": "9cb7ec23453ebee27f35f608cb958763",
+    "semantic_hash": ""
+  },
+  ".kilo/plans/1788676797338-fix-compiler-ko-bugs.md": {
+    "mtime": 1793874421.1763887,
+    "seen": 1793967103.8271215,
+    "ast_hash": "51a43e3977160c7e4892231e549112ab",
+    "semantic_hash": ""
+  },
+  ".kilo/plans/1789108710120-fix-compiler-bugs.md": {
+    "mtime": 1793874421.1773887,
+    "seen": 1793967103.8271236,
+    "ast_hash": "06293f1a38f51f6f285af58841f3b8a9",
+    "semantic_hash": ""
+  },
+  ".kilo/plans/1792474757067-compiler-ko-remediation-plan.md": {
+    "mtime": 1793874421.1773887,
+    "seen": 1793967103.8271263,
+    "ast_hash": "e04e9ad3c8231d173eacb194d187baf5",
+    "semantic_hash": ""
+  },
+  ".kilo/plans/1792516224000-plan-compiler-ko-m0-7.md": {
+    "mtime": 1793874421.1773887,
+    "seen": 1793967103.827129,
+    "ast_hash": "35a74535a824fdb952c30e9a6244c11f",
+    "semantic_hash": ""
+  },
+  ".kilo/plans/1793340645000-unify-value-arithmetic.md": {
+    "mtime": 1793874421.1773887,
+    "seen": 1793967103.8271317,
+    "ast_hash": "787690b38621725c67eb088389c5dd06",
+    "semantic_hash": ""
+  },
+  ".kilo/plans/1793425127891-compiler-ko-full-development-plan.md": {
+    "mtime": 1793874421.1773887,
+    "seen": 1793967103.8271341,
+    "ast_hash": "00e2c73983a3e8abc4357548b0e406a4",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/accessibility/SKILL.md": {
+    "mtime": 1793874421.1773887,
+    "seen": 1793967103.8272192,
+    "ast_hash": "7173e91c353bb83a889d3a74fb24040e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agent-architecture-audit/SKILL.md": {
+    "mtime": 1793874421.1773887,
+    "seen": 1793967103.8272257,
+    "ast_hash": "f7f7dfcc110ea0b471e0a4f50c662dc8",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agent-eval/SKILL.md": {
+    "mtime": 1793874421.1783886,
+    "seen": 1793967103.8272295,
+    "ast_hash": "5f4c4f9afe895f0083e59b4ae0edcceb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agent-harness-construction/SKILL.md": {
+    "mtime": 1793874421.1783886,
+    "seen": 1793967103.827233,
+    "ast_hash": "b78a8d2e02f96f42bafa4937d3c6560b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agent-introspection-debugging/SKILL.md": {
+    "mtime": 1793874421.1783886,
+    "seen": 1793967103.8272362,
+    "ast_hash": "d0b7f5fe3659ee23990c4ac473a67639",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agent-payment-x402/SKILL.md": {
+    "mtime": 1793874421.1783886,
+    "seen": 1793967103.8272388,
+    "ast_hash": "e0e17e5e05ff93c44f19ad36f0359a07",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agent-self-evaluation/SKILL.md": {
+    "mtime": 1793874421.1783886,
+    "seen": 1793967103.8272471,
+    "ast_hash": "1a32949b70e8848fb505bcf2355ed6a7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agent-sort/SKILL.md": {
+    "mtime": 1793874421.1793888,
+    "seen": 1793967103.82725,
+    "ast_hash": "b4beb2b67ed0015bab426aca5157175d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agentic-engineering/SKILL.md": {
+    "mtime": 1793874421.1793888,
+    "seen": 1793967103.8272526,
+    "ast_hash": "8c2b98217cc88c3d144f6b0a4d101048",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agentic-os/SKILL.md": {
+    "mtime": 1793874421.1793888,
+    "seen": 1793967103.8272555,
+    "ast_hash": "987f232020aa5bb7e3d90973acc4d7d3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agents/enrichment-agent.md": {
+    "mtime": 1793874421.1793888,
+    "seen": 1793967103.8272583,
+    "ast_hash": "8da9bf157a44a3fa15a409dd625def08",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agents/mutual-mapper.md": {
+    "mtime": 1793874421.1793888,
+    "seen": 1793967103.8272614,
+    "ast_hash": "00fa8bf1d063fde834f39007c76c6648",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agents/observer.md": {
+    "mtime": 1793874421.1793888,
+    "seen": 1793967103.8272643,
+    "ast_hash": "704d910b8822e99c9de24412ab9e7ef9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agents/outreach-drafter.md": {
+    "mtime": 1793874421.1793888,
+    "seen": 1793967103.8272672,
+    "ast_hash": "6f68aa83100bbd13bf3b6cb6dd655592",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/agents/signal-scorer.md": {
+    "mtime": 1793874421.1793888,
+    "seen": 1793967103.82727,
+    "ast_hash": "26dabb1374fb7c1b73cac200047ef91e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ai-first-engineering/SKILL.md": {
+    "mtime": 1793874421.1803887,
+    "seen": 1793967103.8272734,
+    "ast_hash": "2fe430bcdd1252a75856652106106973",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ai-regression-testing/SKILL.md": {
+    "mtime": 1793874421.1803887,
+    "seen": 1793967103.8272767,
+    "ast_hash": "abf3c75afa72f942ba47ed2639c5912b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/android-clean-architecture/SKILL.md": {
+    "mtime": 1793874421.1803887,
+    "seen": 1793967103.8272798,
+    "ast_hash": "badf13154d27983d15873e9e72722e56",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/angular-developer/SKILL.md": {
+    "mtime": 1793874421.1803887,
+    "seen": 1793967103.8272827,
+    "ast_hash": "940509b02843802bb61d4e3477d7b649",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/api-connector-builder/SKILL.md": {
+    "mtime": 1793874421.1803887,
+    "seen": 1793967103.8272858,
+    "ast_hash": "972a27961a09037b9529f7f2cf7aca96",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/api-design/SKILL.md": {
+    "mtime": 1793874421.1803887,
+    "seen": 1793967103.8272889,
+    "ast_hash": "8f731c4700ba5b6cdd77ef4475de5e6f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/architecture-decision-records/SKILL.md": {
+    "mtime": 1793874421.1813886,
+    "seen": 1793967103.827292,
+    "ast_hash": "bb501261ec6ba84e298fc5341b6d0c78",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/article-writing/SKILL.md": {
+    "mtime": 1793874421.1813886,
+    "seen": 1793967103.827295,
+    "ast_hash": "0101b717504027f41f650faf764eccd9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ask-matt/PHASE-BOUNDARIES.md": {
+    "mtime": 1793874421.1813886,
+    "seen": 1793967103.8272982,
+    "ast_hash": "62a5e8babd13307489cae896b8e1640b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ask-matt/SKILL.md": {
+    "mtime": 1793874421.1813886,
+    "seen": 1793967103.8273008,
+    "ast_hash": "f6dd270890cf1e685ac23ed755b83d65",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/automation-audit-ops/SKILL.md": {
+    "mtime": 1793874421.1813886,
+    "seen": 1793967103.8273041,
+    "ast_hash": "5d347c0e757cc7f0b5ac5c54977f93ff",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/autonomous-agent-harness/SKILL.md": {
+    "mtime": 1793874421.1823888,
+    "seen": 1793967103.8273077,
+    "ast_hash": "8cf902ac29262d6c4c477280ed5b4a34",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/autonomous-loops/SKILL.md": {
+    "mtime": 1793874421.1823888,
+    "seen": 1793967103.827311,
+    "ast_hash": "dac41f509cb9104e727f956f438bf327",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/backend-patterns/SKILL.md": {
+    "mtime": 1793874421.1823888,
+    "seen": 1793967103.8273146,
+    "ast_hash": "ef9ec262e80b0f5e192fa6c172dcd9f6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/benchmark-methodology/SKILL.md": {
+    "mtime": 1793874421.1823888,
+    "seen": 1793967103.827318,
+    "ast_hash": "632e5582a2d195feea3560d6e21fae98",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/benchmark-optimization-loop/SKILL.md": {
+    "mtime": 1793874421.1823888,
+    "seen": 1793967103.8273213,
+    "ast_hash": "6f57c3dc9478d0b37cfeebc604b34674",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/benchmark/SKILL.md": {
+    "mtime": 1793874421.1833887,
+    "seen": 1793967103.8273246,
+    "ast_hash": "3e64924c4e4c5a7c2b196e01bd915d32",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/blender-motion-state-inspection/SKILL.md": {
+    "mtime": 1793874421.1833887,
+    "seen": 1793967103.827328,
+    "ast_hash": "5e6be5096fc5a2817e6732c9a8759834",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/blueprint/SKILL.md": {
+    "mtime": 1793874421.1833887,
+    "seen": 1793967103.8273313,
+    "ast_hash": "b91a0a43eef3d43e25c8d11fb4b91671",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/brand-discovery/SKILL.md": {
+    "mtime": 1793874421.1833887,
+    "seen": 1793967103.8273344,
+    "ast_hash": "a5d3431022ef304d6af59e3aea0f88aa",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/brand-voice/SKILL.md": {
+    "mtime": 1793874421.1833887,
+    "seen": 1793967103.8273375,
+    "ast_hash": "2cd9a7fc890c59ff38d3ff7ef5ab006c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/browser-qa/SKILL.md": {
+    "mtime": 1793874421.1833887,
+    "seen": 1793967103.827341,
+    "ast_hash": "55c8833bb75ecd153e12c39a277218aa",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/bun-runtime/SKILL.md": {
+    "mtime": 1793874421.1843886,
+    "seen": 1793967103.8273442,
+    "ast_hash": "d87e91a36a32e615a87ed80fee1ff58d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/canary-watch/SKILL.md": {
+    "mtime": 1793874421.1843886,
+    "seen": 1793967103.8273475,
+    "ast_hash": "c535ce8f1fa039e49d5990460b974274",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/carrier-relationship-management/SKILL.md": {
+    "mtime": 1793874421.1843886,
+    "seen": 1793967103.8273509,
+    "ast_hash": "e8962473367770f88ed58922b4b5286c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/cisco-ios-patterns/SKILL.md": {
+    "mtime": 1793874421.1843886,
+    "seen": 1793967103.827354,
+    "ast_hash": "036198baba21356d04f6b8643f2a3877",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ck/SKILL.md": {
+    "mtime": 1793874421.1843886,
+    "seen": 1793967103.8273573,
+    "ast_hash": "b8640de9fc356805df564a0bd238719f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/claude-devfleet/SKILL.md": {
+    "mtime": 1793874421.1843886,
+    "seen": 1793967103.8273602,
+    "ast_hash": "628550870d5138aaa0f7185fe74c9bb7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/click-path-audit/SKILL.md": {
+    "mtime": 1793874421.1853888,
+    "seen": 1793967103.8273635,
+    "ast_hash": "e5926a03e5188d4807775ac8a088ec1a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/clickhouse-io/SKILL.md": {
+    "mtime": 1793874421.1853888,
+    "seen": 1793967103.8273666,
+    "ast_hash": "83bfd293c64e912be5cc76495ef50415",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/code-review/SKILL.md": {
+    "mtime": 1793874421.1853888,
+    "seen": 1793967103.8273695,
+    "ast_hash": "338c5015e7510348f147a7b36560058f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/code-tour/SKILL.md": {
+    "mtime": 1793874421.1853888,
+    "seen": 1793967103.827372,
+    "ast_hash": "6ec6ea0639cf9280ccaed6274bbc74ff",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/codebase-design/DEEPENING.md": {
+    "mtime": 1793874421.1853888,
+    "seen": 1793967103.8273752,
+    "ast_hash": "78a4d4cc82339ba265d484baa6e7fe70",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/codebase-design/DESIGN-IT-TWICE.md": {
+    "mtime": 1793874421.1863887,
+    "seen": 1793967103.827378,
+    "ast_hash": "427a3899cfdb4ddfa48abdd2790175f9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/codebase-design/SKILL.md": {
+    "mtime": 1793874421.1863887,
+    "seen": 1793967103.8273807,
+    "ast_hash": "59beb81c6ba3418bccea594e6dc15996",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/codebase-onboarding/SKILL.md": {
+    "mtime": 1793874421.1863887,
+    "seen": 1793967103.8273835,
+    "ast_hash": "6408e7485c9a94491ffc9e45f6a55a71",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/codehealth-mcp/SKILL.md": {
+    "mtime": 1793874421.1863887,
+    "seen": 1793967103.8273864,
+    "ast_hash": "b641e03151b7bd3487ae7d9f44c66dbb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/coding-standards/SKILL.md": {
+    "mtime": 1793874421.1863887,
+    "seen": 1793967103.8273897,
+    "ast_hash": "a2efea8738bd7d573ba6a2897c5a8bc0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/competitive-platform-analysis/SKILL.md": {
+    "mtime": 1793874421.1873887,
+    "seen": 1793967103.8273926,
+    "ast_hash": "1b862e495eac34c899f9c846757351c6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/competitive-report-structure/SKILL.md": {
+    "mtime": 1793874421.1873887,
+    "seen": 1793967103.827395,
+    "ast_hash": "47a511141c4d52d24ceb4cbde7d1ca82",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/compose-multiplatform-patterns/SKILL.md": {
+    "mtime": 1793874421.1873887,
+    "seen": 1793967103.827398,
+    "ast_hash": "8378d7176e23eac109a7f221270878c0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/config-gc/SKILL.md": {
+    "mtime": 1793874421.1873887,
+    "seen": 1793967103.827401,
+    "ast_hash": "8ddd89f078572d9a0dc2b2da8f0b3483",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/configure-ecc/SKILL.md": {
+    "mtime": 1793874421.1873887,
+    "seen": 1793967103.8274035,
+    "ast_hash": "8a0dadc72716b1c0d8a109265aebb5d2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/connections-optimizer/SKILL.md": {
+    "mtime": 1793874421.1873887,
+    "seen": 1793967103.8274064,
+    "ast_hash": "61ae186bf8442ea8de74d4849aa960bb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/content-engine/SKILL.md": {
+    "mtime": 1793874421.1883886,
+    "seen": 1793967103.8274095,
+    "ast_hash": "a6499b9ecf82cfd564990691f6b48ce1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/content-hash-cache-pattern/SKILL.md": {
+    "mtime": 1793874421.1883886,
+    "seen": 1793967103.8274124,
+    "ast_hash": "622d167792d5d6a5ed14ab9e7e79d9ec",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/context-budget/SKILL.md": {
+    "mtime": 1793874421.1883886,
+    "seen": 1793967103.8274152,
+    "ast_hash": "1d7074a53a4965ccd262b6c4f56b1018",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/continuous-agent-loop/SKILL.md": {
+    "mtime": 1793874421.1883886,
+    "seen": 1793967103.827418,
+    "ast_hash": "406ee122dd212c8156dd650f12ff6ca0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/continuous-learning-v2/SKILL.md": {
+    "mtime": 1793874421.1883886,
+    "seen": 1793967103.8274217,
+    "ast_hash": "346b63a0d1e489b7cd1c715887d60255",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/continuous-learning/SKILL.md": {
+    "mtime": 1793874421.1883886,
+    "seen": 1793967103.827425,
+    "ast_hash": "0f6f8f3875d2b72900fa15f664c385ce",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/contract-first/SKILL.md": {
+    "mtime": 1793874421.1893888,
+    "seen": 1793967103.8274274,
+    "ast_hash": "8c16c1f1231e00348bad2a824553f058",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/cost-aware-llm-pipeline/SKILL.md": {
+    "mtime": 1793874421.1893888,
+    "seen": 1793967103.8274302,
+    "ast_hash": "baac6525f9233884266219bab2632338",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/cost-tracking/SKILL.md": {
+    "mtime": 1793874421.1893888,
+    "seen": 1793967103.827433,
+    "ast_hash": "af25817349d4f61d980e4e969f49770e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/council-multi-model/SKILL.md": {
+    "mtime": 1793874421.1893888,
+    "seen": 1793967103.8274362,
+    "ast_hash": "11146c4001ec7be7674869b528e8e7d7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/council/SKILL.md": {
+    "mtime": 1793874421.1893888,
+    "seen": 1793967103.8274395,
+    "ast_hash": "025f44a0b9706a32c384ca858e794017",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/counterparty-channel-discipline/SKILL.md": {
+    "mtime": 1793874421.1903887,
+    "seen": 1793967103.8274426,
+    "ast_hash": "8b56aaf19e3791a720ddc1dea2fa11de",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/cpp-coding-standards/SKILL.md": {
+    "mtime": 1793874421.1903887,
+    "seen": 1793967103.8274462,
+    "ast_hash": "3e772018ada55106f913ad3a1072e6c2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/cpp-testing/SKILL.md": {
+    "mtime": 1793874421.1903887,
+    "seen": 1793967103.8274493,
+    "ast_hash": "d8f2739187d81bc34096494a5e68851b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/crosspost/SKILL.md": {
+    "mtime": 1793874421.1903887,
+    "seen": 1793967103.8274531,
+    "ast_hash": "92055de35509e181b0eed21b51625c32",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/csharp-testing/SKILL.md": {
+    "mtime": 1793874421.1903887,
+    "seen": 1793967103.8274562,
+    "ast_hash": "7dc1fa672bf5179f527e9379fffe222e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/customer-billing-ops/SKILL.md": {
+    "mtime": 1793874421.1913886,
+    "seen": 1793967103.8274593,
+    "ast_hash": "83d21af6f7f68145b8b87d9d230527d6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/customs-trade-compliance/SKILL.md": {
+    "mtime": 1793874421.1913886,
+    "seen": 1793967103.8274622,
+    "ast_hash": "8d05426894af433a456f8e9fed18b189",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/dart-flutter-patterns/SKILL.md": {
+    "mtime": 1793874421.1913886,
+    "seen": 1793967103.8274653,
+    "ast_hash": "cca6365d0daea16285c37d10d90f5968",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/dashboard-builder/SKILL.md": {
+    "mtime": 1793874421.1913886,
+    "seen": 1793967103.8274689,
+    "ast_hash": "e47f290c37228c27606b383e874984b4",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/data-scraper-agent/SKILL.md": {
+    "mtime": 1793874421.1923888,
+    "seen": 1793967103.827472,
+    "ast_hash": "df2af5f8476cf6548834bb86104f2920",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/data-throughput-accelerator/SKILL.md": {
+    "mtime": 1793874421.1923888,
+    "seen": 1793967103.8274753,
+    "ast_hash": "1233d58687527275c9bd8ced3356913d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/database-migrations/SKILL.md": {
+    "mtime": 1793874421.1923888,
+    "seen": 1793967103.8274784,
+    "ast_hash": "05074fae8782d72942821cd87ab32f74",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/deep-research/SKILL.md": {
+    "mtime": 1793874421.1923888,
+    "seen": 1793967103.8274815,
+    "ast_hash": "ce7bc55132387f61a6d393d25dc13096",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/defi-amm-security/SKILL.md": {
+    "mtime": 1793874421.1923888,
+    "seen": 1793967103.8274846,
+    "ast_hash": "2fba1b598880c3e2aa30c0681a251ae4",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/delivery-gate/SKILL.md": {
+    "mtime": 1793874421.1923888,
+    "seen": 1793967103.8274875,
+    "ast_hash": "1eb8c8d94a1630db99c1abf596f757cd",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/deployment-patterns/SKILL.md": {
+    "mtime": 1793874421.1933887,
+    "seen": 1793967103.8274903,
+    "ast_hash": "4ae4a6109c39200fb981ffaad50570a5",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/design-system/SKILL.md": {
+    "mtime": 1793874421.1933887,
+    "seen": 1793967103.8274932,
+    "ast_hash": "a1b5bfd4e87041c92a9dbfdfc971be09",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/dev-team/SKILL.md": {
+    "mtime": 1793874421.1933887,
+    "seen": 1793967103.8274956,
+    "ast_hash": "64d6ddd5984c207d8ed2ddf0e2a57549",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/diagnosing-bugs/SKILL.md": {
+    "mtime": 1793874421.1933887,
+    "seen": 1793967103.8274984,
+    "ast_hash": "fd97d2c4d677a446408b38a2f64a674a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/django-celery/SKILL.md": {
+    "mtime": 1793874421.1943886,
+    "seen": 1793967103.8275013,
+    "ast_hash": "1b1df69026bd9d515e76cac70a05dab3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/django-patterns/SKILL.md": {
+    "mtime": 1793874421.1943886,
+    "seen": 1793967103.8275042,
+    "ast_hash": "d719efaf0e11e6d68e726060f47984fc",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/django-security/SKILL.md": {
+    "mtime": 1793874421.1943886,
+    "seen": 1793967103.8275075,
+    "ast_hash": "b17d95afb0fd2ae39ef05f21f894ea83",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/django-tdd/SKILL.md": {
+    "mtime": 1793874421.1943886,
+    "seen": 1793967103.8275104,
+    "ast_hash": "fb6276bb596f66e8cc5398aaef15f957",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/django-verification/SKILL.md": {
+    "mtime": 1793874421.1953888,
+    "seen": 1793967103.827513,
+    "ast_hash": "d3bcbdb8c8b765f5c39ee5ed2f1e66e2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/dmux-workflows/SKILL.md": {
+    "mtime": 1793874421.1953888,
+    "seen": 1793967103.827516,
+    "ast_hash": "05ec951a439a2336540d96d39c617970",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/docker-patterns/SKILL.md": {
+    "mtime": 1793874421.1953888,
+    "seen": 1793967103.8275192,
+    "ast_hash": "9d43be62b85efb5e109ed611b68c5e0d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/documentation-lookup/SKILL.md": {
+    "mtime": 1793874421.1953888,
+    "seen": 1793967103.827522,
+    "ast_hash": "f6109a2b70e5bd3f56ea1f091a713c9b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/domain-modeling/ADR-FORMAT.md": {
+    "mtime": 1793874421.1953888,
+    "seen": 1793967103.827525,
+    "ast_hash": "7bcce3d6e7066aca42baf11cc609d382",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/domain-modeling/GLOSSARY-FORMAT.md": {
+    "mtime": 1793874421.1953888,
+    "seen": 1793967103.8275278,
+    "ast_hash": "95ccc83ce8df65c585bbb81ceb485443",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/domain-modeling/SKILL.md": {
+    "mtime": 1793874421.1953888,
+    "seen": 1793967103.8275304,
+    "ast_hash": "79d69271dde3c302695e032e92c25bf7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/dotnet-patterns/SKILL.md": {
+    "mtime": 1793874421.1963887,
+    "seen": 1793967103.8275337,
+    "ast_hash": "592b8cef51306f997079124063f36873",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/dynamic-workflow-mode/SKILL.md": {
+    "mtime": 1793874421.1963887,
+    "seen": 1793967103.8275368,
+    "ast_hash": "6bc94be14f99276938edc1a6f3a89333",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/e2e-testing/SKILL.md": {
+    "mtime": 1793874421.1963887,
+    "seen": 1793967103.82754,
+    "ast_hash": "9320974e1acc2f24651c0eb587e072b2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ecc-guide/SKILL.md": {
+    "mtime": 1793874421.1963887,
+    "seen": 1793967103.827543,
+    "ast_hash": "a689923f41a459b864cec610a963a844",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ecc-recipes/SKILL.md": {
+    "mtime": 1793874421.1963887,
+    "seen": 1793967103.8275466,
+    "ast_hash": "da1ec1656138ce7ba6fd711919e5c296",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ecc-tools-cost-audit/SKILL.md": {
+    "mtime": 1793874421.1973886,
+    "seen": 1793967103.8275497,
+    "ast_hash": "8bca6a8bddf4284ec672711035c960d2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/email-ops/SKILL.md": {
+    "mtime": 1793874421.1973886,
+    "seen": 1793967103.827553,
+    "ast_hash": "32169ab3cabe2a25c9445c5f96a3c357",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/energy-procurement/SKILL.md": {
+    "mtime": 1793874421.1973886,
+    "seen": 1793967103.8275564,
+    "ast_hash": "cda790c4d7d49985f0f43c33a1e219bf",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/enterprise-agent-ops/SKILL.md": {
+    "mtime": 1793874421.1973886,
+    "seen": 1793967103.8275595,
+    "ast_hash": "d622689890a2c76e27f0869a4de2e50c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/error-handling/SKILL.md": {
+    "mtime": 1793874421.1973886,
+    "seen": 1793967103.8275628,
+    "ast_hash": "1cb64d781e4bb10404b5f25e6482b4cb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/esign-field-placement/SKILL.md": {
+    "mtime": 1793874421.1983886,
+    "seen": 1793967103.8275661,
+    "ast_hash": "eacd66d57914dd78177cb0e0d4241d30",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/eval-harness/SKILL.md": {
+    "mtime": 1793874421.1983886,
+    "seen": 1793967103.8275692,
+    "ast_hash": "c59f27b249b2022109918626ef4abba5",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/evm-token-decimals/SKILL.md": {
+    "mtime": 1793874421.1983886,
+    "seen": 1793967103.8275726,
+    "ast_hash": "0a4f07994f857af99938e2eb14a7d1b9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/exa-search/SKILL.md": {
+    "mtime": 1793874421.1983886,
+    "seen": 1793967103.8275752,
+    "ast_hash": "f49adea78b51169d946715255f6cadc1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/examples/high-score-example.md": {
+    "mtime": 1793874421.1983886,
+    "seen": 1793967103.8275785,
+    "ast_hash": "4e045dd9e5a61e1411e345105f51356c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/examples/low-score-example.md": {
+    "mtime": 1793874421.1983886,
+    "seen": 1793967103.8275816,
+    "ast_hash": "41c4b61fba0ef6cc751a040f559649c3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/fal-ai-media/SKILL.md": {
+    "mtime": 1793874421.1993887,
+    "seen": 1793967103.8275847,
+    "ast_hash": "22d35cd2d132cf22a88d92207b8a6de2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/fastapi-patterns/SKILL.md": {
+    "mtime": 1793874421.1993887,
+    "seen": 1793967103.8275878,
+    "ast_hash": "e2b325972c49933a9c99671825ebe8a5",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/finance-billing-ops/SKILL.md": {
+    "mtime": 1793874421.1993887,
+    "seen": 1793967103.8275907,
+    "ast_hash": "992c116123a3feb7a819c636b44081b0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/flox-environments/SKILL.md": {
+    "mtime": 1793874421.1993887,
+    "seen": 1793967103.827594,
+    "ast_hash": "96b9bdb3583741aff124bc5bcd162c3f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/flutter-dart-code-review/SKILL.md": {
+    "mtime": 1793874421.2003887,
+    "seen": 1793967103.827597,
+    "ast_hash": "7dc71a99e84c2542dc28853d37e13d0f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/foundation-models-on-device/SKILL.md": {
+    "mtime": 1793874421.2003887,
+    "seen": 1793967103.8275995,
+    "ast_hash": "63001691161243b432cb96b0df4bf042",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/frontend-a11y/SKILL.md": {
+    "mtime": 1793874421.2003887,
+    "seen": 1793967103.8276024,
+    "ast_hash": "ce565cbf88436647f856f6fb9a580ce7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/frontend-design-direction/SKILL.md": {
+    "mtime": 1793874421.2003887,
+    "seen": 1793967103.8276052,
+    "ast_hash": "9b2d2df8f78f797b43e87e18f664e735",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/frontend-patterns/SKILL.md": {
+    "mtime": 1793874421.2003887,
+    "seen": 1793967103.827608,
+    "ast_hash": "782f19f858ad3c0025d463ef9c6d3060",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/frontend-slides/SKILL.md": {
+    "mtime": 1793874421.2003887,
+    "seen": 1793967103.8276122,
+    "ast_hash": "d62fa749458fa7be7823317384f6d257",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/frontend-slides/STYLE_PRESETS.md": {
+    "mtime": 1793874421.2013886,
+    "seen": 1793967103.827616,
+    "ast_hash": "1ff13934b8ddcdd9c47201f5628daf27",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/frontend-slides/animation-patterns.md": {
+    "mtime": 1793874421.2013886,
+    "seen": 1793967103.8276198,
+    "ast_hash": "092e9e6bab7746f59f0fd3e4296496b6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/frontend-slides/html-template.md": {
+    "mtime": 1793874421.2013886,
+    "seen": 1793967103.8276236,
+    "ast_hash": "35fcf4b5a6b558daeadefa487ff0f9c0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/fsharp-testing/SKILL.md": {
+    "mtime": 1793874421.2013886,
+    "seen": 1793967103.8276267,
+    "ast_hash": "ce3d3588a202c2c3c184d4465677a943",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/gan-style-harness/SKILL.md": {
+    "mtime": 1793874421.2013886,
+    "seen": 1793967103.82763,
+    "ast_hash": "8882cfd1180c6bfa4c3b70b08abfee06",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/gateguard/SKILL.md": {
+    "mtime": 1793874421.2013886,
+    "seen": 1793967103.8276334,
+    "ast_hash": "a5e9892f61c498337e47faefadbf7d93",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/generating-python-installer/SKILL.md": {
+    "mtime": 1793874421.2023888,
+    "seen": 1793967103.8276367,
+    "ast_hash": "5d71cc7b7f13fcc048151a8d222f8394",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/git-workflow/SKILL.md": {
+    "mtime": 1793874421.2023888,
+    "seen": 1793967103.82764,
+    "ast_hash": "606df7a0df4bb7df5f46ef749018d0e4",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/github-ops/SKILL.md": {
+    "mtime": 1793874421.2023888,
+    "seen": 1793967103.8276432,
+    "ast_hash": "876cfc29f3523d0ba1ebf69ac78a23fb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/golang-patterns/SKILL.md": {
+    "mtime": 1793874421.2023888,
+    "seen": 1793967103.8276467,
+    "ast_hash": "b45e85448eb4b88c31fa68798af339c2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/golang-testing/SKILL.md": {
+    "mtime": 1793874421.2033887,
+    "seen": 1793967103.8276505,
+    "ast_hash": "6a17d43d239fef9a53aaf8ec4c8f9838",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/google-workspace-ops/SKILL.md": {
+    "mtime": 1793874421.2033887,
+    "seen": 1793967103.8276536,
+    "ast_hash": "05f72bc0a0009da9462d116ea0fea924",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/grill-me/SKILL.md": {
+    "mtime": 1793874421.2033887,
+    "seen": 1793967103.827657,
+    "ast_hash": "51ba9306293963bb76680d5e41525aea",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/grill-with-docs/SKILL.md": {
+    "mtime": 1793874421.2033887,
+    "seen": 1793967103.8276603,
+    "ast_hash": "2e333f0b42a23dbb1ae531e62c555c66",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/grilling/SKILL.md": {
+    "mtime": 1793874421.2033887,
+    "seen": 1793967103.8276634,
+    "ast_hash": "431eb49c22103e8bb3978eb45dfeb427",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/growth-log/SKILL.md": {
+    "mtime": 1793874421.2043886,
+    "seen": 1793967103.8276665,
+    "ast_hash": "c78247bba5072a5753d778c6cf5f7021",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/handoff/SKILL.md": {
+    "mtime": 1793874421.2043886,
+    "seen": 1793967103.8276696,
+    "ast_hash": "d893bb477baefc7ab5e620af8982c3f9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/healthcare-cdss-patterns/SKILL.md": {
+    "mtime": 1793874421.2043886,
+    "seen": 1793967103.8276722,
+    "ast_hash": "07a477c6a588c634e872503476971e8d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/healthcare-emr-patterns/SKILL.md": {
+    "mtime": 1793874421.2043886,
+    "seen": 1793967103.8276749,
+    "ast_hash": "3592e8d540519fa7b613afc5e120b768",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/healthcare-eval-harness/SKILL.md": {
+    "mtime": 1793874421.2053888,
+    "seen": 1793967103.8276775,
+    "ast_hash": "7342b6cca0c4511f1b8065e7ffc16579",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/healthcare-phi-compliance/SKILL.md": {
+    "mtime": 1793874421.2053888,
+    "seen": 1793967103.8276803,
+    "ast_hash": "9685cae7db2da2051d441e6844e544a1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/hermes-imports/SKILL.md": {
+    "mtime": 1793874421.2053888,
+    "seen": 1793967103.8276832,
+    "ast_hash": "5f64ff921332db1f16353652fe61023e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/hexagonal-architecture/SKILL.md": {
+    "mtime": 1793874421.2053888,
+    "seen": 1793967103.8276858,
+    "ast_hash": "7313af9c8c12758adfc4504b576601ef",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/hipaa-compliance/SKILL.md": {
+    "mtime": 1793874421.2053888,
+    "seen": 1793967103.8276885,
+    "ast_hash": "98b2d6c7e0c9c5a8fbbd20d73bfe7085",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/homelab-network-readiness/SKILL.md": {
+    "mtime": 1793874421.2053888,
+    "seen": 1793967103.827691,
+    "ast_hash": "79f016414716832cb4b23ac45504e2fe",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/homelab-network-setup/SKILL.md": {
+    "mtime": 1793874421.2063887,
+    "seen": 1793967103.8276935,
+    "ast_hash": "5917d5ae8a3724eb4fda983c92267c38",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/homelab-pihole-dns/SKILL.md": {
+    "mtime": 1793874421.2063887,
+    "seen": 1793967103.8276958,
+    "ast_hash": "b41b12d618da643a7d3cce2441b2e652",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/homelab-vlan-segmentation/SKILL.md": {
+    "mtime": 1793874421.2063887,
+    "seen": 1793967103.8276982,
+    "ast_hash": "a670579dd92ac1bede6431eb44eb62d1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/homelab-wireguard-vpn/SKILL.md": {
+    "mtime": 1793874421.2063887,
+    "seen": 1793967103.8277009,
+    "ast_hash": "ffba85359d5d125386db1408a3823ffd",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/hookify-rules/SKILL.md": {
+    "mtime": 1793874421.2063887,
+    "seen": 1793967103.8277032,
+    "ast_hash": "e84d9d8500daa955ddd88a62d32346e0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/i18n-sync/SKILL.md": {
+    "mtime": 1793874421.2073886,
+    "seen": 1793967103.8277059,
+    "ast_hash": "fc33b136085154a64e8f222e3d4fcef4",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/implement-spec/SKILL.md": {
+    "mtime": 1793874421.2073886,
+    "seen": 1793967103.8277087,
+    "ast_hash": "33c1653c536cd39d73965aebcede1a19",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/implement/SKILL.md": {
+    "mtime": 1793874421.2073886,
+    "seen": 1793967103.8277113,
+    "ast_hash": "5771d720e3fa5104afb80a0e2ce38cfc",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/improve-codebase-architecture/HTML-REPORT.md": {
+    "mtime": 1793874421.2073886,
+    "seen": 1793967103.827714,
+    "ast_hash": "2ee5137278168f65fa79115c8c3faa43",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/improve-codebase-architecture/SKILL.md": {
+    "mtime": 1793874421.2073886,
+    "seen": 1793967103.8277166,
+    "ast_hash": "5985cfe04d73ee4917b4c42050827420",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/inherit-legacy-style/SKILL.md": {
+    "mtime": 1793874421.2083888,
+    "seen": 1793967103.8277192,
+    "ast_hash": "e1e3825fdc839b7a22c5aeefa109182c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/intent-driven-development/SKILL.md": {
+    "mtime": 1793874421.2083888,
+    "seen": 1793967103.8277218,
+    "ast_hash": "f3e2689cbb50c6273516af454a5ecc45",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/inventory-demand-planning/SKILL.md": {
+    "mtime": 1793874421.2083888,
+    "seen": 1793967103.8277242,
+    "ast_hash": "e9c2430f46695ad502f2cff05b856138",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/investor-materials/SKILL.md": {
+    "mtime": 1793874421.2083888,
+    "seen": 1793967103.8277268,
+    "ast_hash": "74939d389076b12f5c27095673cdd45d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/investor-outreach/SKILL.md": {
+    "mtime": 1793874421.2093887,
+    "seen": 1793967103.8277295,
+    "ast_hash": "99f80bf3521b383df50d877439cbf62f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ios-icon-gen/SKILL.md": {
+    "mtime": 1793874421.2093887,
+    "seen": 1793967103.8277326,
+    "ast_hash": "7756a327add7c5d5c2df28ea74dba948",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/iterative-retrieval/SKILL.md": {
+    "mtime": 1793874421.2093887,
+    "seen": 1793967103.8277357,
+    "ast_hash": "604aad61ae21e176c1c9b18af667b9d1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ito-baskets/SKILL.md": {
+    "mtime": 1793874421.2093887,
+    "seen": 1793967103.8277383,
+    "ast_hash": "4cc20e3abdd4237c6f1a94fb35b8826e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ito-compute/SKILL.md": {
+    "mtime": 1793874421.2093887,
+    "seen": 1793967103.8277414,
+    "ast_hash": "0895a120f78eebeab464c186c415d440",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ito-inference/SKILL.md": {
+    "mtime": 1793874421.2093887,
+    "seen": 1793967103.827744,
+    "ast_hash": "302e0ca9eb94c58849ad38494b714f73",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ito-production-v1/README.md": {
+    "mtime": 1793874421.2103887,
+    "seen": 1793967103.8277466,
+    "ast_hash": "51b73a82357110cd2bc4b65be00cd7eb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ito-training/SKILL.md": {
+    "mtime": 1793874421.2103887,
+    "seen": 1793967103.827749,
+    "ast_hash": "f568b0f3a7c18109de4a32fd2a909060",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ito-v28/README.md": {
+    "mtime": 1793874421.2103887,
+    "seen": 1793967103.8277519,
+    "ast_hash": "f92893ce151990df4ae2e20c0c9c6392",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/java-coding-standards/SKILL.md": {
+    "mtime": 1793874421.2103887,
+    "seen": 1793967103.827755,
+    "ast_hash": "40f1064f940b1fb6986493f8fadbc16b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/jira-integration/SKILL.md": {
+    "mtime": 1793874421.2103887,
+    "seen": 1793967103.8277576,
+    "ast_hash": "61dbf05c2c6304ad8086135113f871a6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/jira-integration/kotlin-testing/SKILL.md": {
+    "mtime": 1793874421.2113886,
+    "seen": 1793967103.8277605,
+    "ast_hash": "5ac3d475b4179752bd5111776c8e0873",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/jpa-patterns/SKILL.md": {
+    "mtime": 1793874421.2113886,
+    "seen": 1793967103.8277633,
+    "ast_hash": "eaba86dd75edd19812e4f98694081c0e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/knowledge-ops/SKILL.md": {
+    "mtime": 1793874421.2113886,
+    "seen": 1793967103.827766,
+    "ast_hash": "9873d0b04f49b9011b8fd48e884b9efb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/kotlin-coroutines-flows/SKILL.md": {
+    "mtime": 1793874421.2113886,
+    "seen": 1793967103.8277686,
+    "ast_hash": "62d7f4197535ea99a20dbcfa2053fcf8",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/kotlin-exposed-patterns/SKILL.md": {
+    "mtime": 1793874421.2113886,
+    "seen": 1793967103.8277712,
+    "ast_hash": "891bbf98ffbd5852cdf06c429bdbb12f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/kotlin-ktor-patterns/SKILL.md": {
+    "mtime": 1793874421.2123888,
+    "seen": 1793967103.8277733,
+    "ast_hash": "46dbaadd2146cb97b8066a8374adef8c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/kotlin-patterns/SKILL.md": {
+    "mtime": 1793874421.2123888,
+    "seen": 1793967103.827776,
+    "ast_hash": "baf0fb40b3477c7e2b6cb5613168c684",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/kubernetes-patterns/SKILL.md": {
+    "mtime": 1793874421.2123888,
+    "seen": 1793967103.8277788,
+    "ast_hash": "688e440229abe830590cccc0afb1e985",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/laravel-patterns/SKILL.md": {
+    "mtime": 1793874421.2123888,
+    "seen": 1793967103.8277812,
+    "ast_hash": "e7b110061befed8a2494380f0be450f9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/laravel-plugin-discovery/SKILL.md": {
+    "mtime": 1793874421.2123888,
+    "seen": 1793967103.8277836,
+    "ast_hash": "817643a752ebdb00808fd67d77b170d1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/laravel-security/SKILL.md": {
+    "mtime": 1793874421.2133887,
+    "seen": 1793967103.827786,
+    "ast_hash": "bbca994e051c4d37f5689706971abdff",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/laravel-tdd/SKILL.md": {
+    "mtime": 1793874421.2133887,
+    "seen": 1793967103.8277886,
+    "ast_hash": "0984db5b16dc3a8dbc66103a1e117206",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/laravel-verification/SKILL.md": {
+    "mtime": 1793874421.2133887,
+    "seen": 1793967103.8277912,
+    "ast_hash": "66c5937d5a013f6cda10b50201b087ac",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/latency-critical-systems/SKILL.md": {
+    "mtime": 1793874421.2133887,
+    "seen": 1793967103.8277934,
+    "ast_hash": "6c07f57b7fc8b5e25e0b4fbb9ab35a75",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/lead-intelligence/SKILL.md": {
+    "mtime": 1793874421.2133887,
+    "seen": 1793967103.827796,
+    "ast_hash": "10c8e702a9225419e7d9b28ba76c725a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/liquid-glass-design/SKILL.md": {
+    "mtime": 1793874421.2143886,
+    "seen": 1793967103.8277986,
+    "ast_hash": "fe8b326dfc7b63cfdead9f5e2d9fb914",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/living-docs-governance/SKILL.md": {
+    "mtime": 1793874421.2143886,
+    "seen": 1793967103.8278008,
+    "ast_hash": "427b9c5ee9655ad6a3cff52f53abad9d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/llm-trading-agent-security/SKILL.md": {
+    "mtime": 1793874421.2143886,
+    "seen": 1793967103.8278034,
+    "ast_hash": "1856de1b041c308fa55c8aa2a2115112",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/logistics-exception-management/SKILL.md": {
+    "mtime": 1793874421.2143886,
+    "seen": 1793967103.8278062,
+    "ast_hash": "53e158d1cd43cb5a34c635712c873066",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/loop-design-check/SKILL.md": {
+    "mtime": 1793874421.2143886,
+    "seen": 1793967103.8278089,
+    "ast_hash": "bb79e54bfcbffbbd10890b5f6057a0ac",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/mailtrap-email-integration/SKILL.md": {
+    "mtime": 1793874421.2153888,
+    "seen": 1793967103.8278112,
+    "ast_hash": "2431dd6d5b48367c205f6532802d7d6b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/make-interfaces-feel-better/SKILL.md": {
+    "mtime": 1793874421.2153888,
+    "seen": 1793967103.8278139,
+    "ast_hash": "b5d660e81a1433acf2fd1c9e700184eb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/manim-video/SKILL.md": {
+    "mtime": 1793874421.2153888,
+    "seen": 1793967103.8278167,
+    "ast_hash": "c6bab13b109d97179cd942f695d4c289",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/market-research/SKILL.md": {
+    "mtime": 1793874421.2153888,
+    "seen": 1793967103.82782,
+    "ast_hash": "21fa0cde0b12f46288e2735690ff7ca3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/marketing-campaign/SKILL.md": {
+    "mtime": 1793874421.2153888,
+    "seen": 1793967103.8278227,
+    "ast_hash": "47232ed83dcac47668c612662aa73ea2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/master-agreement-generator/SKILL.md": {
+    "mtime": 1793874421.2153888,
+    "seen": 1793967103.8278255,
+    "ast_hash": "274f5b128f7725faf2b06c4dabbdecfd",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/mcp-server-patterns/SKILL.md": {
+    "mtime": 1793874421.2163887,
+    "seen": 1793967103.8278282,
+    "ast_hash": "9e5a94bff73ddf80c91f5814ee294d62",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/messages-ops/SKILL.md": {
+    "mtime": 1793874421.2163887,
+    "seen": 1793967103.8278308,
+    "ast_hash": "bceb7393957ebbcf0e22373d1814dd50",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ml-adoption-playbook/SKILL.md": {
+    "mtime": 1793874421.2163887,
+    "seen": 1793967103.8278334,
+    "ast_hash": "7cfcd213cb9a1551840fd8a48503db4e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/mle-workflow/SKILL.md": {
+    "mtime": 1793874421.2163887,
+    "seen": 1793967103.8278363,
+    "ast_hash": "499e0c1ebeb2e4e6cc17d7c2839fb9c7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/motion-advanced/SKILL.md": {
+    "mtime": 1793874421.2163887,
+    "seen": 1793967103.8278387,
+    "ast_hash": "230c00ad8d6002d2b744d7bb374db6bf",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/motion-foundations/SKILL.md": {
+    "mtime": 1793874421.2173886,
+    "seen": 1793967103.8278415,
+    "ast_hash": "c46dd51b6288b301078d22a9f8833c71",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/motion-patterns/SKILL.md": {
+    "mtime": 1793874421.2173886,
+    "seen": 1793967103.8278444,
+    "ast_hash": "a680d0a52d6e0e5caf3b0b9ddaae86d1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/mysql-patterns/SKILL.md": {
+    "mtime": 1793874421.2173886,
+    "seen": 1793967103.827847,
+    "ast_hash": "d4e739a1856f6d3a8598061d428b447a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/nanoclaw-repl/SKILL.md": {
+    "mtime": 1793874421.2173886,
+    "seen": 1793967103.8278496,
+    "ast_hash": "3cd6fc17b153d57b33db721b6cb8b6f6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/nasiko-control-plane/SKILL.md": {
+    "mtime": 1793874421.2173886,
+    "seen": 1793967103.8278525,
+    "ast_hash": "a6239892e029989b12b27d14e5fed491",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/nestjs-patterns/SKILL.md": {
+    "mtime": 1793874421.2173886,
+    "seen": 1793967103.8278553,
+    "ast_hash": "0434e7cefc49f2e1cb4fb4026a62f66a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/netmiko-ssh-automation/SKILL.md": {
+    "mtime": 1793874421.2183888,
+    "seen": 1793967103.8278582,
+    "ast_hash": "4ddb57ef59e45d588fa47bc598fdaef7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/network-bgp-diagnostics/SKILL.md": {
+    "mtime": 1793874421.2183888,
+    "seen": 1793967103.827861,
+    "ast_hash": "45498398265bdc71108586bb42f2e3e0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/network-config-validation/SKILL.md": {
+    "mtime": 1793874421.2183888,
+    "seen": 1793967103.8278637,
+    "ast_hash": "3efc93a0c50757ce595fa19f926b20bf",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/network-interface-health/SKILL.md": {
+    "mtime": 1793874421.2183888,
+    "seen": 1793967103.8278668,
+    "ast_hash": "c972482f6a3253fefd2f3de027087813",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/nextjs-turbopack/SKILL.md": {
+    "mtime": 1793874421.2183888,
+    "seen": 1793967103.82787,
+    "ast_hash": "2f386ad8df036aab9f0b2433620906e1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/nodejs-keccak256/SKILL.md": {
+    "mtime": 1793874421.2183888,
+    "seen": 1793967103.8278728,
+    "ast_hash": "db812849e49c7efca6bb74b1e1a19aa0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/nutrient-document-processing/SKILL.md": {
+    "mtime": 1793874421.2193887,
+    "seen": 1793967103.827876,
+    "ast_hash": "d1037df5bb1d02e68fcf87322833b5c9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/nuxt4-patterns/SKILL.md": {
+    "mtime": 1793874421.2193887,
+    "seen": 1793967103.8278792,
+    "ast_hash": "ca121a7b32cc4171fe994e34aab18096",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/openclaw-persona-forge/SKILL.md": {
+    "mtime": 1793874421.2193887,
+    "seen": 1793967103.8278823,
+    "ast_hash": "654647cd4949694a9a889cc23eb81fe5",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/opensource-pipeline/SKILL.md": {
+    "mtime": 1793874421.2193887,
+    "seen": 1793967103.8278854,
+    "ast_hash": "6172860d2196d90fa1f7bc9747785f9f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/operator-approval-loop/SKILL.md": {
+    "mtime": 1793874421.2193887,
+    "seen": 1793967103.8278885,
+    "ast_hash": "a5173d0827c0478e808bfa3557864a06",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/orch-add-feature/SKILL.md": {
+    "mtime": 1793874421.2203887,
+    "seen": 1793967103.8278913,
+    "ast_hash": "edaaf3617780c00a9e0870a7835b1eca",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/orch-build-mvp/SKILL.md": {
+    "mtime": 1793874421.2203887,
+    "seen": 1793967103.8278947,
+    "ast_hash": "5e90fd19282d9050ed2fa2c6a6cbc8fd",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/orch-change-feature/SKILL.md": {
+    "mtime": 1793874421.2203887,
+    "seen": 1793967103.827898,
+    "ast_hash": "28427038a17d1057665f22038848e459",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/orch-fix-defect/SKILL.md": {
+    "mtime": 1793874421.2203887,
+    "seen": 1793967103.8279014,
+    "ast_hash": "065633eff797bcd9a81622cefa39332b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/orch-pipeline/SKILL.md": {
+    "mtime": 1793874421.2203887,
+    "seen": 1793967103.8279045,
+    "ast_hash": "9ccfd632547efbc6deec5f53292993c7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/orch-refine-code/SKILL.md": {
+    "mtime": 1793874421.2203887,
+    "seen": 1793967103.8279076,
+    "ast_hash": "0c5200808da79afeff2bb47294c36b60",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/parallel-execution-optimizer/SKILL.md": {
+    "mtime": 1793874421.2203887,
+    "seen": 1793967103.827911,
+    "ast_hash": "00126fda751c83cf80e43a10698418ed",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/perl-patterns/SKILL.md": {
+    "mtime": 1793874421.2213886,
+    "seen": 1793967103.8279142,
+    "ast_hash": "8273b52c2cd9bdb653f48f0d85c2e6dc",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/perl-security/SKILL.md": {
+    "mtime": 1793874421.2213886,
+    "seen": 1793967103.8279173,
+    "ast_hash": "75a2b77ee9f1929552c5247d852f48c2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/perl-testing/SKILL.md": {
+    "mtime": 1793874421.2213886,
+    "seen": 1793967103.8279204,
+    "ast_hash": "fbd6993b7d29012f52a1b3edc01d0322",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/plan-canvas/SKILL.md": {
+    "mtime": 1793874421.2213886,
+    "seen": 1793967103.8279233,
+    "ast_hash": "1462db8c6ba0e1d27d415da083f8c162",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/plan-orchestrate/SKILL.md": {
+    "mtime": 1793874421.2223887,
+    "seen": 1793967103.827926,
+    "ast_hash": "141420490dbe2aa998bc3ac5907f79c2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/plankton-code-quality/SKILL.md": {
+    "mtime": 1793874421.2223887,
+    "seen": 1793967103.8279285,
+    "ast_hash": "7dc28ade0022d78808ee41f6cc2ddecc",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/postgres-patterns/SKILL.md": {
+    "mtime": 1793874421.2223887,
+    "seen": 1793967103.8279314,
+    "ast_hash": "eaf21f47df79ce52761209c344201ab6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/pr/CREDITS.md": {
+    "mtime": 1793874421.2223887,
+    "seen": 1793967103.827934,
+    "ast_hash": "4199417746891b06a589d2cce491695a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/pr/SKILL.md": {
+    "mtime": 1793874421.2223887,
+    "seen": 1793967103.8279371,
+    "ast_hash": "89c00e0204965f27dc74bd222ad9e51d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/prediction-market-oracle-research/SKILL.md": {
+    "mtime": 1793874421.2223887,
+    "seen": 1793967103.82794,
+    "ast_hash": "9c9b81d679d13c20ea86df24f1d86e0d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/prediction-market-risk-review/SKILL.md": {
+    "mtime": 1793874421.2233887,
+    "seen": 1793967103.827943,
+    "ast_hash": "b3badcfcb325dc87ab6a53ac69978d66",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/prisma-patterns/SKILL.md": {
+    "mtime": 1793874421.2233887,
+    "seen": 1793967103.827946,
+    "ast_hash": "56f6ff080609cad96b355f614b66356e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/product-capability/SKILL.md": {
+    "mtime": 1793874421.2233887,
+    "seen": 1793967103.827949,
+    "ast_hash": "9e1f19108aec753023ed794cdb4af3f2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/product-lens/SKILL.md": {
+    "mtime": 1793874421.2233887,
+    "seen": 1793967103.8279521,
+    "ast_hash": "eba6a5e8e2325697807ea4f5bd8031f6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/production-audit/SKILL.md": {
+    "mtime": 1793874421.2233887,
+    "seen": 1793967103.8279555,
+    "ast_hash": "fba171e1ad4fc18239d8b74ae38c7a00",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/production-scheduling/SKILL.md": {
+    "mtime": 1793874421.2243886,
+    "seen": 1793967103.8279586,
+    "ast_hash": "2429f83c879422c13983f6d361f58ba0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/project-flow-ops/SKILL.md": {
+    "mtime": 1793874421.2243886,
+    "seen": 1793967103.8279617,
+    "ast_hash": "a8fbd87e2e55b4ec77197ea881714845",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/prompt-optimizer/SKILL.md": {
+    "mtime": 1793874421.2243886,
+    "seen": 1793967103.827965,
+    "ast_hash": "6e553ddd57d96227bf73e6bb204a3c07",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/prompts/classifier.md": {
+    "mtime": 1793874421.2243886,
+    "seen": 1793967103.827968,
+    "ast_hash": "4bb771906ce943fa358c5d8b08876871",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/prompts/scenario_generator.md": {
+    "mtime": 1793874421.2243886,
+    "seen": 1793967103.827971,
+    "ast_hash": "36cd499c94cae3f4a02afcede22f25f3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/prompts/spec_generator.md": {
+    "mtime": 1793874421.2243886,
+    "seen": 1793967103.827974,
+    "ast_hash": "025011d1ff5f88d36686756bcb9f023c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/prototype/LOGIC.md": {
+    "mtime": 1793874421.2243886,
+    "seen": 1793967103.8279772,
+    "ast_hash": "0c6daa140ef3e83ba9e6b5bfa5161408",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/prototype/SKILL.md": {
+    "mtime": 1793874421.2253888,
+    "seen": 1793967103.8279803,
+    "ast_hash": "5c68a2867eb3b9b4cb3e9ad4ba2b5299",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/prototype/UI.md": {
+    "mtime": 1793874421.2253888,
+    "seen": 1793967103.8279836,
+    "ast_hash": "e3c841746676a0e604c72b5cd459e7ba",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/python-patterns/SKILL.md": {
+    "mtime": 1793874421.2253888,
+    "seen": 1793967103.827987,
+    "ast_hash": "d51df147b5aa31e0047ae4b668ac072b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/python-testing/SKILL.md": {
+    "mtime": 1793874421.2253888,
+    "seen": 1793967103.8279903,
+    "ast_hash": "129af55a49daa89357652a495a2259d0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/pytorch-patterns/SKILL.md": {
+    "mtime": 1793874421.2253888,
+    "seen": 1793967103.8279936,
+    "ast_hash": "07bb1a8ab1ba76d658acd6ecbc8cc7f3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/quality-nonconformance/SKILL.md": {
+    "mtime": 1793874421.2263887,
+    "seen": 1793967103.827997,
+    "ast_hash": "bc6f0549aeffb25a83fcf4e8f1cf9a27",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/quarkus-patterns/SKILL.md": {
+    "mtime": 1793874421.2263887,
+    "seen": 1793967103.8280003,
+    "ast_hash": "29f06304acdb7303935b85b332aa39b5",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/quarkus-security/SKILL.md": {
+    "mtime": 1793874421.2263887,
+    "seen": 1793967103.8280034,
+    "ast_hash": "f9194e59d75e0dca3b9dbe2c4a4980c3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/quarkus-tdd/SKILL.md": {
+    "mtime": 1793874421.2263887,
+    "seen": 1793967103.8280067,
+    "ast_hash": "040b23d58d16196e607ea5a73c6feabb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/quarkus-verification/SKILL.md": {
+    "mtime": 1793874421.2273886,
+    "seen": 1793967103.8280098,
+    "ast_hash": "a4c948e17c8deab4dee638cc39ce6eb3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rails-patterns/SKILL.md": {
+    "mtime": 1793874421.2273886,
+    "seen": 1793967103.828013,
+    "ast_hash": "b1ff4fd3007ddbd104119508db8f71b2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ralphinho-rfc-pipeline/SKILL.md": {
+    "mtime": 1793874421.2273886,
+    "seen": 1793967103.8280158,
+    "ast_hash": "658b14ebfcd17c27aebc320f7579c92c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/react-native-patterns/SKILL.md": {
+    "mtime": 1793874421.2273886,
+    "seen": 1793967103.8280187,
+    "ast_hash": "746530c31b062f1fb7f39ba8e384456b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/react-patterns/SKILL.md": {
+    "mtime": 1793874421.2273886,
+    "seen": 1793967103.8280218,
+    "ast_hash": "d3dd967f897c4aa8d06ba51254ed6ced",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/react-performance/SKILL.md": {
+    "mtime": 1793874421.2283888,
+    "seen": 1793967103.8280246,
+    "ast_hash": "88b95905383397581606240bd886fd46",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/react-testing/SKILL.md": {
+    "mtime": 1793874421.2283888,
+    "seen": 1793967103.8280277,
+    "ast_hash": "a95f25e11de050fb44045cabb7759988",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/recsys-pipeline-architect/SKILL.md": {
+    "mtime": 1793874421.2283888,
+    "seen": 1793967103.8280308,
+    "ast_hash": "2a94b0c77fc2b8c1a107073ed0124b6e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/recursive-decision-ledger/SKILL.md": {
+    "mtime": 1793874421.2283888,
+    "seen": 1793967103.8280334,
+    "ast_hash": "b1c5549d5f334682332dad6aa5725c2d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/redis-patterns/SKILL.md": {
+    "mtime": 1793874421.2283888,
+    "seen": 1793967103.8280365,
+    "ast_hash": "18125fa2d4d796cc7f478ac14581b8f1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/reference/api-reference.md": {
+    "mtime": 1793874421.2293887,
+    "seen": 1793967103.8280394,
+    "ast_hash": "57c25c72b01bf65aca244129491904b7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/reference/capture-reference.md": {
+    "mtime": 1793874421.2293887,
+    "seen": 1793967103.8280427,
+    "ast_hash": "4618538644cd8354ef1aafe1efdd364e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/reference/capture.md": {
+    "mtime": 1793874421.2293887,
+    "seen": 1793967103.8280463,
+    "ast_hash": "37979af42fccf4e2eecf856f8e76de69",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/reference/editor.md": {
+    "mtime": 1793874421.2293887,
+    "seen": 1793967103.8280494,
+    "ast_hash": "dc6baf897747e0f95105f335da052351",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/reference/generative.md": {
+    "mtime": 1793874421.2293887,
+    "seen": 1793967103.828053,
+    "ast_hash": "7770e736ac8266d9a47d6ce45ca0a760",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/reference/rtstream-reference.md": {
+    "mtime": 1793874421.2293887,
+    "seen": 1793967103.8280563,
+    "ast_hash": "b4f543a74bc21afeb4251018278e321a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/reference/rtstream.md": {
+    "mtime": 1793874421.2293887,
+    "seen": 1793967103.8280592,
+    "ast_hash": "42b85e3bf82c757929cae44e51236c9a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/reference/search.md": {
+    "mtime": 1793874421.2293887,
+    "seen": 1793967103.8280623,
+    "ast_hash": "b6e7bdf0708ddcf917b0c54f32d88176",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/reference/streaming.md": {
+    "mtime": 1793874421.2293887,
+    "seen": 1793967103.8280656,
+    "ast_hash": "5ab09837c6966dd3f5c2aa408750af4f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/reference/use-cases.md": {
+    "mtime": 1793874421.2303886,
+    "seen": 1793967103.8280685,
+    "ast_hash": "2897223e3316eed1bc26cc641a2c40b6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/10_purpose-why.md": {
+    "mtime": 1793874421.2303886,
+    "seen": 1793967103.8280723,
+    "ast_hash": "a1079698ea3186af3605737012f671e1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/20_positioning.md": {
+    "mtime": 1793874421.2303886,
+    "seen": 1793967103.8280754,
+    "ast_hash": "6b20cd43099dfb6819d601fc3aa37c4f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/30_audience-niche.md": {
+    "mtime": 1793874421.2303886,
+    "seen": 1793967103.8280787,
+    "ast_hash": "2a17ebc2935f66c11fc8a62fee7af966",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/40_personality-archetype.md": {
+    "mtime": 1793874421.2303886,
+    "seen": 1793967103.8280816,
+    "ast_hash": "bce7ab929e83fc92ce8d44187c840097",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/50_voice-tone.md": {
+    "mtime": 1793874421.2303886,
+    "seen": 1793967103.828085,
+    "ast_hash": "271478e547cc0f038c0e727c86fc22c1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/60_narrative-story.md": {
+    "mtime": 1793874421.2303886,
+    "seen": 1793967103.8280885,
+    "ast_hash": "86661b738f7b84f8d20039db6b02dc07",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/70_founder-tension.md": {
+    "mtime": 1793874421.2303886,
+    "seen": 1793967103.828092,
+    "ast_hash": "757c6cdfca9de4c0019774506a73199e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/90_SYNTHESIS.md": {
+    "mtime": 1793874421.2303886,
+    "seen": 1793967103.8280954,
+    "ast_hash": "ca7f731d6d30833ea68ee589a31b3bd4",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/angular-animations.md": {
+    "mtime": 1793874421.2303886,
+    "seen": 1793967103.8280985,
+    "ast_hash": "27deab1a7e5d2817c52528714e08b26c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/angular-aria.md": {
+    "mtime": 1793874421.2303886,
+    "seen": 1793967103.8281014,
+    "ast_hash": "ffb4673c574c4c02bf6d91ec14917728",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/architecture.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.8281045,
+    "ast_hash": "38bd4fec96fd90dd2d7777e3aee089f7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/avatar-style.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.8281078,
+    "ast_hash": "2fe53c8f642dc017acabe6e7d94c942e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/boundary-rules.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.828111,
+    "ast_hash": "c05fe1b75bd10a8629b711537f3ad590",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/cli.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.828114,
+    "ast_hash": "8c272ea0d49db2d5b6b0a1e995d80645",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/component-harnesses.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.8281178,
+    "ast_hash": "283ef4334deca73200d99011d4678512",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/component-styling.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.8281212,
+    "ast_hash": "5eb8aeac5745ed09d6027eb3bf00ee73",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/components.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.8281245,
+    "ast_hash": "0107c22b1bd6033737f5b352b0738799",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/creating-services.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.8281274,
+    "ast_hash": "e9bddef58bc43eaf3606037400eda3f3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/data-handling.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.8281307,
+    "ast_hash": "7bca5ac252a298da262ad41a83574907",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/data-resolvers.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.8281336,
+    "ast_hash": "38e43b49f889528011a7f262be1dd7cd",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/database.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.8281598,
+    "ast_hash": "d597f5436d44d5a8811400065a3f604d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/define-routes.md": {
+    "mtime": 1793874421.2313888,
+    "seen": 1793967103.8281636,
+    "ast_hash": "f2e1fe56a68f6b3aaca82c456d8b7fab",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/defining-providers.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.828167,
+    "ast_hash": "3f47433c9d4a39ec788696590dbec2e5",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/di-fundamentals.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.82817,
+    "ast_hash": "e6a1f58843b8ebd83aedbb87089b81db",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/e2e-testing.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.8281727,
+    "ast_hash": "0629c145b473a619b9c3c8eb3ec7b2d5",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/ecc-release-checklist.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.8281758,
+    "ast_hash": "d92a974c04524176896b586080098c44",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/effects.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.828179,
+    "ast_hash": "e3bccd0312a80e8bebc060cfa50b4032",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/error-handling.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.828182,
+    "ast_hash": "4976d297ab24d02d9f256f4a91d67a2b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/evaluation-criteria.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.828185,
+    "ast_hash": "c0b8e535467b88e32c52b84f8ecdeeb2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/genre-taxonomy.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.8281882,
+    "ast_hash": "7802fdbff069ffbe8d6ccaf92afb2af5",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/hierarchical-injectors.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.8281918,
+    "ast_hash": "aaaff0900cdbc8e241d86d2da4316966",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/hook-integration.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.828195,
+    "ast_hash": "d1b3df15e4553f1ed351b53d3477e166",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/host-elements.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.8281982,
+    "ast_hash": "c257cb33c9ef128546e7ee20f1de5c60",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/identity-tension.md": {
+    "mtime": 1793874421.2323887,
+    "seen": 1793967103.828201,
+    "ast_hash": "b42f5252adad0c8bbbe90ffc2461730a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/injection-context.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.8282046,
+    "ast_hash": "7fb1c1b89dfb3b15e155520e02e43546",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/inputs.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.828208,
+    "ast_hash": "14f052af892b2a070fa66e18eeafa2b0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/linked-signal.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.8282115,
+    "ast_hash": "cf03866e64499820238ad9f6b461e73e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/loading-strategies.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.8282146,
+    "ast_hash": "8aac01619baab01078b45003d6ae8542",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/master-template.example.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.8282175,
+    "ast_hash": "125282f9093f380e9804078f3e066a91",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/mcp.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.8282206,
+    "ast_hash": "99cca9473721e794c3438de0c7b65b8d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/naming-system.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.8282237,
+    "ast_hash": "a94a2c0e2aa360401ab81234813babbb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/navigate-to-routes.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.8282268,
+    "ast_hash": "9c0198138d6878ac1bb66124d58c239a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/output-template.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.8282304,
+    "ast_hash": "571aa92c3dd36e4048ce9f93289efa3a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/outputs.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.8282335,
+    "ast_hash": "f448a792781d8351ea847c5bb8481db6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/placement-checklist.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.8282368,
+    "ast_hash": "bd2318428dbad5c5b780536e74a0548e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/reactive-forms.md": {
+    "mtime": 1793874421.2333887,
+    "seen": 1793967103.8282397,
+    "ast_hash": "615c2c1d9cb1efdc297420ea72987ae8",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/rendering-strategies.md": {
+    "mtime": 1793874421.2343886,
+    "seen": 1793967103.828243,
+    "ast_hash": "657a7897e583af027f98c8c1a7193f82",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/resource.md": {
+    "mtime": 1793874421.2343886,
+    "seen": 1793967103.8282459,
+    "ast_hash": "ed91d4775b70ef46cad09d7c3c7aef1b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/route-animations.md": {
+    "mtime": 1793874421.2343886,
+    "seen": 1793967103.8282487,
+    "ast_hash": "8fe4fc9086243e9398e09d9dc309bd89",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/route-guards.md": {
+    "mtime": 1793874421.2343886,
+    "seen": 1793967103.828252,
+    "ast_hash": "a60eb57cd049efc45a9b85a0abcc90f9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/router-lifecycle.md": {
+    "mtime": 1793874421.2343886,
+    "seen": 1793967103.8282552,
+    "ast_hash": "e178eb6929230b0615779892d0fb7a1a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/router-testing.md": {
+    "mtime": 1793874421.2343886,
+    "seen": 1793967103.8282583,
+    "ast_hash": "3620298d14b18962400aadb89293f967",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/routing.md": {
+    "mtime": 1793874421.2343886,
+    "seen": 1793967103.8282614,
+    "ast_hash": "748abcd1adfbe6c18b30ef7b090b7fb4",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/show-routes-with-outlets.md": {
+    "mtime": 1793874421.2343886,
+    "seen": 1793967103.8282647,
+    "ast_hash": "dea62ba455f5fee6eb9b0c3bb7cd9afe",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/signal-forms.md": {
+    "mtime": 1793874421.2343886,
+    "seen": 1793967103.8282678,
+    "ast_hash": "cd884b2b5eed87d2f3d8c297d715ca7e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/signals-overview.md": {
+    "mtime": 1793874421.2343886,
+    "seen": 1793967103.828271,
+    "ast_hash": "1732675b17b425056c51a2a35b454a75",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/strict-prompt.template.md": {
+    "mtime": 1793874421.2343886,
+    "seen": 1793967103.828274,
+    "ast_hash": "f6eddead84d690be3a7fbedf29258ccf",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/system-usage.md": {
+    "mtime": 1793874421.2353888,
+    "seen": 1793967103.8282773,
+    "ast_hash": "3a24356f674f6100ab0678445fd5e84d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/tailwind-css.md": {
+    "mtime": 1793874421.2353888,
+    "seen": 1793967103.8282807,
+    "ast_hash": "acc69de914fbadb1ba4f37231fb15256",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/template-driven-forms.md": {
+    "mtime": 1793874421.2353888,
+    "seen": 1793967103.8282835,
+    "ast_hash": "df71df377023de61e56ab438f3bd5ce6",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/testing-fundamentals.md": {
+    "mtime": 1793874421.2353888,
+    "seen": 1793967103.8282866,
+    "ast_hash": "b3d2b287bcc5cc92e9523848a706170d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/testing.md": {
+    "mtime": 1793874421.2353888,
+    "seen": 1793967103.8282897,
+    "ast_hash": "ecd7d76c758381966fb9546afa5f8f90",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/references/voice-profile-schema.md": {
+    "mtime": 1793874421.2353888,
+    "seen": 1793967103.8282928,
+    "ast_hash": "3e0240eb229ba47b58c61c5f9ac177c9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/regex-vs-llm-structured-text/SKILL.md": {
+    "mtime": 1793874421.2353888,
+    "seen": 1793967103.828296,
+    "ast_hash": "e1e28e1a40df60a0a3efa2e1a0a9a4ff",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/remotion-video-creation/SKILL.md": {
+    "mtime": 1793874421.2353888,
+    "seen": 1793967103.8282993,
+    "ast_hash": "c351c1e5e3cf2bd5c1819338bc024eba",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/repo-scan/SKILL.md": {
+    "mtime": 1793874421.2363887,
+    "seen": 1793967103.8283112,
+    "ast_hash": "6294f19babc740cbfc3d1526abbc40a7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/research-ops/SKILL.md": {
+    "mtime": 1793874421.2363887,
+    "seen": 1793967103.8283143,
+    "ast_hash": "9e25606b912b14f8b96fb6ac2a74f139",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/research/SKILL.md": {
+    "mtime": 1793874421.2363887,
+    "seen": 1793967103.8283174,
+    "ast_hash": "818c8d7cc8c741991bf970415e53c4ef",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/retro/SKILL.md": {
+    "mtime": 1793874421.2363887,
+    "seen": 1793967103.8283205,
+    "ast_hash": "b0b71961bb25ff49036193c53b126cb1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/returns-reverse-logistics/SKILL.md": {
+    "mtime": 1793874421.2373886,
+    "seen": 1793967103.8283238,
+    "ast_hash": "9c6189c77bd3eb0cd3b767b78921415b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules-distill/SKILL.md": {
+    "mtime": 1793874421.2373886,
+    "seen": 1793967103.828327,
+    "ast_hash": "a72237ad8fafc6ead64d9092f8cb3176",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/3d.md": {
+    "mtime": 1793874421.2373886,
+    "seen": 1793967103.8283305,
+    "ast_hash": "b0d7859d9f1e945970845541ff9c8631",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/animations.md": {
+    "mtime": 1793874421.2373886,
+    "seen": 1793967103.8283336,
+    "ast_hash": "e120e41e5b0b719f497bda5f1fb5714e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/assets.md": {
+    "mtime": 1793874421.2373886,
+    "seen": 1793967103.828337,
+    "ast_hash": "8545647d0d0a5784dcce972320f2f711",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/audio.md": {
+    "mtime": 1793874421.2373886,
+    "seen": 1793967103.82834,
+    "ast_hash": "d2d4d18a1f024754de85c0c7f42262a7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/calculate-metadata.md": {
+    "mtime": 1793874421.2373886,
+    "seen": 1793967103.8283434,
+    "ast_hash": "4cfd487b770ddd55cbc8b22e1810743e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/can-decode.md": {
+    "mtime": 1793874421.2373886,
+    "seen": 1793967103.828346,
+    "ast_hash": "8eba9e95e998d0bad5b22fc76f9cf324",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/charts.md": {
+    "mtime": 1793874421.2373886,
+    "seen": 1793967103.828349,
+    "ast_hash": "86ef61e823e4a457a5b1f7945dc56347",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/compositions.md": {
+    "mtime": 1793874421.2373886,
+    "seen": 1793967103.8283522,
+    "ast_hash": "91ae61b156b613af722b2ede1bf69656",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/display-captions.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.8283556,
+    "ast_hash": "489c696cb87a48053f7400aed045bb5f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/extract-frames.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.8283584,
+    "ast_hash": "cf9a806bb6ee8647817be7e3edde70ea",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/fonts.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.8283615,
+    "ast_hash": "46a988fdca12c3d79eaec47dff6dc4cf",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/get-audio-duration.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.8283641,
+    "ast_hash": "b8b07338f90e55d1aecf7a44a19679e5",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/get-video-dimensions.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.8283675,
+    "ast_hash": "6a22a946876c8b08067ceef708389622",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/get-video-duration.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.8283703,
+    "ast_hash": "77b9489d8a11a714527c10b7c6556908",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/gifs.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.828374,
+    "ast_hash": "c11e0ae806fd688d5ce17aeec3262bd2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/images.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.828377,
+    "ast_hash": "72e8d17d2a10412800f86b5223d6b8c9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/import-srt-captions.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.8283803,
+    "ast_hash": "8d3ae7c4b58b3b49db0e5d5c354885d1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/lottie.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.8283837,
+    "ast_hash": "23f92673011ec5aca2b4c51b7f0da145",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/measuring-dom-nodes.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.828387,
+    "ast_hash": "f9382af623ca6a3b0a26f5f6f0f94c82",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/measuring-text.md": {
+    "mtime": 1793874421.2383888,
+    "seen": 1793967103.8283901,
+    "ast_hash": "10e287d4bb9bc7b8ea4482e4aa68b887",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/sequencing.md": {
+    "mtime": 1793874421.2393887,
+    "seen": 1793967103.8283937,
+    "ast_hash": "01102b973d7fc47e8a120c7eea717a9f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/tailwind.md": {
+    "mtime": 1793874421.2393887,
+    "seen": 1793967103.828397,
+    "ast_hash": "0e6ac336dacd1d3d670b912617e7191f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/text-animations.md": {
+    "mtime": 1793874421.2393887,
+    "seen": 1793967103.8284,
+    "ast_hash": "20b4cae5317ec7e836fab5e6f15c5d99",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/timing.md": {
+    "mtime": 1793874421.2393887,
+    "seen": 1793967103.828403,
+    "ast_hash": "fba5dbf5736b56f8d6f5b112e18991cc",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/transcribe-captions.md": {
+    "mtime": 1793874421.2393887,
+    "seen": 1793967103.8284059,
+    "ast_hash": "ecad88c789e151e3425b9db212c9984b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/transitions.md": {
+    "mtime": 1793874421.2393887,
+    "seen": 1793967103.8284092,
+    "ast_hash": "8404e97e1610e341ff802fe1c90892fe",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/trimming.md": {
+    "mtime": 1793874421.2393887,
+    "seen": 1793967103.828412,
+    "ast_hash": "f8414e689e46165fcdce204c224f4ddc",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rules/videos.md": {
+    "mtime": 1793874421.2393887,
+    "seen": 1793967103.8284154,
+    "ast_hash": "1d8d3f18c0736e003d75c100f4ada861",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rust-patterns/SKILL.md": {
+    "mtime": 1793874421.2393887,
+    "seen": 1793967103.8284183,
+    "ast_hash": "cbbedb59deaa284fc8f0527f333f3641",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/rust-testing/SKILL.md": {
+    "mtime": 1793874421.2393887,
+    "seen": 1793967103.8284214,
+    "ast_hash": "a442cfb5e7e868e52c60a758d43b230a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/safety-guard/SKILL.md": {
+    "mtime": 1793874421.2403886,
+    "seen": 1793967103.8284242,
+    "ast_hash": "76205344799ce907a67d6f280b496b04",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/santa-method/SKILL.md": {
+    "mtime": 1793874421.2403886,
+    "seen": 1793967103.8284276,
+    "ast_hash": "30ae840cb888fef09078ed082d154c5e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/scientific-db-uspto-database/SKILL.md": {
+    "mtime": 1793874421.2403886,
+    "seen": 1793967103.8284304,
+    "ast_hash": "cd900c6ece708c2624bc48e728ef02dd",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/scientific-pkg-gget/SKILL.md": {
+    "mtime": 1793874421.2403886,
+    "seen": 1793967103.8284335,
+    "ast_hash": "5436a75c9291d2045bbf5a4a2bb26954",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/scientific-thinking-literature-review/SKILL.md": {
+    "mtime": 1793874421.2413888,
+    "seen": 1793967103.8284364,
+    "ast_hash": "47fb6abe444868bfc093bc2b47be209d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/scientific-thinking-scholar-evaluation/SKILL.md": {
+    "mtime": 1793874421.2413888,
+    "seen": 1793967103.8284397,
+    "ast_hash": "b1694e899ddd50b7352dafe9ab1a4e55",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/scripts/HANDOFF-TEMPLATE.md": {
+    "mtime": 1793874421.2413888,
+    "seen": 1793967103.8284426,
+    "ast_hash": "2344738e3a873b56a4852abbebdc86c7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/search-first/SKILL.md": {
+    "mtime": 1793874421.2413888,
+    "seen": 1793967103.828446,
+    "ast_hash": "3cdeaf98ef2a0663eac5223e10238236",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/security-bounty-hunter/SKILL.md": {
+    "mtime": 1793874421.2413888,
+    "seen": 1793967103.828449,
+    "ast_hash": "924a79366cc35fb630db62a1695aee84",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/security-review/SKILL.md": {
+    "mtime": 1793874421.2413888,
+    "seen": 1793967103.828452,
+    "ast_hash": "0228655967da500c8743baaa747f534d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/security-review/cloud-infrastructure-security.md": {
+    "mtime": 1793874421.2423887,
+    "seen": 1793967103.8284552,
+    "ast_hash": "3d99717d15dfc25b96b43d5c2205b953",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/security-scan/SKILL.md": {
+    "mtime": 1793874421.2423887,
+    "seen": 1793967103.8284585,
+    "ast_hash": "bb45ee224552455958e5cf0472c19192",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/seo/SKILL.md": {
+    "mtime": 1793874421.2423887,
+    "seen": 1793967103.828462,
+    "ast_hash": "a8c435d36ddae9bd7d1190699e13e100",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/setup-matt-pocock-skills/SKILL.md": {
+    "mtime": 1793874421.2423887,
+    "seen": 1793967103.8284647,
+    "ast_hash": "a4ec77cefeddb4e5ff40b3e53103221c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/setup-matt-pocock-skills/domain.md": {
+    "mtime": 1793874421.2423887,
+    "seen": 1793967103.8284676,
+    "ast_hash": "00bededcb4486406f018b39e9902c610",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/setup-matt-pocock-skills/issue-tracker-github.md": {
+    "mtime": 1793874421.2423887,
+    "seen": 1793967103.8284705,
+    "ast_hash": "0de5b500504f8b4ac5d463bdc6eb474f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/setup-matt-pocock-skills/issue-tracker-gitlab.md": {
+    "mtime": 1793874421.2433887,
+    "seen": 1793967103.8284733,
+    "ast_hash": "ad01174580572e861c8cd42aab2b7327",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/setup-matt-pocock-skills/issue-tracker-local.md": {
+    "mtime": 1793874421.2433887,
+    "seen": 1793967103.8284764,
+    "ast_hash": "f6ea6281af476a211243069a6cd171f8",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/setup-matt-pocock-skills/triage-labels.md": {
+    "mtime": 1793874421.2433887,
+    "seen": 1793967103.8284795,
+    "ast_hash": "9918a4051db590bde5644c39db5194f4",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/skill-comply/SKILL.md": {
+    "mtime": 1793874421.2433887,
+    "seen": 1793967103.8284824,
+    "ast_hash": "d76fabf72b6aefc9e02b03f259df0244",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/skill-scout/SKILL.md": {
+    "mtime": 1793874421.2433887,
+    "seen": 1793967103.8284855,
+    "ast_hash": "76d1411d2d3e87a0cf3948613891931e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/skill-stocktake/SKILL.md": {
+    "mtime": 1793874421.2433887,
+    "seen": 1793967103.8284883,
+    "ast_hash": "afae8abc7aff1bd240fc336be4382837",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/social-graph-ranker/SKILL.md": {
+    "mtime": 1793874421.2433887,
+    "seen": 1793967103.8284917,
+    "ast_hash": "7cd3ce16c188bfa6a628aec9dad87c8a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/social-publisher/SKILL.md": {
+    "mtime": 1793874421.2443886,
+    "seen": 1793967103.828495,
+    "ast_hash": "ea25b76969b6f3dd285781de7167a3c2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/springboot-patterns/SKILL.md": {
+    "mtime": 1793874421.2443886,
+    "seen": 1793967103.8284981,
+    "ast_hash": "d49445a0b0ee541f7ad9ff461fe0c202",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/springboot-security/SKILL.md": {
+    "mtime": 1793874421.2443886,
+    "seen": 1793967103.8285012,
+    "ast_hash": "04e7cb06e61af1b2ac4e2b7960601a31",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/springboot-tdd/SKILL.md": {
+    "mtime": 1793874421.2443886,
+    "seen": 1793967103.8285046,
+    "ast_hash": "d3f4d2bc7f513ae640fc616f0d01cc94",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/springboot-verification/SKILL.md": {
+    "mtime": 1793874421.2443886,
+    "seen": 1793967103.8285077,
+    "ast_hash": "2b37e22f0cdb31c712b5b1ee76c2c9fc",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/strategic-compact/SKILL.md": {
+    "mtime": 1793874421.2443886,
+    "seen": 1793967103.8285108,
+    "ast_hash": "563dbcba2170114e7b8f71293034becd",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/swift-actor-persistence/SKILL.md": {
+    "mtime": 1793874421.2453887,
+    "seen": 1793967103.8285136,
+    "ast_hash": "04fcde8cca3b28af38d4047d6495adcf",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/swift-concurrency-6-2/SKILL.md": {
+    "mtime": 1793874421.2453887,
+    "seen": 1793967103.8285167,
+    "ast_hash": "75fb8cd5409af59a9597ddeb4797fced",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/swift-protocol-di-testing/SKILL.md": {
+    "mtime": 1793874421.2453887,
+    "seen": 1793967103.8285196,
+    "ast_hash": "31c365e50d517eae5d5e521fabdba4c9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/swiftui-patterns/SKILL.md": {
+    "mtime": 1793874421.2453887,
+    "seen": 1793967103.8285232,
+    "ast_hash": "0d905ec6c2064d93cbde47684297c087",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/taste-application/SKILL.md": {
+    "mtime": 1793874421.2453887,
+    "seen": 1793967103.828526,
+    "ast_hash": "a5a0816a6f01409c60bad0125f7c0f8e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/taste-application/SOURCE.md": {
+    "mtime": 1793874421.2453887,
+    "seen": 1793967103.8285291,
+    "ast_hash": "214fbd0a1892da641ea9d72c2f861604",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/taste-distillation/SKILL.md": {
+    "mtime": 1793874421.2463887,
+    "seen": 1793967103.8285322,
+    "ast_hash": "0d7219310e7f55c7a804f95bfc507ff2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/taste/SKILL.md": {
+    "mtime": 1793874421.2463887,
+    "seen": 1793967103.828535,
+    "ast_hash": "df5559c1bc018fdca0e6a4de184ff1b8",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/tasteforge-video/SKILL.md": {
+    "mtime": 1793874421.2463887,
+    "seen": 1793967103.8285382,
+    "ast_hash": "2aa013ac6afd561ee62351ecabc157a3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/tasteforge/README.md": {
+    "mtime": 1793874421.2463887,
+    "seen": 1793967103.828541,
+    "ast_hash": "37cc05b334efd6898ce8f158cbffffbd",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/tdd-workflow/SKILL.md": {
+    "mtime": 1793874421.2473886,
+    "seen": 1793967103.8285437,
+    "ast_hash": "570fd3c88c167a035f6c34ddc9e1c92e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/tdd/SKILL.md": {
+    "mtime": 1793874421.2473886,
+    "seen": 1793967103.8285468,
+    "ast_hash": "4aa4d7d7199e8b964932a6567bf325fe",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/tdd/mocking.md": {
+    "mtime": 1793874421.2473886,
+    "seen": 1793967103.8285503,
+    "ast_hash": "c5505e8da8f516c7dacebd01c58a4c2c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/tdd/tests.md": {
+    "mtime": 1793874421.2473886,
+    "seen": 1793967103.8285534,
+    "ast_hash": "0a462499661825df11a0852c42382f10",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/teach/GLOSSARY-FORMAT.md": {
+    "mtime": 1793874421.2473886,
+    "seen": 1793967103.8285568,
+    "ast_hash": "63a6587d7ecfdc3015c70effdf4d6e1b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/teach/LEARNING-RECORD-FORMAT.md": {
+    "mtime": 1793874421.2473886,
+    "seen": 1793967103.8285596,
+    "ast_hash": "81d00dd8273c69f5be3390c4c0ee31b3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/teach/MISSION-FORMAT.md": {
+    "mtime": 1793874421.2473886,
+    "seen": 1793967103.828563,
+    "ast_hash": "1be68a93257155d58813eb76ed0bc6ff",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/teach/RESOURCES-FORMAT.md": {
+    "mtime": 1793874421.2473886,
+    "seen": 1793967103.828566,
+    "ast_hash": "dc3aaeb43ebc0950b2b98be242533b56",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/teach/SKILL.md": {
+    "mtime": 1793874421.2483888,
+    "seen": 1793967103.828569,
+    "ast_hash": "0c5f4273aadd36a6c20c8db0d4a80c63",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/team-agent-orchestration/SKILL.md": {
+    "mtime": 1793874421.2483888,
+    "seen": 1793967103.8285718,
+    "ast_hash": "34d8fa1c2302e9957b1266b477e95e29",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/team-builder/SKILL.md": {
+    "mtime": 1793874421.2483888,
+    "seen": 1793967103.8285747,
+    "ast_hash": "a5e759186f82b77fe8731844100c0c78",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/templates/evaluation-report.md": {
+    "mtime": 1793874421.2483888,
+    "seen": 1793967103.8285778,
+    "ast_hash": "f3cd61e580d9a989990a4654fa47928d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/terminal-opener/SKILL.md": {
+    "mtime": 1793874421.2483888,
+    "seen": 1793967103.8285806,
+    "ast_hash": "d46ad0e5011c97ea2756985af82b7f2f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/terminal-ops/SKILL.md": {
+    "mtime": 1793874421.2493887,
+    "seen": 1793967103.828584,
+    "ast_hash": "422df6751f7312a47ad9ff1cbe28a70a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/tinystruct-patterns/SKILL.md": {
+    "mtime": 1793874421.2493887,
+    "seen": 1793967103.8285868,
+    "ast_hash": "d594e9973ad91d47c3d9e86071234993",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/to-questionnaire/SKILL.md": {
+    "mtime": 1793874421.2493887,
+    "seen": 1793967103.82859,
+    "ast_hash": "dcad207c8f11b1f83e7d419511435985",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/to-spec/SKILL.md": {
+    "mtime": 1793874421.2493887,
+    "seen": 1793967103.8285928,
+    "ast_hash": "e3dfdcab6ad16aabbd935deb664172b1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/to-tickets/SKILL.md": {
+    "mtime": 1793874421.2503886,
+    "seen": 1793967103.828596,
+    "ast_hash": "f818507a7be430da0bbc9d622c789f90",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/token-budget-advisor/SKILL.md": {
+    "mtime": 1793874421.2503886,
+    "seen": 1793967103.8285992,
+    "ast_hash": "e3a466a1a39daece301d592fac373a7f",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/triage/AGENT-BRIEF.md": {
+    "mtime": 1793874421.2503886,
+    "seen": 1793967103.8286026,
+    "ast_hash": "9d560d6e9cccdb1af789265a47ca99a7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/triage/OUT-OF-SCOPE.md": {
+    "mtime": 1793874421.2503886,
+    "seen": 1793967103.828606,
+    "ast_hash": "4eba27a9480da1ef3d8cddb2bdd01e3c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/triage/SKILL.md": {
+    "mtime": 1793874421.2503886,
+    "seen": 1793967103.8286092,
+    "ast_hash": "b7f9cdd07892ff43b3c1a4ee28bb7ba2",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ui-demo/SKILL.md": {
+    "mtime": 1793874421.2513888,
+    "seen": 1793967103.8286123,
+    "ast_hash": "8dc55cf854be2c67bbd4a8177cc8adee",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/ui-to-vue/SKILL.md": {
+    "mtime": 1793874421.2513888,
+    "seen": 1793967103.8286157,
+    "ast_hash": "b129733e66cfe93d48c34182bada2791",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/uncloud/SKILL.md": {
+    "mtime": 1793874421.2513888,
+    "seen": 1793967103.8286188,
+    "ast_hash": "f020a65974fa8a17a00d0b05118c2101",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/unified-memory/SKILL.md": {
+    "mtime": 1793874421.2513888,
+    "seen": 1793967103.8286219,
+    "ast_hash": "bf37ae8ff71c5ce5399d50d2440969b7",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/unified-notifications-ops/SKILL.md": {
+    "mtime": 1793874421.2513888,
+    "seen": 1793967103.828625,
+    "ast_hash": "8b605761c7948d4ccacf6da6af4c5e62",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/verification-loop/SKILL.md": {
+    "mtime": 1793874421.2513888,
+    "seen": 1793967103.828628,
+    "ast_hash": "efb63194225d63af07a7c7478b93ce61",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/video-editing/SKILL.md": {
+    "mtime": 1793874421.2523887,
+    "seen": 1793967103.8286307,
+    "ast_hash": "291c0ffaa78fe19b256f53e94fefb029",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/videodb/SKILL.md": {
+    "mtime": 1793874421.2523887,
+    "seen": 1793967103.8286338,
+    "ast_hash": "f66dc5ac6ae44947caf5e68ded2aeef3",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/visa-doc-translate/README.md": {
+    "mtime": 1793874421.2523887,
+    "seen": 1793967103.828637,
+    "ast_hash": "18fd63348a33b3ce3adc321a20c9e17a",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/visa-doc-translate/SKILL.md": {
+    "mtime": 1793874421.2523887,
+    "seen": 1793967103.82864,
+    "ast_hash": "9644aa241991f0e753ade982572cffb1",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/vite-patterns/SKILL.md": {
+    "mtime": 1793874421.2523887,
+    "seen": 1793967103.828643,
+    "ast_hash": "7ba593f0ee1cac3c587f3ed38da304bb",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/vue-patterns/SKILL.md": {
+    "mtime": 1793874421.2533886,
+    "seen": 1793967103.828646,
+    "ast_hash": "d53f1975e3c9c9c8ae55032da65b6dc0",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/wait-what/SKILL.md": {
+    "mtime": 1793874421.2533886,
+    "seen": 1793967103.8286488,
+    "ast_hash": "134c8bfed213152660cac79958aa5548",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/wayfinder/SKILL.md": {
+    "mtime": 1793874421.2533886,
+    "seen": 1793967103.8286517,
+    "ast_hash": "3ec70ffb929c880b0e133f33514cfbb9",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/windows-desktop-e2e/SKILL.md": {
+    "mtime": 1793874421.2533886,
+    "seen": 1793967103.8286548,
+    "ast_hash": "8599a84dfb07e27940cf24bf37449d84",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/wizard/SKILL.md": {
+    "mtime": 1793874421.2543886,
+    "seen": 1793967103.8286579,
+    "ast_hash": "9489fb971dc6adff9c3f6bd736b14536",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/workflows/README.md": {
+    "mtime": 1793874421.2543886,
+    "seen": 1793967103.828661,
+    "ast_hash": "f4777b6c30d8aa449d82836520ea9e1c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/workspace-surface-audit/SKILL.md": {
+    "mtime": 1793874421.2543886,
+    "seen": 1793967103.8286638,
+    "ast_hash": "ca037d8e5f743e796f2e3e6781b2841b",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/writing-for-agents/SKILL-MECHANICS.md": {
+    "mtime": 1793874421.2543886,
+    "seen": 1793967103.8286674,
+    "ast_hash": "f3648a8f71f8672f89c23dc0dbafc43c",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/writing-for-agents/SKILL.md": {
+    "mtime": 1793874421.2553887,
+    "seen": 1793967103.8286703,
+    "ast_hash": "9663b04e7529a8d72e82a6fd088d336d",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/x-api/SKILL.md": {
+    "mtime": 1793874421.2553887,
+    "seen": 1793967103.8286734,
+    "ast_hash": "1bc2fd900a1992d284aabdf7943d034c",
+    "semantic_hash": ""
+  },
+  "AGENTS.md": {
+    "mtime": 1793874421.2553887,
+    "seen": 1793967103.828676,
+    "ast_hash": "fe409109832d0baec3ee547d4e8f5bcf",
+    "semantic_hash": ""
+  },
+  "CHECKPOINTS.md": {
+    "mtime": 1793874421.2553887,
+    "seen": 1793967103.828679,
+    "ast_hash": "f797918c552fe18dc54dee9fbf1a354d",
+    "semantic_hash": ""
+  },
+  "CODE_OF_CONDUCT.md": {
+    "mtime": 1793874421.2553887,
+    "seen": 1793967103.828682,
+    "ast_hash": "888e626d88ae2f0ed6a4e19c91d9052d",
+    "semantic_hash": ""
+  },
+  "GLOSSARY.md": {
+    "mtime": 1793874421.2553887,
+    "seen": 1793967103.828685,
+    "ast_hash": "4b9409bf3922642d57e5fa76b21b3be0",
+    "semantic_hash": ""
+  },
+  "MEMORY.md": {
+    "mtime": 1793874421.2563887,
+    "seen": 1793967103.828688,
+    "ast_hash": "a0d3da54eab2863057edf2db3bf5be4e",
+    "semantic_hash": ""
+  },
+  "Overview.md": {
+    "mtime": 1793874421.2563887,
+    "seen": 1793967103.8286908,
+    "ast_hash": "a44b5812370f856b17feddeab4fed423",
+    "semantic_hash": ""
+  },
+  "README.md": {
+    "mtime": 1793874421.2563887,
+    "seen": 1793967103.8286939,
+    "ast_hash": "7354b60af7ed52b0bf88bc81a7107f9d",
+    "semantic_hash": ""
+  },
+  "REVIEW.md": {
+    "mtime": 1793874421.2563887,
+    "seen": 1793967103.8286972,
+    "ast_hash": "c6bad4b117520b0665504f63290b625f",
+    "semantic_hash": ""
+  },
+  "ROADMAP.md": {
+    "mtime": 1793874421.2563887,
+    "seen": 1793967103.8287003,
+    "ast_hash": "1a982765041101d4a441e1b48de47956",
+    "semantic_hash": ""
+  },
+  "SECURITY.md": {
+    "mtime": 1793874421.2563887,
+    "seen": 1793967103.8287032,
+    "ast_hash": "a13e35e3f9c30cf17a7dbddefb88a147",
+    "semantic_hash": ""
+  },
+  "SPECIFICATION.md": {
+    "mtime": 1793874421.2563887,
+    "seen": 1793967103.8287065,
+    "ast_hash": "343636a158e8428cdf6f169b96d6a51c",
+    "semantic_hash": ""
+  },
+  "docs/agents/domain.md": {
+    "mtime": 1793874421.2573886,
+    "seen": 1793967103.8287091,
+    "ast_hash": "00bededcb4486406f018b39e9902c610",
+    "semantic_hash": ""
+  },
+  "docs/agents/issue-tracker.md": {
+    "mtime": 1793874421.2573886,
+    "seen": 1793967103.828712,
+    "ast_hash": "0de5b500504f8b4ac5d463bdc6eb474f",
+    "semantic_hash": ""
+  },
+  "docs/agents/triage-labels.md": {
+    "mtime": 1793874421.2573886,
+    "seen": 1793967103.828715,
+    "ast_hash": "9918a4051db590bde5644c39db5194f4",
+    "semantic_hash": ""
+  },
+  "nomination..md": {
+    "mtime": 1793874421.2893887,
+    "seen": 1793967103.8287182,
+    "ast_hash": "762d3287008f7a90c025f41c49d3b60d",
+    "semantic_hash": ""
+  },
+  "nomination.md": {
+    "mtime": 1793874421.2893887,
+    "seen": 1793967103.8287208,
+    "ast_hash": "762d3287008f7a90c025f41c49d3b60d",
+    "semantic_hash": ""
+  },
+  "test.txt": {
+    "mtime": 1793874421.2933886,
+    "seen": 1793967103.8287241,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": ""
+  },
+  ".kilo/skills/scientific-db-pubmed-database/SKILL.md": {
+    "mtime": 1793874421.2403886,
+    "seen": 1793967103.8287275,
+    "ast_hash": "2c550dc83d08519255f0217a0055e6e5",
+    "semantic_hash": ""
+  }
+}

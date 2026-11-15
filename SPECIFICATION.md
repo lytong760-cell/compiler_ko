@@ -205,10 +205,38 @@ none~a
 
 ### 4. Index Access Syntax
 
+Indexing reads a value from a container without mutating it. The brackets choose the container kind:
+
+- **List / tuple / string** — angle brackets `< >`, 0-based integer index:
+  - `list<0>` — first element
+  - `list<i>` — element at index `i`
+  - `list<1<0>>` — element `0` of the sub-list stored at index `1`
+  - Out-of-range or negative index raises `IndexError`
+
+- **Dictionary** — braces `{ }`, key expression:
+  - `dic{'key'}` — value stored under the string key `"key"`
+  - `dic{1}` — value stored under the integer key `1` (for a dict declared as `(1{'a'})~dic`, this yields `'a'`)
+  - A missing key raises `KeyError`; the key type must match the dict's key type
+
+- **Nesting / chaining** (left to right):
+  - `matrix<row<col>>` — nested list access
+  - `table{'users'}{'name'}` — nested dict access
+  - `records<0>{'id'}` — list then dict
+
+- **Compact legacy form** `dic{1{'a'}}` is shorthand for the entry above; the canonical form is `dic{1}`.
+
 ```ko
-list<0>           | Get first element
-list<1<0>>        | Get element 0 in sub-list at position 1
-dic{1{'a'}}       | Get by Dictionary Key
+('a', 'b', 'c')~letters
+letters<0>                       | 'a'
+letters<2>                       | 'c'
+
+(1{'a'}, 2{'b'})~dic
+dic{1}                           | 'a'
+dic{2}                           | 'b'
+dic{'missing'}                   | KeyError
+
+matrix = ( (1, 2), (3, 4) )
+matrix<1<0>>                     | 3
 ```
 
 ### 5. Type Introspection
@@ -459,27 +487,47 @@ ko -search "<query>"
 
 #### B. Library Registry Gateway and API
 
-- **Module Store URL:** `https://ko-vietnam.ai.studio/mobule-store`
-- **Firestore REST API Endpoints:**
+- **Module Store URL:** `https://ko-lang.ai.studio`
+- **REST API Endpoints (JSON):**
 
-**POST - List All Libraries:**
+**GET - List All Libraries (`ko -list`):**
 
 ```
-POST https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents:runQuery?key=YOUR_API_KEY
+GET https://ko-lang.ai.studio/api/module
 Content-Type: application/json
 
+Response (JSON array):
+[
+  {
+    "name": "<name>",
+    "githubLink": "<url>",
+    "description": "<description>",
+    "tags": ["<tag>"],
+    "userId": "<userId>",
+    "createdAt": "<timestamp>",
+    "detail": { ... }
+  }
+]
+```
+
+**GET - Load Specific Library (`ko -install <name>`):**
+
+```
+GET https://ko-lang.ai.studio/api/module/<name>
+Content-Type: application/json
+
+Response (JSON object):
 {
-  "parent": "projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents",
-  "query": {
-    "from": [{"collectionId": "libraries"}]
+  "name": "<name>",
+  "detail": {
+    "name": "<name>",
+    "githubLink": "<url>",
+    "description": "<description>",
+    "tags": ["<tag>"],
+    "userId": "<userId>",
+    "createdAt": "<timestamp>"
   }
 }
-```
-
-**GET - Load Specific Library:**
-
-```
-GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents/libraries/<library>?key=YOUR_API_KEY
 ```
 
 #### C. Automatic Processing Flow
@@ -491,9 +539,9 @@ GET https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-
                                            |
                                            v
 +-----------------------------------------------------------------------------------+
-| 2. Firestore GET API Query:                                                       |
-|    GET /documents/libraries/<library>?key=...                                     |
-|    -> Retrieve Metadata & GitHub Repository link of the library                  |
+| 2. Module Store REST API Query:                                                       |
+|    GET https://ko-lang.ai.studio/api/module/<library>                                 |
+|    -> Retrieve Metadata & GitHub Repository link of the library                      |
 +-----------------------------------------------------------------------------------+
                                            |
                                            v
@@ -712,7 +760,7 @@ Hero !class [
 - [x] Return statement
 - [x] String interpolation in printf
 - [x] Bytes buffer allocation
-- [x] `ko -install` with Firestore API
+- [x] `ko -install` with Module Store REST API
 - [x] `ko -list` - List all libraries (POST runQuery)
 - [x] `ko -search` - Search libraries
 - [x] Git clone and zip inspection
@@ -739,7 +787,7 @@ Hero !class [
 ### Known Sync Notes
 
 - Spec previously overstated Import/Loop integration; those remain open issues.
-- Leaked Firestore API key removed from this document; use `KO_FIRESTORE_API_KEY`.
+- Leaked Firestore API key removed from this document; Module Store now uses `https://ko-lang.ai.studio/api/module` without API key.
 
 ---
 
@@ -1018,7 +1066,7 @@ All data crossing language boundaries must pass through **CDEL**, a normalized b
 
 ### 4. Roles of `Import.java` and `Loop.cpp` in Data Exchange
 
-- **`Import.java`:** Entry point at the Java boundary. Performs HTTP (Firestore), git clone, zip inspection, compiles/loads module, serializes metadata into CDEL frame, sends down to C++ middleware to update Scope Table.
+- **`Import.java`:** Entry point at the Java boundary. Performs HTTP (Module Store REST API), git clone, zip inspection, compiles/loads module, serializes metadata into CDEL frame, sends down to C++ middleware to update Scope Table.
 - **`Loop.cpp`:** Entry point at the C++ boundary. Receives loop IR block from middleware, optimizes (unroll, register allocation, cache line), executes natively, returns state delta to Zig runtime via C-ABI.
 
 ---
