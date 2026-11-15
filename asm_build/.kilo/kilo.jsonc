@@ -1,0 +1,19 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "permission": {
+    "*": "allow"
+  },
+  "mcp": {
+    "graphify": {
+      "type": "local",
+      "command": ["/home/codespace/.python/current/bin/python3", "-m", "graphify.serve", "/workspaces/compiler_ko/graphify-out/graph.json"],
+      "enabled": true,
+      "timeout": 30000
+    }
+  },
+  "indexing": {
+    "enabled": false,
+    "provider": "kilo",
+    "model": "mistralai/mistral-embed-2312"
+  }
+}

@@ -1,0 +1,22 @@
+| Test .ko Program |
+Import($Random)@also%~random!`global`:random
+
+[
+
+    int(10)~x
+    string("Hello .ko\n")~greeting
+
+    <printf>^(greeting)
+
+    int(100)~hp
+    booling(\True\)~is_active
+
+    <if>(hp > 0 && is_active == \True\) [
+        <printf>^("Player is alive!\n")
+    ]
+
+    <catch>(`DivideByZeroError`) [
+        <printf>^("Caught error!\n")
+    ]
+
+]

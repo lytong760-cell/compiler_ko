@@ -1,0 +1,12 @@
+.{
+    .name = .compiler_ko,
+    .version = "0.0.0",
+    .fingerprint = 0x4e39185ec4a4eae3,
+    .minimum_zig_version = "0.16.0",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "testing",
+    },
+}

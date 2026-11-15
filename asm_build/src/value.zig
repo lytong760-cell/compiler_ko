@@ -1,0 +1,572 @@
+const std = @import("std");
+const ast = @import("ast.zig");
+
+pub const Value = union(enum) {
+    null,
+    none,
+    int: i64,
+    freal: f64,
+    string: []const u8,
+    booling: bool,
+    byte: u8,
+    bytes: []u8,
+    tuple: []Value,
+    list: []Value,
+    dict: *std.StringHashMap(Value),
+    function: *Function,
+    class_instance: *ClassInstance,
+    error_obj: *ErrorObj,
+
+    pub fn deinit(self: *Value, allocator: std.mem.Allocator) void {
+        switch (self.*) {
+            .string => allocator.free(self.string),
+            .bytes => allocator.free(self.bytes),
+            .tuple => {
+                for (self.tuple) |*v| v.deinit(allocator);
+                allocator.free(self.tuple);
+            },
+            .list => {
+                for (self.list) |*v| v.deinit(allocator);
+                allocator.free(self.list);
+            },
+            .dict => |d| {
+                var iter = d.iterator();
+                while (iter.next()) |entry| {
+                    allocator.free(entry.key_ptr.*);
+                    entry.value_ptr.*.deinit(allocator);
+                }
+                d.deinit();
+                allocator.destroy(d);
+            },
+            .function => {},
+            .class_instance => {
+                self.class_instance.deinit();
+                allocator.destroy(self.class_instance);
+            },
+            .error_obj => {
+                allocator.free(self.error_obj.code);
+            },
+            else => {},
+        }
+        self.* = .null;
+    }
+
+    pub fn format(self: Value, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        _ = fmt;
+        _ = options;
+        try self.print(writer);
+    }
+
+    /// Render a value. A `null` placeholder is unusable per SPEC §3, so this
+    /// reports TypeError instead of fabricating a textual form for it. Use
+    /// `printAllowNull` for diagnostics that must describe an in-progress value.
+    pub fn print(self: Value, writer: anytype) !void {
+        if (self == .null) return error.TypeError;
+        return self.printAllowNull(writer);
+    }
+
+    /// Same as `print`, but renders `.null` as the literal text `null`.
+    /// Diagnostic paths only — never reachable from user program output.
+    pub fn printAllowNull(self: Value, writer: anytype) !void {
+        switch (self) {
+            .null => try writer.print("null", .{}),
+            .none => try writer.print("none", .{}),
+            .int => |v| try writer.print("{d}", .{v}),
+            .freal => |v| try writer.print("{d}", .{v}),
+            .string => |v| try writer.print("{s}", .{v}),
+            .booling => |v| try writer.print("{s}", .{if (v) "True" else "False"}),
+            .byte => |v| try writer.print("{b:0>8}", .{v}),
+            .bytes => |v| {
+                try writer.print("[", .{});
+                for (v, 0..) |b, i| {
+                    if (i > 0) try writer.print(", ", .{});
+                    try writer.print("0x{X:0>2}", .{b});
+                }
+                try writer.print("]", .{});
+            },
+            .tuple, .list => |v| {
+                try writer.print("(", .{});
+                for (v, 0..) |item, i| {
+                    if (i > 0) try writer.print(", ", .{});
+                    try item.printAllowNull(writer);
+                }
+                try writer.print(")", .{});
+            },
+            .dict => |d| {
+                try writer.print("{{", .{});
+                var iter = d.iterator();
+                var first = true;
+                while (iter.next()) |entry| {
+                    if (!first) try writer.print(", ", .{});
+                    try writer.print("{s}: ", .{entry.key_ptr.*});
+                    try entry.value_ptr.printAllowNull(writer);
+                    first = false;
+                }
+                try writer.print("}}", .{});
+            },
+            .function => |f| try writer.print("<function {s}>", .{f.name}),
+            .class_instance => |ci| try writer.print("<{s} instance>", .{ci.class_name}),
+            .error_obj => |e| try writer.print("<Error {s}: {s}>", .{ e.type, e.code }),
+        }
+    }
+
+    pub fn toBool(self: Value) !bool {
+        return switch (self) {
+            .booling => |b| b,
+            .int => |i| i != 0,
+            .freal => |f| f != 0.0,
+            .string => |s| s.len > 0,
+            .byte => |b| b != 0,
+            .bytes => |b| b.len > 0,
+            .tuple, .list => |v| v.len > 0,
+            .dict => |d| d.count() > 0,
+            .null => false,
+            .none => false,
+            else => error.TypeError,
+        };
+    }
+
+    pub fn equals(self: Value, other: Value) !bool {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| a == b,
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| a == b,
+                else => error.TypeError,
+            },
+            .string => |a| switch (other) {
+                .string => |b| std.mem.eql(u8, a, b),
+                else => error.TypeError,
+            },
+            .booling => |a| switch (other) {
+                .booling => |b| a == b,
+                else => error.TypeError,
+            },
+            .byte => |a| switch (other) {
+                .byte => |b| a == b,
+                else => error.TypeError,
+            },
+            .tuple, .list => |a| switch (other) {
+                .tuple, .list => |b| {
+                    if (a.len != b.len) return false;
+                    for (a, b) |av, bv| {
+                        if (!try av.equals(bv)) return false;
+                    }
+                    return true;
+                },
+                else => error.TypeError,
+            },
+            .dict => |a| switch (other) {
+                .dict => |b| {
+                    if (a.count() != b.count()) return false;
+                    var iter = a.iterator();
+                    while (iter.next()) |entry| {
+                        const bv = b.get(entry.key_ptr.*) orelse return false;
+                        if (!try entry.value_ptr.*.equals(bv)) return false;
+                    }
+                    return true;
+                },
+                else => error.TypeError,
+            },
+            .none => switch (other) {
+                .none => true,
+                else => false,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn add(self: Value, other: Value, allocator: std.mem.Allocator) !Value {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| blk: {
+                    const result = @addWithOverflow(a, b);
+                    if (result[1] != 0) break :blk error.OverflowError;
+                    break :blk Value{ .int = result[0] };
+                },
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| Value{ .freal = a + b },
+                else => error.TypeError,
+            },
+            .string => |a| switch (other) {
+                .string => |b| Value{ .string = try std.fmt.allocPrint(allocator, "{s}{s}", .{ a, b }) },
+                else => error.TypeError,
+            },
+            .tuple, .list => |a| switch (other) {
+                .tuple, .list => |b| {
+                    const result = try allocator.alloc(Value, a.len + b.len);
+                    @memcpy(result[0..a.len], a);
+                    @memcpy(result[a.len..], b);
+                    return Value{ .list = result };
+                },
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn sub(self: Value, other: Value) !Value {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| blk: {
+                    const result = @subWithOverflow(a, b);
+                    if (result[1] != 0) break :blk error.OverflowError;
+                    break :blk Value{ .int = result[0] };
+                },
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| Value{ .freal = a - b },
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn mul(self: Value, other: Value) !Value {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| blk: {
+                    const result = @mulWithOverflow(a, b);
+                    if (result[1] != 0) break :blk error.OverflowError;
+                    break :blk Value{ .int = result[0] };
+                },
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| Value{ .freal = a * b },
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn div(self: Value, other: Value) !Value {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| blk: {
+                    if (b == 0) break :blk error.DivideByZero;
+                    break :blk Value{ .int = @divTrunc(a, b) };
+                },
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| Value{ .freal = a / b },
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn rem(self: Value, other: Value) !Value {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| blk: {
+                    if (b == 0) break :blk error.DivideByZero;
+                    break :blk Value{ .int = @rem(a, b) };
+                },
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn less(self: Value, other: Value) !bool {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| a < b,
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| a < b,
+                else => error.TypeError,
+            },
+            .string => |a| switch (other) {
+                .string => |b| std.mem.order(u8, a, b) == .lt,
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn greater(self: Value, other: Value) !bool {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| a > b,
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| a > b,
+                else => error.TypeError,
+            },
+            .string => |a| switch (other) {
+                .string => |b| std.mem.order(u8, a, b) == .gt,
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn lessOrEqual(self: Value, other: Value) !bool {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| a <= b,
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| a <= b,
+                else => error.TypeError,
+            },
+            .string => |a| switch (other) {
+                .string => |b| std.mem.order(u8, a, b) != .gt,
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn greaterOrEqual(self: Value, other: Value) !bool {
+        return switch (self) {
+            .int => |a| switch (other) {
+                .int => |b| a >= b,
+                else => error.TypeError,
+            },
+            .freal => |a| switch (other) {
+                .freal => |b| a >= b,
+                else => error.TypeError,
+            },
+            .string => |a| switch (other) {
+                .string => |b| std.mem.order(u8, a, b) != .lt,
+                else => error.TypeError,
+            },
+            else => error.TypeError,
+        };
+    }
+
+    pub fn clone(self: Value, allocator: std.mem.Allocator) !Value {
+        return switch (self) {
+            .null => Value{ .null = {} },
+            .none => Value{ .none = {} },
+            .int => |v| Value{ .int = v },
+            .freal => |v| Value{ .freal = v },
+            .string => |s| Value{ .string = try allocator.dupe(u8, s) },
+            .booling => |v| Value{ .booling = v },
+            .byte => |v| Value{ .byte = v },
+            .bytes => |b| Value{ .bytes = try allocator.dupe(u8, b) },
+            .tuple => |items| blk: {
+                const cloned = try allocator.alloc(Value, items.len);
+                for (items, 0..) |item, i| {
+                    cloned[i] = try item.clone(allocator);
+                }
+                break :blk Value{ .tuple = cloned };
+            },
+            .list => |items| blk: {
+                const cloned = try allocator.alloc(Value, items.len);
+                for (items, 0..) |item, i| {
+                    cloned[i] = try item.clone(allocator);
+                }
+                break :blk Value{ .list = cloned };
+            },
+            .dict => |d| blk: {
+                const new_d = try allocator.create(std.StringHashMap(Value));
+                new_d.* = std.StringHashMap(Value).init(allocator);
+                var iter = d.iterator();
+                while (iter.next()) |entry| {
+                    const key_copy = try allocator.dupe(u8, entry.key_ptr.*);
+                    const val_clone = try entry.value_ptr.*.clone(allocator);
+                    try new_d.put(key_copy, val_clone);
+                }
+                break :blk Value{ .dict = new_d };
+            },
+            .function => |f| Value{ .function = f },
+            .class_instance => |ci| blk: {
+                const new_ci = try allocator.create(ClassInstance);
+                new_ci.* = .{
+                    .class_name = try allocator.dupe(u8, ci.class_name),
+                    .fields = std.StringHashMap(Value).init(allocator),
+                    .methods = std.StringHashMap(*Function).init(allocator),
+                    .allocator = allocator,
+                };
+                var fiter = ci.fields.iterator();
+                while (fiter.next()) |entry| {
+                    const key_copy = try allocator.dupe(u8, entry.key_ptr.*);
+                    const val_clone = try entry.value_ptr.*.clone(allocator);
+                    try new_ci.fields.put(key_copy, val_clone);
+                }
+                var miter = ci.methods.iterator();
+                while (miter.next()) |entry| {
+                    const key_copy = try allocator.dupe(u8, entry.key_ptr.*);
+                    try new_ci.methods.put(key_copy, entry.value_ptr.*);
+                }
+                break :blk Value{ .class_instance = new_ci };
+            },
+            .error_obj => |e| blk: {
+                const new_e = try allocator.create(ErrorObj);
+                new_e.* = .{
+                    .type = e.type,
+                    .code = try allocator.dupe(u8, e.code),
+                    .line = e.line,
+                };
+                break :blk Value{ .error_obj = new_e };
+            },
+        };
+    }
+};
+
+pub const Function = struct {
+    name: []const u8,
+    params: []Param,
+    body_ptr: *anyopaque,
+    body_len: usize,
+    catch_stmts: []ast.CatchStmt,
+    closure_scope: ?*Scope,
+    allocator: std.mem.Allocator,
+
+    pub fn deinit(self: *Function) void {
+        self.allocator.free(self.params);
+        const body_slice = @as([*]ast.Statement, @ptrCast(@alignCast(self.body_ptr)))[0..self.body_len];
+        self.allocator.free(body_slice);
+        for (self.catch_stmts) |*c| c.deinit();
+        self.allocator.free(self.catch_stmts);
+    }
+};
+
+pub const Param = struct {
+    type_name: []const u8,
+    name: []const u8,
+};
+
+pub const ClassInstance = struct {
+    class_name: []const u8,
+    fields: std.StringHashMap(Value),
+    methods: std.StringHashMap(*Function),
+    allocator: std.mem.Allocator,
+
+    pub fn deinit(self: *ClassInstance) void {
+        var iter = self.fields.iterator();
+        while (iter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.*.deinit(self.allocator);
+        }
+        self.fields.deinit();
+        var miter = self.methods.iterator();
+        while (miter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+        }
+        self.methods.deinit();
+        self.allocator.free(self.class_name);
+    }
+};
+
+pub const ErrorObj = struct {
+    type: []const u8,
+    code: []const u8,
+    line: usize,
+};
+
+pub const Scope = struct {
+    parent: ?*Scope,
+    variables: std.StringHashMap(Value),
+    classes: std.StringHashMap(*ClassDef),
+    functions: std.StringHashMap(*Function),
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator, parent: ?*Scope) Scope {
+        return .{
+            .parent = parent,
+            .variables = std.StringHashMap(Value).init(allocator),
+            .classes = std.StringHashMap(*ClassDef).init(allocator),
+            .functions = std.StringHashMap(*Function).init(allocator),
+            .allocator = allocator,
+        };
+    }
+
+    pub fn deinit(self: *Scope) void {
+        var iter = self.variables.iterator();
+        while (iter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.*.deinit(self.allocator);
+        }
+        self.variables.deinit();
+        var citer = self.classes.iterator();
+        while (citer.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.*.deinit();
+            self.allocator.destroy(entry.value_ptr.*);
+        }
+        self.classes.deinit();
+        var fiter = self.functions.iterator();
+        while (fiter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.*.deinit();
+            self.allocator.destroy(entry.value_ptr.*);
+        }
+        self.functions.deinit();
+    }
+};
+
+pub const ClassDef = struct {
+    name: []const u8,
+    private_fields: std.StringHashMap(Value),
+    private_methods: std.StringHashMap(*Function),
+    public_fields: std.StringHashMap(Value),
+    public_methods: std.StringHashMap(*Function),
+    allocator: std.mem.Allocator,
+    private_scope: ?*Scope,
+    public_scope: ?*Scope,
+
+    pub fn deinit(self: *ClassDef) void {
+        var iter = self.private_fields.iterator();
+        while (iter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.*.deinit(self.allocator);
+        }
+        self.private_fields.deinit();
+        var miter = self.private_methods.iterator();
+        while (miter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.*.deinit();
+            self.allocator.destroy(entry.value_ptr.*);
+        }
+        self.private_methods.deinit();
+        var piter = self.public_fields.iterator();
+        while (piter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.*.deinit(self.allocator);
+        }
+        self.public_fields.deinit();
+        var pmiter = self.public_methods.iterator();
+        while (pmiter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
+            entry.value_ptr.*.deinit();
+            self.allocator.destroy(entry.value_ptr.*);
+        }
+        self.public_methods.deinit();
+        if (self.private_scope) |ps| {
+            var priv_iter = ps.variables.iterator();
+            while (priv_iter.next()) |entry| {
+                ps.allocator.free(entry.key_ptr.*);
+                entry.value_ptr.*.deinit(ps.allocator);
+            }
+            ps.variables.deinit();
+            ps.classes.deinit();
+            ps.functions.deinit();
+            self.allocator.destroy(ps);
+        }
+        if (self.public_scope) |ps| {
+            var pub_iter = ps.variables.iterator();
+            while (pub_iter.next()) |entry| {
+                ps.allocator.free(entry.key_ptr.*);
+                entry.value_ptr.*.deinit(ps.allocator);
+            }
+            ps.variables.deinit();
+            ps.classes.deinit();
+            ps.functions.deinit();
+            self.allocator.destroy(ps);
+        }
+    }
+};
