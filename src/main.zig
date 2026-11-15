@@ -194,6 +194,14 @@ fn mainInner(it: std.process.Init) !u8 {
     const allocator = it.arena.allocator();
     const args = try it.minimal.args.toSlice(allocator);
 
+    // Standalone mode: this executable carries an embedded .ko program. It takes
+    // priority over argv handling because the artifact has no .ko file to point
+    // at, so running `./build/hello` must execute the embedded source.
+    if (try readStandaloneSource(allocator, it.io)) |embedded| {
+        defer allocator.free(embedded);
+        return try executeCode(allocator, it.io, embedded, "<standalone>");
+    }
+
     if (args.len < 2) {
         printUsage(it);
         var buf: [4096]u8 = undefined;
@@ -347,7 +355,7 @@ fn mainInner(it: std.process.Init) !u8 {
         const arg = args[2];
         const source = readSourceFile(allocator, it.io, arg) catch return 1;
         defer allocator.free(source);
-        // validate
+        // Validate first: a program that does not run cannot be "built".
         const rc = executeCode(allocator, it.io, source, arg) catch 1;
         if (rc != 0) {
             var buf: [4096]u8 = undefined;
@@ -357,29 +365,7 @@ fn mainInner(it: std.process.Init) !u8 {
             writer.flush() catch {};
             return rc;
         }
-        // create build dir + wrapper
-        std.Io.Dir.cwd().createDirPath(it.io, "build") catch {};
-        var name_buf: [256]u8 = undefined;
-        const base = std.fs.path.basename(arg);
-        const stem = if (std.mem.endsWith(u8, base, ".ko")) base[0 .. base.len - 3] else base;
-        const out_name = std.fmt.bufPrint(&name_buf, "build/{s}", .{stem}) catch return 1;
-        // write wrapper script
-        var fbuf: [4096]u8 = undefined;
-        var fw = std.Io.Dir.cwd().createFile(it.io, out_name, .{}) catch return 1;
-        defer fw.close(it.io);
-        _ = std.process.run(allocator, it.io, .{ .argv = &.{ "chmod", "+x", out_name } }) catch {};
-        var w = fw.writer(it.io, &fbuf);
-        const writer2 = &w.interface;
-        writer2.print("#!/bin/sh\nexec ko run '{s}' \"$@\"\n", .{arg}) catch {};
-        writer2.flush() catch {};
-        // chmod +x
-        // (best effort; ignore errors)
-        var buf2: [4096]u8 = undefined;
-        var fw2 = std.Io.File.stdout().writer(it.io, &buf2);
-        const w2 = &fw2.interface;
-        w2.print("Built: {s}\n", .{out_name}) catch {};
-        w2.flush() catch {};
-        return 0;
+        return buildStandalone(allocator, it, arg, source);
     }
 
     if (std.mem.eql(u8, args[1], "repl")) {
@@ -432,6 +418,103 @@ fn scanPluginDir(writer: *std.Io.Writer, io: std.Io, path: []const u8) void {
         defer std.heap.page_allocator.free(data);
         writer.print("    - {s}\n", .{entry.name}) catch {};
     }
+}
+
+/// A standalone artifact is `<compiler bytes> <source> <FOOTER>`.
+///
+/// The footer is written at the very end of the file, so the ordinary compiler
+/// (which has no footer) is never mistaken for a build. This is deliberately not
+/// a marker literal embedded before the payload: any literal used to find the
+/// payload also gets compiled into the compiler's own read-only data, so a search
+/// for it would match the code instead of the payload.
+const STANDALONE_FOOTER_MAGIC: u64 = 0x4B4F5F5341414E44; // "KO_SSTAND"
+
+/// Build a self-contained executable: a copy of the current `ko` binary with the
+/// .ko source and a footer appended. The ELF loader ignores the tail; the copied
+/// binary validates the footer at startup and runs the embedded program.
+fn buildStandalone(allocator: std.mem.Allocator, it: std.process.Init, source_path: []const u8, source: []const u8) !u8 {
+    std.Io.Dir.cwd().createDirPath(it.io, "build") catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+
+    var name_buf: [512]u8 = undefined;
+    const base = std.fs.path.basename(source_path);
+    const stem = if (std.mem.endsWith(u8, base, ".ko")) base[0 .. base.len - 3] else base;
+    const out_name = std.fmt.bufPrint(&name_buf, "build/{s}", .{stem}) catch return 1;
+
+    // Locate our own executable so the artifact is a real copy of the compiler.
+    const self_path = try std.process.executablePathAlloc(it.io, allocator);
+    defer allocator.free(self_path);
+
+    const self_bytes = std.Io.Dir.cwd().readFileAlloc(it.io, self_path, allocator, .limited(512 * 1024 * 1024)) catch |err| {
+        var buf: [4096]u8 = undefined;
+        var file_writer = std.Io.File.stderr().writer(it.io, &buf);
+        const writer = &file_writer.interface;
+        writer.print("Error: cannot read compiler binary '{s}': {any}\n", .{ self_path, err }) catch {};
+        writer.flush() catch {};
+        return 1;
+    };
+    defer allocator.free(self_bytes);
+
+    const out_file = std.Io.Dir.cwd().createFile(it.io, out_name, .{ .truncate = true }) catch |err| {
+        var buf: [4096]u8 = undefined;
+        var file_writer = std.Io.File.stderr().writer(it.io, &buf);
+        const writer = &file_writer.interface;
+        writer.print("Error: cannot create '{s}': {any}\n", .{ out_name, err }) catch {};
+        writer.flush() catch {};
+        return 1;
+    };
+    defer out_file.close(it.io);
+
+    var buf: [64 * 1024]u8 = undefined;
+    var w = out_file.writer(it.io, &buf);
+    const writer = &w.interface;
+    writer.writeAll(self_bytes) catch |err| {
+        std.debug.print("write failed: {any}\n", .{err});
+        return 1;
+    };
+    writer.writeAll(source) catch return 1;
+
+    // Footer: payload length, then the magic. Read backwards from EOF.
+    var footer: [16]u8 = undefined;
+    std.mem.writeInt(u64, footer[0..8], @intCast(source.len), .little);
+    std.mem.writeInt(u64, footer[8..16], STANDALONE_FOOTER_MAGIC, .little);
+    writer.writeAll(&footer) catch return 1;
+    writer.flush() catch return 1;
+
+    // createFile has no mode option, so make the artifact executable afterwards.
+    _ = std.process.run(allocator, it.io, .{ .argv = &.{ "chmod", "+x", out_name } }) catch {};
+
+    var msg: [4096]u8 = undefined;
+    var fw = std.Io.File.stdout().writer(it.io, &msg);
+    const w2 = &fw.interface;
+    w2.print("Built standalone: {s}\n", .{out_name}) catch {};
+    w2.flush() catch {};
+    return 0;
+}
+
+/// If this process was launched as a standalone artifact, the .ko source sits
+/// just before the footer inside our own executable. Returns it, or null when we
+/// are running as the ordinary compiler.
+fn readStandaloneSource(allocator: std.mem.Allocator, io: std.Io) !?[]u8 {
+    const self_path = try std.process.executablePathAlloc(io, allocator);
+    defer allocator.free(self_path);
+
+    const bytes = std.Io.Dir.cwd().readFileAlloc(io, self_path, allocator, .limited(512 * 1024 * 1024)) catch return null;
+    defer allocator.free(bytes);
+
+    // Need at least a footer, and the magic must be the last 8 bytes.
+    if (bytes.len < 16) return null;
+    const magic = std.mem.readInt(u64, bytes[bytes.len - 8 ..][0..8], .little);
+    if (magic != STANDALONE_FOOTER_MAGIC) return null;
+
+    const payload_len = std.mem.readInt(u64, bytes[bytes.len - 16 ..][0..8], .little);
+    if (payload_len == 0) return null;
+    if (payload_len > bytes.len - 16) return null;
+
+    const start = bytes.len - 16 - @as(usize, @intCast(payload_len));
+    return try allocator.dupe(u8, bytes[start .. bytes.len - 16]);
 }
 
 fn readSourceFile(allocator: std.mem.Allocator, io: std.Io, path: []const u8) ![]u8 {

@@ -7,6 +7,10 @@ const bytecode = @import("bytecode.zig");
 const operator = @import("operator.zig");
 
 pub fn appendValueToString(self: *VM, out: *std.array_list.Managed(u8), val: value_mod.Value) !void {
+    if (val == .null) {
+        self.raiseError("TypeError", "Cannot use an unassigned null in an operation");
+        return error.TypeError;
+    }
     var aw: std.Io.Writer.Allocating = .init(self.allocator);
     errdefer aw.deinit();
     try val.print(&aw.writer);
@@ -90,6 +94,10 @@ pub fn evaluateIdentifier(self: *VM, name: []const u8) !value_mod.Value {
     var scope: ?*value_mod.Scope = self.current_scope;
     while (scope) |s| {
         if (s.variables.get(name)) |val| {
+            if (val == .null) {
+                self.raiseError("TypeError", "Cannot read unassigned variable '{s}'");
+                return error.TypeError;
+            }
             return try val.clone(self.allocator);
         }
         if (s.functions.get(name)) |func| {
@@ -98,6 +106,10 @@ pub fn evaluateIdentifier(self: *VM, name: []const u8) !value_mod.Value {
         scope = s.parent;
     }
     if (self.global_scope.variables.get(name)) |val| {
+        if (val == .null) {
+            self.raiseError("TypeError", "Cannot read unassigned variable '{s}'");
+            return error.TypeError;
+        }
         return try val.clone(self.allocator);
     }
     if (self.global_scope.functions.get(name)) |func| {
@@ -422,6 +434,11 @@ pub fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Val
     if (std.mem.eql(u8, call.callee, "printf")) {
         for (call.args) |arg| {
             var val = try self.evaluateExpression(@constCast(&arg));
+            if (val == .null) {
+                self.raiseError("TypeError", "Cannot print an unassigned null value");
+                val.deinit(self.allocator);
+                return error.TypeError;
+            }
             if (val == .string) {
                 try self.printInterpolated(val.string);
             } else {
@@ -545,16 +562,22 @@ pub fn evaluateIndexAccess(self: *VM, ia: *ast.IndexAccess) !value_mod.Value {
             return error.RuntimeError;
         },
         .dict => |d| {
-            if (idx == .string) {
-                const key = idx.string;
-                if (d.get(key)) |val| {
-                    return try val.clone(self.allocator);
+            const key_str = if (idx == .string) idx.string else if (idx == .int) blk: {
+                break :blk try std.fmt.allocPrint(self.allocator, "{d}", .{idx.int});
+            } else null;
+            if (key_str) |ks| {
+                if (d.get(ks)) |val| {
+                    const cloned = try val.clone(self.allocator);
+                    if (idx == .int) self.allocator.free(ks);
+                    return cloned;
                 }
+                if (idx == .int) self.allocator.free(ks);
                 self.raiseError("KeyError", "Key not found");
                 return error.RuntimeError;
+            } else {
+                self.raiseError("TypeError", "Dict key must be string or int");
+                return error.RuntimeError;
             }
-            self.raiseError("TypeError", "Dict key must be string");
-            return error.RuntimeError;
         },
         .string => |s| {
             if (idx == .int) {
@@ -597,6 +620,17 @@ pub fn evaluateSystemTag(self: *VM, st: *ast.SystemTagExpr) !value_mod.Value {
                 try writer.print("\n", .{});
                 try writer.flush();
             }
+            @constCast(&arg).deinit(self.allocator);
+            return value_mod.Value{ .null = {} };
+        }
+        if (std.mem.eql(u8, st.tag, "print") or std.mem.startsWith(u8, st.tag, "print:")) {
+            if (arg == .string) {
+                try self.stdoutWriter().writeAll(arg.string);
+            } else {
+                const writer = self.stdoutWriter();
+                try arg.print(writer);
+            }
+            try self.stdoutWriter().flush();
             @constCast(&arg).deinit(self.allocator);
             return value_mod.Value{ .null = {} };
         }
@@ -654,6 +688,7 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
         error.EndOfStream => return error.EndOfInput,
         else => |e| return e,
     };
+    defer self.allocator.free(line);
     if (ie.target_name.len > 0) {
         const name_copy = try self.allocator.dupe(u8, ie.target_name);
         const owned = try self.allocator.dupe(u8, line);
@@ -684,8 +719,21 @@ pub fn evaluateUnaryOp(_: *VM, op: u8, val: value_mod.Value) !value_mod.Value {
 pub fn callBuiltin(self: *VM, name: []const u8, args: []value_mod.Value) !value_mod.Value {
     if (std.mem.eql(u8, name, "printf")) {
         for (args) |arg| {
-            try arg.print(self.stdoutWriter());
-            try self.stdoutWriter().print(" ", .{});
+            if (arg == .null) {
+                self.raiseError("TypeError", "Cannot print an unassigned null value");
+                return error.TypeError;
+            }
+            // Mirror evaluateCall: a string argument is subject to `{name}`
+            // interpolation against the current/global scope. Without this the
+            // bytecode backend printed the literal text (`x={x}`) while the AST
+            // walker substituted the value (`x=7`) — a silent parity bug the
+            // test suite missed because it never drives Executor.
+            if (arg == .string) {
+                try self.printInterpolated(arg.string);
+            } else {
+                try arg.print(self.stdoutWriter());
+                try self.stdoutWriter().print(" ", .{});
+            }
         }
         try self.stdoutWriter().print("\n", .{});
         return value_mod.Value{ .null = {} };
@@ -703,6 +751,40 @@ pub fn callBuiltin(self: *VM, name: []const u8, args: []value_mod.Value) !value_
             .int => |v| value_mod.Value{ .string = try std.fmt.allocPrint(self.allocator, "{d}", .{v}) },
             else => error.TypeError,
         };
+    }
+    if (std.mem.eql(u8, name, "Import")) {
+        if (args.len < 3) return error.TypeError;
+        const module = switch (args[0]) { .string => |s| s, else => return error.TypeError };
+        const alias = switch (args[1]) { .string => |s| s, else => return error.TypeError };
+        const scope = switch (args[2]) { .string => |s| s, else => return error.TypeError };
+
+        const class_dir = "/tmp/kilo/import_classes";
+        _ = std.process.run(self.allocator, self.io, .{ .argv = &.{ "mkdir", "-p", class_dir } }) catch {};
+        const compile = std.process.run(self.allocator, self.io, .{
+            .argv = &.{ "javac", "-d", class_dir, "src/Import.java" },
+        }) catch |err| {
+            self.raiseError("ImportError", "javac failed");
+            return err;
+        };
+        defer self.allocator.free(compile.stdout);
+        defer self.allocator.free(compile.stderr);
+
+        const run = std.process.run(self.allocator, self.io, .{
+            .argv = &.{ "java", "-cp", class_dir, "Import", "import", module, alias, scope },
+        }) catch |err| {
+            self.raiseError("ImportError", "java failed");
+            return err;
+        };
+        defer self.allocator.free(run.stdout);
+        defer self.allocator.free(run.stderr);
+        if (run.stdout.len > 0) try self.stdoutWriter().writeAll(run.stdout);
+        if (run.stderr.len > 0) try self.stdoutWriter().writeAll(run.stderr);
+        try self.stdoutWriter().flush();
+        if (run.term != .exited or run.term.exited != 0) {
+            self.raiseError("ImportError", "Import failed");
+            return error.RuntimeError;
+        }
+        return value_mod.Value{ .null = {} };
     }
     return error.UndefinedFunction;
 }

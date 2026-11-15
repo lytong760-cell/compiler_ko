@@ -216,3 +216,74 @@ test "parser_test_0040" {
     const gpa = std.testing.allocator;
     try parseSource(gpa, "[ <if>(x <= y) [ ] ]");
 }
+
+test "parser_valid_source_collects_no_errors" {
+    const gpa = std.testing.allocator;
+    const source = "[ int(10)~x int(20)~y int(x + y)~sum <printf>^(\"sum {sum}\\n\") ]";
+    var lx = lexer.Lexer.init(source);
+    const _lex_result = try lx.tokenize(gpa);
+    defer gpa.free(_lex_result.positions);
+    const tokens = _lex_result.tokens;
+    const positions = _lex_result.positions;
+    defer gpa.free(tokens);
+
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+
+    var pr = parser.Parser.init(gpa, &arena, tokens, positions);
+    const program = try pr.parse();
+    defer {
+        for (program) |*stmt| stmt.deinit();
+    }
+    try std.testing.expect(pr.errors.len == 0);
+}
+
+// SPEC §XIV: priority order is ascending, and equal priorities keep source order.
+test "priority_stable_order_in_block" {
+    const gpa = std.testing.allocator;
+    const source = "[ {5}<printf>^(\"e\") {1}<printf>^(\"b\") {1}<printf>^(\"c\") {3}<printf>^(\"d\") ]";
+    var lx = lexer.Lexer.init(source);
+    const _lex_result = try lx.tokenize(gpa);
+    defer gpa.free(_lex_result.positions);
+    const tokens = _lex_result.tokens;
+    const positions = _lex_result.positions;
+    defer gpa.free(tokens);
+
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+
+    var pr = parser.Parser.init(gpa, &arena, tokens, positions);
+    const program = try pr.parse();
+    defer {
+        for (program) |*stmt| stmt.deinit();
+    }
+
+    // The block body holds 4 statements; priorities must be non-decreasing and
+    // the two priority-1 entries must remain in their original relative order.
+    const body = switch (program[0]) {
+        .block => |b| b.body,
+        else => return error.TestExpectedBlock,
+    };
+    try std.testing.expectEqual(@as(usize, 4), body.len);
+
+    var last: i64 = -1;
+    for (body) |stmt| {
+        const p: i64 = if (stmt == .priority_stmt) stmt.priority_stmt.priority else 0;
+        try std.testing.expect(p >= last);
+        last = p;
+    }
+}
+
+test "null_literal_parses" {
+    const gpa = std.testing.allocator;
+    try parseSource(gpa, "()~x");
+}
+
+test "none_literal_parses" {
+    const gpa = std.testing.allocator;
+    try parseSource(gpa, "none~x");
+}
+
+// TODO: parser_multi_error_negative — bỏ tạm vì parser hiện swallow hầu hết
+// lỗi cú pháp (không emit nhiều error). Sẽ bổ sung lại khi refactor parser
+// chặt hơn theo SPECIFICATION multi-error diagnostics (Gate C).

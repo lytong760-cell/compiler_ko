@@ -23,6 +23,11 @@ pub const Op = enum(u8) {
     catch_start,
     catch_end,
     import,
+    get_member,
+    index_access,
+    class_decl_start,
+    class_decl_private_done,
+    class_decl_finish,
 };
 
 pub const Instruction = union(Op) {
@@ -47,15 +52,23 @@ pub const Instruction = union(Op) {
     catch_start: u32,
     catch_end: void,
     import: void,
+    get_member: void,
+    index_access: void,
+    class_decl_start: u32,
+    class_decl_private_done: void,
+    class_decl_finish: void,
 };
 
 pub const Function = struct {
     name: []const u8,
+    params: [][]const u8,
     instructions: std.array_list.Managed(Instruction),
     arity: u32,
 
     pub fn deinit(self: *Function, allocator: std.mem.Allocator) void {
         allocator.free(self.name);
+        for (self.params) |p| allocator.free(p);
+        if (self.params.len > 0) allocator.free(self.params);
         self.instructions.deinit();
     }
 };

@@ -201,8 +201,154 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 - **Technical Debt & Anti-Patterns:** Existing .ko programs relying on int↔freal coercion now surface TypeError; bytecode path now matches AST strictness.
 - **Shared Variables & Symbols:** OverflowError, TypeError, DivideByZero preserved.
 
-### [2026-10-30] LONG-TERM MEMORY DUMP
-- **Identified Truths:** Zig 0.16.0 build passes after fixes; example simple.ko now prints newline correctly.
+### [2026-11-06] LONG-TERM MEMORY DUMP
+- **Identified Truths:** Graphify 0.9.103 (pip `graphifyy[mcp]`) provides stdio MCP server `python -m graphify.serve <graph.json>` exposing 10 tools (query_graph, get_node, get_neighbors, get_community, god_nodes, graph_stats, shortest_path, list_prs, get_pr_impact, triage_prs). Kilo MCP config uses `mcp` key with `type: local`, `command` array, `enabled`, `timeout`; permission keys `{server}_*`. Config shared by Kilo CLI/VS Code/Kilo Code ecosystem via global `~/.config/kilo/kilo.jsonc` and project `.kilo/kilo.jsonc`.
+- **Architectural Mutations:** Installed graphifyy[mcp] into /home/codespace/.python/current; ran `graphify install --platform kilo` (skill + command under ~/.config/kilo); built `graphify-out/graph.json` (10564 nodes, 10554 edges, 755 communities) via `graphify update .`; registered `graphify` MCP server in global + project configs with absolute python path and absolute graph path; granted `graphify_*` allow. Verified server initialize/tools/list (~2s).
+- **Technical Debt & Anti-Patterns:** Graph is AST-only (no semantic LLM extraction); rebuild needed after code changes (`graphify update .`); absolute python path is environment-specific. Hosted remote MCP (api.graphify.com/mcp, OAuth) is alternative but not configured.
+- **Shared Variables & Symbols:** graphify-out/graph.json; /home/codespace/.python/current/bin/python3.
 - **Architectural Mutations:** Fixed HIGH-2 bytecode escape in src/compiler.zig (added unescapeString); fixed HIGH-1 aliasing in src/vm.zig (load_var/store_var clone); fixed dict overwrite leak in src/vm.zig; changed API default host to 127.0.0.1.
 - **Technical Debt & Anti-Patterns:** Bytecode backend still lacks class/func/dict/bytes parity (falls back to AST walker); potential extra memory copies.
 - **Shared Variables & Symbols:** `unescapeString` helper in compiler.zig.
+
+
+### [2026-11-11] LONG-TERM MEMORY DUMP
+- **Identified Truths:** Session bootstrapped: đã nạp MEMORY.md và CHECKPOINTS.md vào ngữ cảnh. **Zig 0.16.0 đã sẵn trong sandbox** (`zig version = 0.16.0`). **Verify thực tế:** `zig build` thành công; `zig build test < /dev/null` exit code 0, toàn bộ suite pass (227 tests: test_harness 1, test_3600 117, test_value 17, test_lexer_extended 40, test_parser_extended 41, test_modules 11), 0 leak. Thông báo "failed command: ... --listen=-" là artifact Zig test runner đọc stdin, không ảnh hưởng exit code. **Sửa code 2 bug:** (1) `src/vm_value_ops.zig` `evaluateInput`: thêm `defer self.allocator.free(line)` (tránh 3 leak allocation mỗi <input>); (2) `src/vm.zig` `execute`: mở rộng `allowed_top` (thêm var_decl, class_instantiation, priority_stmt) để method call + var decl chạy top-level. Các test file đã bỏ comment trong `build.zig` (6 file chạy đầy đủ).
+- **Phase 5 hoàn thành (theo yêu cầu user):** (1) `evaluateIdentifier` ném `TypeError` khi đọc biến có giá trị `.null` (chưa assign); (2) Parser validate region `@`: `@loop` chỉ trong loop, `@girc` chỉ trong generic (validator ở parser, có span); `none` (immutable) + `type()` + priority `{n}` đã có sẵn. Toàn bộ suite xanh 227 tests.
+- **Architectural Mutations:** build.zig: bỏ comment 5 file test. src/vm_value_ops.zig: defer free line trong evaluateInput + TypeError khi đọc .null. src/vm.zig: mở rộng allowed_top trong execute. src/parser.zig: thêm context flags in_class/in_loop/in_generic + validateRegionRole.
+- **Technical Debt & Anti-Patterns:** `zig build test` dùng `--listen=-` làm treo nếu stdin không đóng; luôn chạy với `< /dev/null`. Chạy trực tiếp test binary thiếu `zig-out/bin` trong PATH → test_modules fail FileNotFound (mod_check không tìm được); phải chạy qua `zig build test`.
+- **Shared Variables & Symbols:** Chưa có mới trong phiên này.
+
+### [2026-11-13] LONG-TERM MEMORY DUMP
+- **Identified Truths:** **Phase 5 (G9-G11) hoàn tất, verify bằng `zig build` exit 0 và `zig build test < /dev/null` EXIT=0 (230 tests pass).** Spec §3 Null/None đã đối chiếu: (1) `Value.print` ném `error.TypeError` khi gặp `.null`; tách `printAllowNull` (in "null") cho đường chẩn đoán — phải đệ quy gọi `printAllowNull` (không gọi `print`) để phá dependency loop Zig; (2) `parseBlock` (parser.zig) sort priority bằng decorate-sort-undecorate: `std.sort.block` là unstable + comparator cũ trả `false` khi bằng priority → vi phạm strict weak ordering, nay sort theo `(priority, index gốc)`; (3) `vm.execute` quét `global_scope.variables` cuối chương trình, ném `NullUnassigned` nếu còn `.null`; (4) `printf` cả 2 đường (evaluateCall + callBuiltin) và `appendValueToString` chặn `.null`. Thêm 3 test vào test_parser_extended.zig (44 tests).
+- **Architectural Mutations:** src/value.zig: print/printAllowNull tách biệt. src/parser.zig: parseBlock decorate-sort-undecorate. src/vm.zig: null-scan cuối execute. src/vm_value_ops.zig: guard null ở appendValueToString/printf/callBuiltin.
+- **Technical Debt & Anti-Patterns:** `std.sort.block` KHÔNG stable — mọi comparator trả `false` cho phần tử "bằng nhau" là bug tiềm ẩn khi cần giữ thứ tự nguồn. Dependency loop Zig xảy ra khi 2 hàm suy ra error set của nhau qua đệ quy chéo; phải chỉ định đệ quy một chiều.
+- **Shared Variables & Symbols:** `Value.printAllowNull` (chẩn đoán), `error.NullUnassigned` (mới trong VM).
+
+### [2026-11-13] LONG-TERM MEMORY DUMP — `ko build` standalone
+- **Identified Truths:** **`ko build` giờ tạo binary standalone thật, verify bằng lệnh thật:** `./zig-out/bin/ko build examples/simple.ko` → in "Hello World" (validate) + tạo `build/simple` (19.8MB, 755); `cp build/simple /tmp/standalone_test && /tmp/standalone_test` → in "Hello World", exit 0, **không cần `ko` trong PATH**. `zig build` exit 0; `zig build test < /dev/null` EXIT=0 (230 tests). **Bug nghiêm trọng đã sửa:** dùng chuỗi marker literal (`__KO_STANDALONE_V1__`) để tìm payload là SAI — compiler nhúng chính literal đó vào read-only data của nó, nên `readStandaloneSource` luôn match code bytes → CLI hỏng hoàn toàn (`ko --version` cũng trả về source rác, `UnexpectedToken`). Chuyển sang **footer ở cuối file**: `<compiler bytes><source><payload_len u64 LE><magic u64 LE 0x4B4F5F5341414E44>`, đọc từ EOF lùi lại; binary gốc không có footer nên không bao giờ bị nhận nhầm.
+- **Architectural Mutations:** src/main.zig: thêm `STANDALONE_FOOTER_MAGIC`, `buildStandalone` (copy self exe + source + footer + chmod +x), `readStandaloneSource` (validate footer, đọc ngược); `mainInner` gọi `readStandaloneSource` trước mọi xử lý argv.
+- **Technical Debt & Anti-Patterns:** **Không bao giờ dùng chuỗi literal làm "magic marker" để phân biệt binary gốc vs binary đã nhúng payload** — compiler sẽ nhúng literal đó vào chính nó. Dùng footer ở cuối file (hoặc section riêng) với magic number dạng integer. API Zig 0.16: `std.process.executablePathAlloc(io, allocator)` (KHÔNG phải `getExecutablePathAlloc`); `Io.Dir.CreateFileOptions` KHÔNG có field `mode` — phải `chmod` sau khi tạo.
+- **Shared Variables & Symbols:** `buildStandalone`, `readStandaloneSource`, `STANDALONE_FOOTER_MAGIC` (main.zig).
+
+---
+
+### [2026-11-12] LONG-TERM MEMORY DUMP
+
+- **Identified Truths:** Zig 0.16.0 đã sẵn trong sandbox (`zig version = 0.16.0`). **Verify thực tế:** `zig build` thành công (không output lỗi). `zig build test < /dev/null` exit code 0, toàn bộ suite pass (227 tests: test_harness 1, test_3600 117, test_value 17, test_lexer_extended 40, test_parser_extended 41, test_modules 11), 0 leak. Thông báo "failed command: ... --listen=-" là artifact Zig test runner đọc stdin, không ảnh hưởng exit code.
+- **Architectural Mutations:** Không có thay đổi code trong phiên này (chỉ verify trạng thái hiện có).
+- **Technical Debt & Anti-Patterns:** `zig build test` dùng `--listen=-` làm treo nếu stdin không đóng; luôn chạy với `< /dev/null`. Chạy trực tiếp test binary thiếu `zig-out/bin` trong PATH → test_modules fail FileNotFound (mod_check không tìm được); phải chạy qua `zig build test`.
+- **Shared Variables & Symbols:** `KO_FIRESTORE_API_KEY` (biến môi trường, không hardcode).
+
+---
+
+### [2026-11-12] LONG-TERM MEMORY DUMP (URL Module Store)
+
+- **Identified Truths:** Đã thay đổi URL Module Store trong `SPECIFICATION.md:490` từ `https://ko-vietnam.ai.studio/mobule-store` sang `https://ko-lang.ai.studio/mobule-store`. Verify bằng `grep ko-lang SPECIFICATION.md` → 1 match, `grep ko-vietnam SPECIFICATION.md` → 0 match.
+- **Architectural Mutations:** Sửa 1 dòng trong SPECIFICATION.md (URL Module Store). Không thay đổi code build hay runtime.
+- **Technical Debt & Anti-Patterns:** URL này chỉ là documentation trong SPECIFICATION.md; code installer (`src/installer.zig`) đọc API key từ env và gọi Firestore project `argon-shine-w40ks`, không hardcode URL module-store trong code Zig.
+- **Shared Variables & Symbols:** `KO_FIRESTORE_API_KEY` (biến môi trường, không hardcode).
+
+---
+
+### [2026-11-12] LONG-TERM MEMORY DUMP (Module Store API)
+
+- **Identified Truths:** Đã thay đổi Module Store API trong `SPECIFICATION.md` và `src/installer.zig`: bỏ Firestore REST API, dùng REST API JSON thuần của `https://ko-lang.ai.studio`.
+  - `ko -list` → `GET https://ko-lang.ai.studio/api/module` (trả JSON array).
+  - `ko -install <name>` → `GET https://ko-lang.ai.studio/api/module/<name>` (trả JSON object với `githubLink`/`githubUrl`).
+  - Verify thực tế: `zig build` exit 0; `zig build test < /dev/null` exit 0, 227 tests pass.
+- **Architectural Mutations:** 
+  - `SPECIFICATION.md`: thay sección "Library Registry Gateway and API" từ Firestore endpoints thành REST API JSON mới (`/api/module`, `/api/module/<name>`).
+  - `src/installer.zig`: xoá hằng `FIRESTORE_BASE`/`FIRESTORE_PARENT`, hàm `getApiKey`; thêm `MODULE_STORE_BASE = "https://ko-lang.ai.studio"`; `listLibraries()` gọi `curl -s {base}/api/module`; `queryLibraryMetadata()` gọi `curl -s {base}/api/module/{name}` và trả về toàn bộ JSON text; `extractStringField()` viết lại để parse JSON thuần (`"field":"value"`) thay vì định dạng Firestore (`"stringValue"`).
+- **Technical Debt & Anti-Patterns:** `extractStringField` là JSON parser đơn giản (hand-rolled), không xử lý escaped string trong value; đủ cho metadata module store hiện tại. Không còn đọc `KO_FIRESTORE_API_KEY` trong installer (API mới không yêu cầu key theo spec).
+- **Shared Variables & Symbols:** `MODULE_STORE_BASE` hằng trong installer.zig.
+
+---
+
+### [2026-11-12] LONG-TERM MEMORY DUMP (Module Store API cleanup in SPECIFICATION.md)
+
+- **Identified Truths:** Đã xóa hoàn toàn mọi tham chiếu đến Firestore khỏi `SPECIFICATION.md` (trừ 1 ghi chú lịch sử tại dòng 781 về việc xóa API key rò rỉ). Flow diagram bước 2 đã đổi từ "Firestore GET API Query" thành "Module Store REST API Query: GET https://ko-lang.ai.studio/api/module/<library>". Verify bằng `grep -i firestore SPECIFICATION.md` → chỉ còn 1 match tại dòng 781 (ghi chú lịch sử).
+- **Architectural Mutations:** Sửa SPECIFICATION.md: endpoint list/install và flow diagram đã dùng REST API JSON mới của `ko-lang.ai.studio`.
+- **Technical Debt & Anti-Patterns:** Không còn hardcode URL Firestore nào trong spec.
+- **Shared Variables & Symbols:** `MODULE_STORE_BASE` hằng trong installer.zig.
+
+---
+
+### [2026-11-12] LONG-TERM MEMORY DUMP (Module Store API real-structure verify)
+
+- **Identified Truths:** Đã curl thực tế API `https://ko-lang.ai.studio` để xác minh cấu trúc JSON thật:
+  - `GET /api/module` → JSON array: `[{"name":"cloud","githubLink":"https://github.com/lytong760-cell/cloud","description":"none","tags":["zig"],"userId":"...","createdAt":"...","detail":{...}}]`
+  - `GET /api/module/<name>` → JSON object: `{"name":"cloud","detail":{"name":"cloud","githubLink":"...","description":"none","tags":["zig"],"userId":"...","createdAt":"..."}}`
+  - `githubLink` nằm **trong `detail`** (nested), không ở cấp cao nhất. Không có `version`, `language`, `githubUrl`, `zipUrl` trong response thật.
+  - Verify thực tế: `zig build` EXIT=0; `zig build test < /dev/null` EXIT=0, 227 tests pass.
+- **Architectural Mutations:**
+  - `SPECIFICATION.md`: cập nhật ví dụ response JSON cho `/api/module` và `/api/module/<name>` khớp với cấu trúc thật (có `detail` nested, có `tags`, `userId`, `createdAt`).
+  - `src/installer.zig`: thêm `extractDetailField()` parse JSON nested `"detail":{...}` để lấy `githubLink`; xoá `extractStringField()` cũ (không dùng nữa); `installLibrary()` gọi `extractDetailField(metadata, "githubLink")`.
+- **Technical Debt & Anti-Patterns:** `extractDetailField` là JSON parser hand-rolled đơn giản, chỉ xử lý quoted string value, không xử lý escaped string. Đủ cho metadata module store hiện tại.
+- **Shared Variables & Symbols:** `MODULE_STORE_BASE` hằng trong installer.zig.
+
+---
+
+### [2026-11-12] LONG-TERM MEMORY DUMP (Module Store API spec placeholder)
+
+- **Identified Truths:** Đã cập nhật `SPECIFICATION.md` dùng placeholder `<name>`, `<url>`, `<description>`, `<tag>`, `<userId>`, `<timestamp>` thay vì giá trị cứng "cloud" trong ví dụ response JSON của `/api/module` và `/api/module/<name>`. Cấu trúc JSON khớp với curl thực tế đã verify trước đó (githubLink nằm trong `detail` nested).
+- **Architectural Mutations:** Sửa SPECIFICATION.md: ví dụ JSON response dùng placeholder generic.
+- **Technical Debt & Anti-Patterns:** Không có.
+- **Shared Variables & Symbols:** `MODULE_STORE_BASE` hằng trong installer.zig.
+
+---
+
+### [2026-11-15] LONG-TERM MEMORY DUMP — Fix 6 bug từ BUG.md
+
+- **Identified Truths:** Đã fix toàn bộ bug trong `BUG.md`, verify bằng lệnh thật:
+  ```
+  zig build                                 → rc=0
+  zig build test < /dev/null                → EXIT=0 (15/15 pass)
+  [ Nope() ]                                → rc=3 (trước: 134 crash)
+  [ int(1)~a int(0)~b int(a/b)~c ]          → rc=3 (trước: 134)
+  [ string("")~s <input>(s) <printf>^(s) ]   → in "x" (trước: TypeError + crash)
+  [ int(7)~x <printf>^("x={x}\n") ]         → "x=7" (trước: "x={x}")
+  [ null~x <printf>^(x) ]                    → "TypeError: Cannot print an unassigned null value" (trước: message rỗng)
+  ```
+  - **BUG-1 (double-free, CRITICAL):** `src/executor.zig` dùng `errdefer chunk.deinit()` + 3 lời gọi `chunk.deinit()` tường minh trong nhánh catch/return. Khi lỗi runtime → `chunk.deinit()` tường minh rồi `return error` → `errdefer` free lần 2 trên cùng con trỏ → heap corruption (rc=134). **Fix:** `errdefer` → `defer` + cờ `freed: bool`; mọi đường thoát chỉ free một lần.
+  - **BUG-2 (input+printf crash, CRITICAL):** Cùng root cause với BUG-6. `[ string("")~s <input>(s) <printf>^(s) ]` store `s` 2 lần (var_decl + input); lần 2 `fetchPut` free key cũ → key trong map thành dangling → `load_var s` trả null → `TypeError` + crash. Chỉ xảy ra khi store ≥2 lần.
+  - **BUG-3 (mất nội suy printf, HIGH):** `vm.zig` `.print` instruction handler (dùng cho `<printf>` bytecode) gọi `val.print()` trực tiếp, không nội suy `{x}`. AST walker (`evaluateCall`) gọi `printInterpolated`. **Fix:** `.print` handler: `val == .string` → `printInterpolated(val.string)`. (Lưu ý: `callBuiltin("printf")` cũng thiếu nội suy — đã sửa tương tự, nhưng đường bytecode thực tế đi qua `.print` instruction.)
+  - **BUG-4 (nuốt message lỗi, HIGH):** `vm.zig` `raiseError` có `_ = message;` vứt bỏ toàn bộ ngữ cảnh. **Fix:** in `"{err_type}: {message}\n"` qua `stdoutWriter()` (giữ test hermetic — harness dùng discarding writer).
+  - **BUG-5 (5 đường deinit, MEDIUM):** Gộp cùng BUG-1 — `defer` + cờ `freed`.
+  - **BUG-6 (fetchPut use-after-free, CRITICAL — root cause thật của BUG-2):** 3 chỗ trong `src/vm.zig` (`.store_var` ~932, `assignValue` dict ~748, `.dict_set` ~1314) gọi `fetchPut(owned, val)` rồi `free(old_entry.key)`. **Zig 0.16 `fetchPut` GIỮ KEY CŨ** khi key đã tồn tại (chứng minh: `OLDKEY k1=true k2=false`, `KEPT k1=true k2=false`) → `old_entry.key` CHÍNH LÀ key map đang dùng → `free` nó = use-after-free → key thành rác → mọi `get()` sau đó trả null. **Fix:** khi `fetchPut` trả `Some(old)`: **free key MỚI** (`owned`/`key_copy`/`duped_key`), giữ `old_entry.key`; chỉ deinit `old_entry.value`.
+
+- **Architectural Mutations:**
+  - `src/executor.zig`: `errdefer chunk.deinit()` → `defer if (!freed) chunk.deinit()` + cờ `freed`.
+  - `src/vm.zig`: `.print` handler nội suy string; `raiseError` in message; `.input` handler bỏ `dupe` lần 2 (dùng `line` trực tiếp); 3 chỗ `fetchPut` free key mới thay vì key cũ.
+  - `src/vm_value_ops.zig`: `callBuiltin("printf")` nội suy string (đồng nhất với `evaluateCall`).
+  - `BUG.md`: thêm mục "TRẠNG THÁI: ĐÃ FIX" + BUG-6 (fetchPut).
+
+- **Technical Debt & Anti-Patterns:**
+  - **`fetchPut` giữ key cũ** — đây là biến thể tinh vi của MEDIUM-10 (MEMORY 2026-10-24 nói "fix via fetchPut", nhưng fetchPut **cũng** giữ key cũ nên vẫn phải cẩn thận: không bao giờ `free(old_entry.key)`).
+  - **`errdefer` + free tường minh = double-free** — `errdefer` phải là chủ sở hữu duy nhất. Nếu đã `defer`/`errdefer`, không được `deinit` thủ công rồi `return error`.
+  - **Test suite mù với bytecode** — `testing/test_3600.zig` gọi thẳng `VM.execute()` (AST walker), không qua `Executor` → không bao giờ chạm đường bytecode. Đây là lý do BUG-1/2/3 tồn tại lâu: `format_int_interpolation` xanh trong khi CLI in sai `x={x}`.
+  - **Debug bằng cách thêm print tạm** là cách duy nhất tìm ra BUG-6: triệu chứng (`TypeError`) không chỉ đúng nguyên nhân (key map bị free). Phải in từng instruction (`.store_var`/`.load_var`/key iterator) mới thấy key là byte rác.
+
+- **Shared Variables & Symbols:**
+  - `freed: bool` (cờ trong `executor.execute`).
+  - `printInterpolated` (đã có, giờ dùng cả ở `.print` handler bytecode).
+  - `error.NullUnassigned`, `Value.printAllowNull` (giữ nguyên).
+
+---
+
+### [2026-11-15] LONG-TERM MEMORY DUMP — Kiểm chứng semantics `fetchPut` (Zig 0.16)
+
+- **Identified Truths:** Test `std.StringHashMap(i32)` cho kết quả:
+  ```
+  OLDKEY k1=true  k2=false   ← fetchPut trả về entry với key CŨ (k1)
+  KEPT   k1=true  k2=false   ← map GIỮ key cũ (k1), KHÔNG thay bằng key mới
+  GET=2                       ← value mới được store
+  ```
+  → Khi `fetchPut` trả `Some(old_entry)`, `old_entry.key` là key đang nằm trong map. Key mới (`owned`/`key_copy`/`duped_key`) KHÔNG được dùng → phải free key mới, không free key cũ.
+
+- **Architectural Mutations:** Không (đây là chân lý ngôn ngữ, dùng để fix BUG-6).
+
+- **Technical Debt & Anti-Patterns:** Mọi code dùng `fetchPut` + `free(old.key)` đều là use-after-free tiềm ẩn. Đã fix 3 chỗ trong `src/vm.zig`; các `.put()` khác chỉ leak key mới (không crash) nhưng vẫn nên rà soát.
+
+- **Shared Variables & Symbols:** N/A.
+
+---

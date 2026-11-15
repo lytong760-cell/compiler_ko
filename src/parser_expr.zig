@@ -247,6 +247,15 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
         return e;
     }
 
+    if (tok == .identifier and std.mem.eql(u8, tok.identifier, "none")) {
+        _ = self.advance();
+        const lit = try self.allocator.create(ast.Literal);
+        lit.* = ast.Literal{ .kind = .none, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+        const e = try self.allocator.create(ast.Expr);
+        e.* = .{ .literal = lit.* };
+        return e;
+    }
+
     if (tok == .identifier) {
         const name = tok.identifier;
         _ = self.advance();
@@ -272,6 +281,18 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
         if (self.current() == .l_brace) {
             const index_expr = try self.parseIndexAccessSuffix(name);
             return index_expr;
+        }
+        if (self.current() == .priority_lit) {
+            const num = self.current().priority_lit;
+            _ = self.advance();
+            const idx_expr = try self.allocator.create(ast.Expr);
+            idx_expr.* = .{ .literal = .{ .kind = .int, .int_value = num, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator } };
+            const ia = try self.allocator.create(ast.IndexAccess);
+            ia.* = ast.IndexAccess{ .object = try self.allocator.create(ast.Expr), .index = idx_expr };
+            ia.object.* = .{ .identifier = name };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .index_access = ia };
+            return e;
         }
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .identifier = name };
@@ -367,9 +388,75 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
 
     if (tok == .l_paren) {
         _ = self.advance();
-        const expr = try self.parseExpression();
+        if (self.current() == .r_paren) {
+            _ = self.advance();
+            // null literal
+            const lit = try self.allocator.create(ast.Literal);
+            lit.* = ast.Literal{ .kind = .null, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .literal = lit.* };
+            return e;
+        }
+        const first = try self.parseExpression();
+        // compact dict literal: (key{value}, ...)
+        if (self.current() == .l_brace) {
+            var entries = std.array_list.Managed(ast.DictEntry).init(self.allocator);
+            var consumed = false;
+            errdefer if (!consumed) entries.deinit();
+            // first entry
+            const val1 = first;
+            _ = self.advance(); // {
+            const v1 = try self.parseExpression();
+            try self.expectRBBrace();
+            const key1 = switch (val1.*) {
+                .literal => |lit| switch (lit.kind) {
+                    .string => lit.raw,
+                    .int => try std.fmt.allocPrint(self.allocator, "{d}", .{lit.int_value}),
+                    else => return error.ExpectedDictKey,
+                },
+                .identifier => |name| name,
+                else => return error.ExpectedDictKey,
+            };
+            const e1 = try self.allocator.create(ast.DictEntry);
+            e1.* = ast.DictEntry{ .key = key1, .value = v1, .allocator = self.allocator };
+            try entries.append(e1.*);
+            while (self.current() == .comma) {
+                _ = self.advance();
+                const ke = try self.parseExpression();
+                if (self.current() != .l_brace) return error.ExpectedLBrace;
+                _ = self.advance();
+                const ve = try self.parseExpression();
+                try self.expectRBBrace();
+                const kk = switch (ke.*) {
+                    .literal => |lit| switch (lit.kind) {
+                        .string => lit.raw,
+                        .int => try std.fmt.allocPrint(self.allocator, "{d}", .{lit.int_value}),
+                        else => return error.ExpectedDictKey,
+                    },
+                    .identifier => |name| name,
+                    else => return error.ExpectedDictKey,
+                };
+                const ee = try self.allocator.create(ast.DictEntry);
+                ee.* = ast.DictEntry{ .key = kk, .value = ve, .allocator = self.allocator };
+                try entries.append(ee.*);
+                ke.deinit();
+                self.allocator.destroy(ke);
+            }
+            try self.expectRParen();
+            const dict_entries = entries.items;
+            consumed = true;
+            const lit = try self.allocator.create(ast.Literal);
+            lit.* = ast.Literal{ .kind = .dict, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = dict_entries, .allocator = self.allocator };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .literal = lit.* };
+            // free first expr node (key was extracted)
+            val1.deinit();
+            self.allocator.destroy(val1);
+            return e;
+        }
+        // normal parenthesized expression (possibly tuple? treat as single)
         try self.expectRParen();
-        return expr;
+        return first;
     }
 
     if (tok == .l_brace) {
@@ -379,9 +466,10 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
         errdefer if (!consumed) entries.deinit();
         while (!(self.current() == .r_brace) and !self.isAtEnd()) {
             const key_expr = try self.parseExpression();
+            var value_expr: *ast.Expr = undefined;
             if (self.current() != .colon) return error.ExpectedColon;
             _ = self.advance();
-            const value_expr = try self.parseExpression();
+            value_expr = try self.parseExpression();
             const key = switch (key_expr.*) {
                 .literal => |lit| switch (lit.kind) {
                     .string => lit.raw,
@@ -390,6 +478,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
                 .identifier => |name| name,
                 else => return error.ExpectedDictKey,
             };
+            // ensure key is owned string when allocated above; for identifier/name use as-is
             key_expr.deinit();
             self.allocator.destroy(key_expr);
             const entry = try self.allocator.create(ast.DictEntry);
@@ -429,7 +518,8 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
 
 pub fn parseSystemTagExpr(self: *Parser) anyerror!*ast.Expr {
     _ = self.advance();
-    const tag = try self.parseSystemTagName();
+    const base_tag = try self.parseSystemTagName();
+    var tag = base_tag;
 
     var args = std.array_list.Managed(ast.Expr).init(self.allocator);
     defer args.deinit();
@@ -443,6 +533,19 @@ pub fn parseSystemTagExpr(self: *Parser) anyerror!*ast.Expr {
         try args.append(ast.Expr{ .literal = enc_lit.* });
     } else {
         try self.expectGT();
+    }
+
+    if (std.mem.eql(u8, tag, "print")) {
+        const is_type_kw = self.current() == .keyword;
+        const is_type_id = self.current() == .identifier;
+        if (is_type_kw or is_type_id) {
+            const next_tok = self.peek(1);
+            if (next_tok == .caret or next_tok == .l_paren) {
+                const type_name = if (is_type_id) self.current().identifier else lexer.Token.keywordText(self.current().keyword);
+                _ = self.advance();
+                tag = try std.fmt.allocPrint(self.allocator, "print:{s}", .{type_name});
+            }
+        }
     }
 
     if (self.current() == .caret) {

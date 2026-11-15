@@ -1,15 +1,6 @@
 const std = @import("std");
 
-const FIRESTORE_BASE = "https://firestore.googleapis.com/v1/projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents";
-const FIRESTORE_PARENT = "projects/argon-shine-w40ks/databases/ai-studio-ko-5b9b53f3-6da2-43ff-b76a-de7f7ee7b198/documents";
-
-fn getApiKey(environ_map: std.process.Environ.Map) ![]const u8 {
-    if (environ_map.get("KO_FIRESTORE_API_KEY")) |key| {
-        return key;
-    } else {
-        return error.MissingApiKey;
-    }
-}
+const MODULE_STORE_BASE = "https://ko-lang.ai.studio";
 
 pub const Installer = struct {
     allocator: std.mem.Allocator,
@@ -43,11 +34,24 @@ pub const Installer = struct {
         }
         std.debug.print("Installing library: {s}...\n", .{lib_name});
 
-        const github_url = try self.queryLibraryMetadata(lib_name);
-        defer self.allocator.free(github_url);
-        std.debug.print("GitHub URL: {s}\n", .{github_url});
+        const metadata = try self.queryLibraryMetadata(lib_name);
+        defer self.allocator.free(metadata);
 
-        try self.cloneRepo(github_url);
+        const github_url = try self.extractDetailField(metadata, "githubLink");
+        defer self.allocator.free(github_url);
+        if (github_url.len == 0) {
+            const github_url2 = try self.extractDetailField(metadata, "githubUrl");
+            defer self.allocator.free(github_url2);
+            if (github_url2.len == 0) {
+                return error.LibraryNotFound;
+            }
+            std.debug.print("GitHub URL: {s}\n", .{github_url2});
+            try self.cloneRepo(github_url2);
+        } else {
+            std.debug.print("GitHub URL: {s}\n", .{github_url});
+            try self.cloneRepo(github_url);
+        }
+
         try self.inspectAndFilterZip();
         const lang = try self.detectLanguage();
         std.debug.print("Detected language: {s}\n", .{lang});
@@ -61,22 +65,11 @@ pub const Installer = struct {
     pub fn listLibraries(self: *Installer) ![]const []const u8 {
         std.debug.print("Querying all libraries from Module Store...\n", .{});
 
-        const api_key = try getApiKey(self.environ_map);
-        defer self.allocator.free(api_key);
-
-        const url = try std.fmt.allocPrint(self.allocator, "{s}:runQuery?key={s}", .{
-            FIRESTORE_BASE,
-            api_key,
-        });
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/api/module", .{MODULE_STORE_BASE});
         defer self.allocator.free(url);
 
-        const post_body = try std.fmt.allocPrint(self.allocator,
-            \\{{"parent": "{s}", "query": {{"from": [{{"collectionId": "libraries"}}]}}}}
-            , .{FIRESTORE_PARENT});
-        defer self.allocator.free(post_body);
-
         const result = std.process.run(self.allocator, self.io, .{
-            .argv = &.{ "curl", "-s", "-X", "POST", "-H", "Content-Type: application/json", "-d", post_body, url },
+            .argv = &.{ "curl", "-s", url },
         }) catch |err| {
             std.debug.print("curl failed: {any}\n", .{err});
             return error.CommandFailed;
@@ -140,33 +133,80 @@ pub const Installer = struct {
     }
 
     fn queryLibraryMetadata(self: *Installer, lib_name: []const u8) ![]const u8 {
-        const api_key = try getApiKey(self.environ_map);
-        defer self.allocator.free(api_key);
-
-        const url = try std.fmt.allocPrint(self.allocator, "{s}/libraries/{s}?key={s}", .{
-            FIRESTORE_BASE,
-            lib_name,
-            api_key,
-        });
+        const url = try std.fmt.allocPrint(self.allocator, "{s}/api/module/{s}", .{ MODULE_STORE_BASE, lib_name });
         defer self.allocator.free(url);
 
         const result = std.process.run(self.allocator, self.io, .{
-            .argv = &.{"curl", "-s", url},
+            .argv = &.{ "curl", "-s", url },
         }) catch |err| {
             std.debug.print("curl failed: {any}\n", .{err});
             return error.CommandFailed;
         };
         defer self.allocator.free(result.stdout);
+        defer self.allocator.free(result.stderr);
 
-        var github_url = try self.extractStringField(result.stdout, "githubLink");
-        if (github_url.len == 0) {
-            github_url = try self.extractStringField(result.stdout, "githubUrl");
-        }
-        if (github_url.len == 0) {
+        if (result.stdout.len == 0) {
             return error.LibraryNotFound;
         }
-        const duped = try self.allocator.dupe(u8, github_url);
+
+        const duped = try self.allocator.dupe(u8, result.stdout);
         return duped;
+    }
+
+    fn extractDetailField(self: *Installer, json: []const u8, field: []const u8) ![]const u8 {
+        // Parse JSON with nested "detail": { "field": "value", ... }
+        var idx: usize = 0;
+        while (idx < json.len) {
+            if (json[idx] == '"') {
+                const key_start = idx;
+                idx += 1;
+                var key_end: usize = idx;
+                while (key_end < json.len and json[key_end] != '"') key_end += 1;
+                if (key_end >= json.len) break;
+                const key_len = key_end - key_start - 1;
+                if (key_len == 6 and std.mem.eql(u8, json[key_start + 1 .. key_end], "detail")) {
+                    idx = key_end + 1;
+                    while (idx < json.len and (json[idx] == ' ' or json[idx] == '\t' or json[idx] == '\n' or json[idx] == '\r' or json[idx] == ':')) idx += 1;
+                    while (idx < json.len and (json[idx] == ' ' or json[idx] == '\t' or json[idx] == '\n' or json[idx] == '\r')) idx += 1;
+                    if (idx < json.len and json[idx] == '{') {
+                        var d_idx = idx + 1;
+                        while (d_idx < json.len) {
+                            if (json[d_idx] == '"') {
+                                const d_key_start = d_idx;
+                                d_idx += 1;
+                                var d_key_end: usize = d_idx;
+                                while (d_key_end < json.len and json[d_key_end] != '"') d_key_end += 1;
+                                if (d_key_end >= json.len) break;
+                                const d_key_len = d_key_end - d_key_start - 1;
+                                if (d_key_len == field.len and std.mem.eql(u8, json[d_key_start + 1 .. d_key_end], field)) {
+                                    d_idx = d_key_end + 1;
+                                    while (d_idx < json.len and (json[d_idx] == ' ' or json[d_idx] == '\t' or json[d_idx] == '\n' or json[d_idx] == '\r' or json[d_idx] == ':')) d_idx += 1;
+                                    while (d_idx < json.len and (json[d_idx] == ' ' or json[d_idx] == '\t' or json[d_idx] == '\n' or json[d_idx] == '\r')) d_idx += 1;
+                                    if (d_idx < json.len and json[d_idx] == '"') {
+                                        d_idx += 1;
+                                        const val_start = d_idx;
+                                        while (d_idx < json.len and json[d_idx] != '"') d_idx += 1;
+                                        if (d_idx < json.len) {
+                                            const val = json[val_start .. d_idx];
+                                            return try self.allocator.dupe(u8, val);
+                                        }
+                                    }
+                                } else {
+                                    d_idx = d_key_end + 1;
+                                }
+                            } else {
+                                d_idx += 1;
+                            }
+                        }
+                    }
+                } else {
+                    idx = key_end + 1;
+                }
+            } else {
+                idx += 1;
+            }
+        }
+        return "";
     }
 
     fn cloneRepo(self: *Installer, repo_url: []const u8) !void {
@@ -290,15 +330,15 @@ pub const Installer = struct {
         const module_dir = try std.fmt.allocPrint(self.allocator, "src/module/{s}", .{lib_name});
         defer self.allocator.free(module_dir);
         try std.Io.Dir.cwd().createDirPath(self.io, module_dir);
-        
+
         const manifest_path = try std.fmt.allocPrint(self.allocator, "{s}/module.json", .{module_dir});
         defer self.allocator.free(manifest_path);
-        
+
         const manifest_content = try std.fmt.allocPrint(self.allocator,
             \\{{"name":"{s}","version":"1.0.0","language":"c","installed_at":{d}}}
             , .{ lib_name, std.Io.Timestamp.now(self.io, .real).toMilliseconds() });
         defer self.allocator.free(manifest_content);
-        
+
         try std.Io.Dir.cwd().writeFile(self.io, .{ .sub_path = manifest_path, .data = manifest_content });
         std.debug.print("Module manifest written to: {s}\n", .{manifest_path});
     }
@@ -344,24 +384,5 @@ pub const Installer = struct {
     pub fn cleanup(self: *Installer) !void {
         _ = std.Io.Dir.cwd().access(self.io, self.temp_dir, .{}) catch {};
         std.Io.Dir.cwd().deleteTree(self.io, self.temp_dir) catch {};
-    }
-
-    fn extractStringField(self: *Installer, json: []const u8, field: []const u8) ![]const u8 {
-        _ = self;
-        var iter = std.mem.splitSequence(u8, json, "\"");
-        var found_field = false;
-        while (iter.next()) |part| {
-            if (found_field) {
-                if (std.mem.eql(u8, part, "stringValue")) {
-                    _ = iter.next() orelse "";
-                    const val = iter.next() orelse "";
-                    return val;
-                }
-            }
-            if (std.mem.eql(u8, part, field)) {
-                found_field = true;
-            }
-        }
-        return "";
     }
 };
