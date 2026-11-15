@@ -259,19 +259,7 @@ pub const Installer = struct {
                 var ext_dir = try std.Io.Dir.cwd().openDir(self.io, extract_dir, .{ .iterate = true });
                 defer ext_dir.close(self.io);
 
-                var file_iter = ext_dir.iterate();
-                while (try file_iter.next(self.io)) |file| {
-                    if (file.kind == .file) {
-                        if (std.mem.endsWith(u8, file.name, ".java")) return "java";
-                        if (std.mem.endsWith(u8, file.name, ".lua")) return "lua";
-                        if (std.mem.endsWith(u8, file.name, ".py")) return "python";
-                        if (std.mem.endsWith(u8, file.name, ".c")) return "c";
-                        if (std.mem.endsWith(u8, file.name, ".cpp")) return "cpp";
-                        if (std.mem.endsWith(u8, file.name, ".js")) return "nodejs";
-                        if (std.mem.endsWith(u8, file.name, ".ko")) return "ko";
-                        if (std.mem.endsWith(u8, file.name, ".zig")) return "zig";
-                    }
-                }
+                if (try self.scanDirForLanguage(ext_dir)) |lang| return lang;
             }
         }
         return "unknown";
@@ -368,9 +356,13 @@ pub const Installer = struct {
     }
 
     fn runCommand(self: *Installer, args: []const []const u8) !void {
-        const result = try std.process.run(self.allocator, self.io, .{
+        const result = std.process.run(self.allocator, self.io, .{
             .argv = args,
-        });
+            .timeout = .{ .duration = .{ .raw = std.Io.Duration.fromSeconds(30), .clock = .real } },
+        }) catch |err| switch (err) {
+            error.Timeout => return error.CommandTimeout,
+            else => return error.CommandFailed,
+        };
         defer self.allocator.free(result.stdout);
         defer self.allocator.free(result.stderr);
         switch (result.term) {
@@ -379,6 +371,27 @@ pub const Installer = struct {
             },
             else => return error.CommandFailed,
         }
+    }
+
+    fn scanDirForLanguage(self: *Installer, dir: std.Io.Dir) !?[]const u8 {
+        var iter = dir.iterate();
+        while (try iter.next(self.io)) |entry| {
+            if (entry.kind == .file) {
+                if (std.mem.endsWith(u8, entry.name, ".java")) return "java";
+                if (std.mem.endsWith(u8, entry.name, ".lua")) return "lua";
+                if (std.mem.endsWith(u8, entry.name, ".py")) return "python";
+                if (std.mem.endsWith(u8, entry.name, ".c")) return "c";
+                if (std.mem.endsWith(u8, entry.name, ".cpp")) return "cpp";
+                if (std.mem.endsWith(u8, entry.name, ".js")) return "nodejs";
+                if (std.mem.endsWith(u8, entry.name, ".ko")) return "ko";
+                if (std.mem.endsWith(u8, entry.name, ".zig")) return "zig";
+            } else if (entry.kind == .directory) {
+                var subdir = dir.openDir(self.io, entry.name, .{ .iterate = true }) catch continue;
+                defer subdir.close(self.io);
+                if (try self.scanDirForLanguage(subdir)) |lang| return lang;
+            }
+        }
+        return null;
     }
 
     pub fn cleanup(self: *Installer) !void {

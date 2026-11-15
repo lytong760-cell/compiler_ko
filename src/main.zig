@@ -405,17 +405,50 @@ fn mainInner(it: std.process.Init) !u8 {
     return try executeCode(allocator, it.io, source, file_path);
 }
 
+fn isValidLibraryName(name: []const u8) bool {
+    if (name.len == 0) return false;
+    for (name) |c| {
+        if (!(std.ascii.isAlphanumeric(c) or c == '_' or c == '-')) return false;
+    }
+    return true;
+}
+
 fn scanPluginDir(writer: *std.Io.Writer, io: std.Io, path: []const u8) void {
     var dir = std.Io.Dir.cwd().openDir(io, path, .{ .iterate = true }) catch return;
     defer dir.close(io);
     writer.print("  {s}:\n", .{path}) catch {};
+
     var iter = dir.iterate();
     while (iter.next(io) catch null) |entry| {
         if (entry.kind != .directory) continue;
+        if (!isValidLibraryName(entry.name)) continue;
+
         var mbuf: [4096]u8 = undefined;
         const manifest_path = std.fmt.bufPrint(&mbuf, "{s}/{s}/module.json", .{ path, entry.name }) catch continue;
         const data = std.Io.Dir.cwd().readFileAlloc(io, manifest_path, std.heap.page_allocator, .limited(64 * 1024)) catch continue;
         defer std.heap.page_allocator.free(data);
+
+        var parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, data, .{}) catch continue;
+        defer parsed.deinit();
+
+        if (parsed.value != .object) continue;
+        const obj = parsed.value.object;
+
+        const name_val = obj.get("name") orelse continue;
+        if (name_val != .string) continue;
+        const version_val = obj.get("version") orelse continue;
+        if (version_val != .string) continue;
+        const language_val = obj.get("language") orelse continue;
+        if (language_val != .string) continue;
+
+        const name = name_val.string;
+        const version = version_val.string;
+        const language = language_val.string;
+
+        if (!isValidLibraryName(name)) continue;
+        if (version.len == 0) continue;
+        if (language.len == 0) continue;
+
         writer.print("    - {s}\n", .{entry.name}) catch {};
     }
 }
@@ -592,6 +625,67 @@ fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, sou
     return 0;
 }
 
+// Returns true when `source` has balanced brackets/parens/braces, no
+// unclosed string/comment, and never went negative. Brackets inside strings
+// (single/double/backtick quotes) and |...| comments are ignored.
+fn blockComplete(source: []const u8) bool {
+    var square: i32 = 0;
+    var curly: i32 = 0;
+    var round: i32 = 0;
+    var bad = false;
+    var i: usize = 0;
+    var in_str: u8 = 0;
+    var in_comment = false;
+    while (i < source.len) {
+        const c = source[i];
+        if (in_comment) {
+            if (c == '|') in_comment = false;
+            i += 1;
+            continue;
+        }
+        if (in_str != 0) {
+            if (c == '\\') {
+                i += 2;
+                continue;
+            }
+            if (c == in_str) in_str = 0;
+            i += 1;
+            continue;
+        }
+        if (c == '"' or c == '\'' or c == '`') {
+            in_str = c;
+            i += 1;
+            continue;
+        }
+        if (c == '|') {
+            in_comment = true;
+            i += 1;
+            continue;
+        }
+        switch (c) {
+            '[' => square += 1,
+            ']' => {
+                square -= 1;
+                if (square < 0) bad = true;
+            },
+            '{' => curly += 1,
+            '}' => {
+                curly -= 1;
+                if (curly < 0) bad = true;
+            },
+            '(' => round += 1,
+            ')' => {
+                round -= 1;
+                if (round < 0) bad = true;
+            },
+            else => {},
+        }
+        i += 1;
+    }
+    if (in_str != 0 or in_comment or bad) return false;
+    return square == 0 and curly == 0 and round == 0;
+}
+
 fn runRepl(allocator: std.mem.Allocator, io: std.Io) !u8 {
     var stdin_buf: [4096]u8 = undefined;
     var file_reader = std.Io.File.stdin().reader(io, &stdin_buf);
@@ -604,16 +698,28 @@ fn runRepl(allocator: std.mem.Allocator, io: std.Io) !u8 {
     var accum = std.array_list.Managed(u8).init(allocator);
     defer accum.deinit();
 
-    var depth: i32 = 0;
     out.writeAll("ko repl (type 'exit' to quit)\n") catch {};
     out.flush() catch {};
 
     while (true) {
-        out.writeAll(if (depth == 0) "ko> " else "... ") catch {};
+        out.writeAll(if (accum.items.len == 0 or blockComplete(accum.items)) "ko> " else "... ") catch {};
         out.flush() catch {};
 
         const line = reader.takeDelimiterInclusive('\n') catch |err| switch (err) {
-            error.EndOfStream => break,
+            error.EndOfStream => {
+                // Execute a final, complete, non-empty block before exiting.
+                if (accum.items.len > 0 and blockComplete(accum.items)) {
+                    const trimmed = std.mem.trim(u8, accum.items, " \t\r\n");
+                    if (trimmed.len > 0) {
+                        if (accum.items.len == 0 or accum.items[accum.items.len - 1] != '\n') try accum.append('\n');
+                        const source = accum.items;
+                        const rc = executeCode(allocator, io, source, "<repl>") catch 1;
+                        if (rc != 0) std.debug.print("exit code: {d}\n", .{rc});
+                    }
+                    accum.clearRetainingCapacity();
+                }
+                break;
+            },
             else => {
                 std.debug.print("read error: {any}\n", .{err});
                 return 1;
@@ -621,24 +727,23 @@ fn runRepl(allocator: std.mem.Allocator, io: std.Io) !u8 {
         };
 
         const trimmed = std.mem.trim(u8, line, " \t\r\n");
-        if (depth == 0 and (std.mem.eql(u8, trimmed, "exit") or std.mem.eql(u8, trimmed, "quit"))) {
+        if ((accum.items.len == 0 or blockComplete(accum.items)) and
+            (std.mem.eql(u8, trimmed, "exit") or std.mem.eql(u8, trimmed, "quit")))
+        {
             break;
         }
 
-        for (line) |c| {
-            if (c == '[') depth += 1;
-            if (c == ']') depth -= 1;
-        }
         try accum.appendSlice(line);
 
-        if (depth <= 0 and accum.items.len > 0) {
-            // ensure at least one newline
-            if (accum.items[accum.items.len - 1] != '\n') try accum.append('\n');
-            const source = accum.items;
-            const rc = executeCode(allocator, io, source, "<repl>") catch 1;
-            if (rc != 0) std.debug.print("exit code: {d}\n", .{rc});
+        if (blockComplete(accum.items)) {
+            const trimmed_acc = std.mem.trim(u8, accum.items, " \t\r\n");
+            if (trimmed_acc.len > 0) {
+                if (accum.items.len == 0 or accum.items[accum.items.len - 1] != '\n') try accum.append('\n');
+                const source = accum.items;
+                const rc = executeCode(allocator, io, source, "<repl>") catch 1;
+                if (rc != 0) std.debug.print("exit code: {d}\n", .{rc});
+            }
             accum.clearRetainingCapacity();
-            depth = 0;
         }
     }
     out.writeAll("bye\n") catch {};
