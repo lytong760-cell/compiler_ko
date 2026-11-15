@@ -352,3 +352,9 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 - **Shared Variables & Symbols:** N/A.
 
 ---
+
+### [2026-11-15] LONG-TERM MEMORY DUMP
+- **Identified Truths:** architecture.drawio.svg is a draw.io-compatible file: outer SVG with `content` attribute holding escaped mxfile; both layers must be valid XML.
+- **Architectural Mutations:** Replaced placeholder 1x1 SVG with full architecture diagram derived from SPECIFICATION.md.
+- **Technical Debt & Anti-Patterns:** None.
+- **Shared Variables & Symbols:** Node IDs: title, src, lex, ast, scope, eng, exec, state, srcbox, cond, imp, loop, java, cpp, zig, ph1..ph8, cf1..cf6, secA..secE, d1..d3, s1..s7.

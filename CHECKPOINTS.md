@@ -134,3 +134,28 @@
 - **Next Execution Phase Vectors:** none
 - **Volatile Context Diagnostics:** Đã nạp MEMORY.md và CHECKPOINTS.md vào ngữ cảnh. Verify thực tế: Zig 0.16.0 (`zig version = 0.16.0`); `zig build` thành công; `zig build test < /dev/null` exit code 0, toàn bộ suite pass (227 tests: test_harness 1, test_3600 117, test_value 17, test_lexer_extended 40, test_parser_extended 41, test_modules 11), 0 leak. Không có thay đổi code mới trong phiên này.
 - **Next Execution Phase Vectors:** Chờ yêu cầu tiếp theo từ user; ứng cử viên: tiếp tục Phase 6 Tooling (ko build native binary, plugin loader discovery ./libs & ~/.ko/plugins + manifest, completion runtime, API server CORS/rate limit/timeout runCommand/recursive detectLanguage), diagnostics multi-error, hoặc generics design.
+
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** SUCCESS
+- **Active Node/Context:** Phase 6 Tooling — REPL, plugin loader, installer timeout/recursive, API server socket timeout, completion smoke.
+- **Volatile Context Diagnostics:**
+  ```
+  zig build                                 → rc=0
+  zig build test < /dev/null                → EXIT=0 (230 tests pass)
+  zsh -n (completion)                       → OK
+  fish --no-execute (completion)            → OK
+  bash -n (completion)                      → OK
+  python3 -m py_compile api_server.py       → OK
+  ko repl (multi-line block)                → prints 10, EXIT=0
+  ko repl (empty input)                     → bye, EXIT=0
+  ko repl (string with brackets)            → a[b]c, EXIT=0
+  ko -plugins                               → lists valid manifests only
+  ko examples/simple.ko / medium.ko / test.ko → OK
+  ```
+- **Next Execution Phase Vectors:** None for Phase 6. Phase 7/8 remain (MEDIUM/LOW hardening, generics design doc).
+
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** SUCCESS
+- **Active Node/Context:** src/image/architecture.drawio.svg (draw.io diagram)
+- **Volatile Context Diagnostics:** Regenerated architecture.drawio.svg from SPECIFICATION.md: 7 sections (mathematical pipeline, conductor+subsystems, multi-language tiers, execution pipeline phases, CDEL frame, file structure sections A-E, EngineTarget dispatch). Outer SVG + embedded mxfile both parse as XML (69 mxCell). No code/build changes.
+- **Next Execution Phase Vectors:** none
