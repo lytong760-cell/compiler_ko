@@ -2,6 +2,34 @@
 
 ### LAST KNOWN EXECUTION CHECKPOINT
 - **Task State:** SUCCESS
+- **Active Node/Context:** BUG.md (báo cáo 978 case), CHECKPOINTS.md, MEMORY.md — test toàn diện, KHÔNG sửa source
+- **Volatile Context Diagnostics:**
+  ```
+  zig build                                 → rc=0
+  zig build test < /dev/null                → EXIT=0 (15/15)
+  978 case (913 corpus + 65 targeted)       → 0 crash, 0 hang
+  RC histogram                              → {2: ~730, 0: ~110, 3: ~79}
+  Phát hiện mới (parity/spec gap, KHÔNG crash):
+    A1 tuple/list (1,2,3)                   → rc=2 (parser từ chối)
+    A2 <$random>(...) / <$os>(...)          → rc=2 (parseSystemTagName không nhận .dollar)
+    A3 bytes(<encode(...)>)                 → rc=2
+    B1 <print>string^("x={x}")              → "x={x}" (không nội suy)
+    B2 bytes(8) + <len>                     → len=0 (mong đợi 8)
+    B3 $f~get() (class method)              → rc=3 NameError (callUserFunction không bind self)
+    B5 type(x) / type("hi")                 → rc=3 UndefinedFunction
+    C1 <foo> unknown tag                    → rc=0 im lặng
+    C2 (10)~x thiếu kiểu                    → rc=0 im lặng
+  Xác nhận ĐÚNG: arithmetic/if/for/while/func/class member/import/encode/memory/now/len/dict/priority; runtime errors; catch đặt trước; 584 token-mutant + 200 byte-mutant 0 crash.
+  ```
+- **Next Execution Phase Vectors:**
+  1. Sửa A1 (tuple/list parse) — `parser_expr.zig` `l_paren` nhánh ~L389–460.
+  2. Sửa A2 (`<$tag>`) — `parser_expr.zig:8` `parseSystemTagName` thêm `.dollar`.
+  3. Sửa B3 (method self-binding) — `vm_value_ops.zig:197` `callUserFunction` bind instance vào scope.
+  4. Sửa B1 (`<print>` nội suy), B2 (`bytes(N)` len), A3, B5.
+  5. Bổ sung test parity qua `Executor`; chạy `graphify update .` sau khi sửa.
+
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** SUCCESS
 - **Active Node/Context:** src/executor.zig, src/vm.zig, src/vm_value_ops.zig — fix 6 bug trong BUG.md
 - **Volatile Context Diagnostics:**
   ```

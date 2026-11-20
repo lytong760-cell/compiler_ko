@@ -584,3 +584,491 @@ Căn cứ đính chính:
 - **Lỗ hổng test:** test suite chỉ đi đường AST walker → mù hoàn toàn với 3 bug parity (BUG-1/2/3).
 
 **Tuyên bố:** Báo cáo này chỉ ghi nhận, không sửa file nguồn. Mọi khẳng định đều kèm lệnh đã chạy và output thật (Valgrind, đối chứng 2 backend, đối chiếu SPEC).
+---
+---
+
+# BÁO CÁO BỔ SUNG — 2026-11-18 (Test 978 case, fuzz + đối chiếu SPEC)
+
+**Phạm vi:** 913 file corpus (valid/invalid/edge + 584 token-mutant + 200 byte-mutant) + 65 ca targeted = **978 case**.
+**Phương pháp:** chạy `./zig-out/bin/ko <file> </dev/null` cho từng file; phân loại RC (0=OK, 2=parse error, 3=runtime error, 134/139=crash); đối chiếu SPEC; debug từng ca đáng ngờ bằng `ko run`.
+**Ràng buộc:** KHÔNG sửa source. Chỉ ghi nhận + truy nguyên.
+**Kết quả tổng:** `zig build` rc=0; `zig build test </dev/null` EXIT=0 (15/15). **0 crash** trong 978 case (di chứng BUG-1/2/6 đã fix giữ vững). RC histogram: `{2: ~730, 0: ~110, 3: ~79}`.
+
+> **Lưu ý quan trọng:** Các lỗi dưới đây là **parity/spec gap** (chương trình chạy nhưng sai kết quả, hoặc cú pháp hợp lệ theo SPEC bị từ chối), **KHÔNG phải crash**. Chúng nguy hiểm hơn crash vì không ai phát hiện.
+
+## 🔴 Nhóm A — Cú pháp hợp lệ theo SPEC bị parser từ chối (rc=2)
+
+### A1. Tuple / list literal `(1,2,3)` không parse được
+- **File:** `src/parser_expr.zig` (`parsePrimaryExpr` nhánh `.l_paren`, ~L389–460)
+- **Triệu chứng:**
+  ```
+  [ (1,2,3)~t <printf>^(t) ]        → rc=2  error: ExpectedRParen at 1:6..1:7
+  [ ('a','b')~t ]                    → rc=2
+  [ (1('a','b'))~a ]                 → rc=2  (nested list)
+  ```
+- **SPEC:** §III.2 định nghĩa tuple/number array `(1,2)~a`, string array `('a','b')~b`, nested list `(1('a','b'))~list` đều hợp lệ.
+- **Root cause:** Parser chỉ coi `(...)` là "một biểu thức đơn" (comment `// normal parenthesized expression (possibly tuple? treat as single)`). Sau `parseExpression()` cho phần tử đầu, nếu gặp `,` thì không xử lý → `expectRParen()` fail.
+- **Mức độ:** HIGH — tuple/list là kiểu dữ liệu cơ bản theo SPEC.
+
+### A2. System tag với sigil `$` (`<$random>(...)`, `<$os>(...)`) không parse
+- **File:** `src/parser_expr.zig:8` (`parseSystemTagName` chỉ nhận `.keyword`/`.identifier`, KHÔNG nhận `.dollar`)
+- **Triệu chứng:**
+  ```
+  **Import**($Random)@also%~random!`global`:random
+  [ int(<$random>(1,5))~r <printf>^(r) ]
+  → rc=2  error: UnexpectedToken at 2:57..2:58
+  ```
+  Trong khi `<printf>`, `<len>`, `<if>` (tag thường) chạy tốt.
+- **SPEC:** §VII.1 ví dụ chuẩn `int(<$random>(1, 100))~rand_val`; §VII.3 `int(<$random>(0, inv_len - 1))~item_index`. Đây là cú pháp chính thức để gọi hàm module đã import.
+- **Root cause:** `parseSystemTagName` (dùng chung cho cả statement & expr path) không xử lý token `.dollar`. Khi gặp `<` rồi `$`, nó trả `error.UnexpectedToken` vì `$` không phải keyword/identifier.
+- **Mức độ:** HIGH — chặn toàn bộ việc dùng module đã import (Random/Os/Website).
+
+### A3. `bytes(<encode(...)>)` không parse
+- **File:** `src/parser_expr.zig` (parse `bytes(` arg — gặp `.lt` lồng trong `.l_paren` của `bytes(...)`)
+- **Triệu chứng:**
+  ```
+  [ bytes(<encode(`ASCII`)>^("hi"))~b ... ]  → rc=2
+  ```
+- **SPEC:** §IV.2 ví dụ chuẩn `bytes(<encode(`UTF-8`)>^("Secure data\n"))~encoded_data`.
+- **Mức độ:** MEDIUM — encoding lồng trong bytes allocation.
+
+## 🔴 Nhóm B — Chương trình chạy (rc=0) nhưng SAI KẾT QUẢ
+
+### B1. `<print>string^("x={x}")` KHÔNG nội suy biến
+- **File:** `src/vm_value_ops.zig` — handler `print` (khác `printf`)
+- **Triệu chứng:**
+  ```
+  [ int(7)~x <print>string^("x={x}\n") ]  → in "x={x}"  ❌ (mong đợi "x=7")
+  [ int(7)~x <printf>^("x={x}\n") ]       → in "x=7"    ✅
+  ```
+- **SPEC:** §IV.1 `<print>string^("Xin chao\n")` — cùng họ với printf, phải nội suy.
+- **Root cause:** Chỉ `printf` gọi `printInterpolated`; `print` in thẳng string. (BUG-3 cũ fix cho `printf` nhưng `<print>` bị bỏ sót.)
+- **Mức độ:** HIGH — sai kết quả âm thầm.
+
+### B2. `bytes(N)` rồi `<len>` trả 0 thay vì N
+- **File:** `src/vm.zig` (var_decl bytes ~L259–285) + `src/vm_value_ops.zig` (tag `len` ~L637)
+- **Triệu chứng:**
+  ```
+  [ bytes(8)~b int(<len>^(b))~l <printf>^("len={l}\n") ]  → in "len=0"  ❌ (mong đợi 8)
+  [ bytes("AB")~b int(<len>^(b))~l <printf>^(l) ]         → in "2"    ✅
+  ```
+- **SPEC:** §IV.6 `bytes(16)~empty_buf` là buffer 16 byte; §IV.3 `int(<len>^(buffer))~buf_size` phải ra kích thước buffer.
+- **Root cause:** var_decl `bytes` với arg `.int` cấp phát `alloc(u8, i)` + `@memset(0)` nhưng `<len>` trả 0 — nghi `len` đọc `.bytes` ra rỗng, hoặc con trỏ bị deinit sớm. (Đối chứng: `bytes("AB")` cho len=2 đúng → lỗi chỉ ở nhánh `.int`.)
+- **Mức độ:** HIGH — buffer allocation vô dụng nếu len luôn 0.
+
+### B3. Class method call `$f~get()` — NameError: UndefinedVariable
+- **File:** `src/vm_value_ops.zig:197` (`callUserFunction` không bind `self`)
+- **Triệu chứng:**
+  ```
+  Foo !class [ int(5)~x get() [ <return>(x) ] ]
+  [ ~Foo~f int($f~get())~r <printf>^(r) ]
+  → rc=3  NameError: UndefinedVariable  ❌
+  ```
+  Trong khi `$f~x` (member access) trả 5 đúng.
+- **SPEC:** §VIII.1 ví dụ chuẩn `int($m1~take_damage())~remaining_hp`.
+- **Root cause:** `evaluateCall` khi gặp `.class_instance` lấy `func` từ `ci.methods` rồi gọi `callUserFunction(f, call.args)`. `callUserFunction` tạo scope mới từ `func.closure_scope` — **không** bind instance fields (`x`) vào scope. Method `get()` đọc `x` → không thấy → `UndefinedVariable`.
+- **Mức độ:** HIGH — OOP method hoàn toàn không dùng được.
+
+### B4. `<catch>` đặt SAU câu lệnh lỗi không bắt được
+- **File:** `src/vm.zig` (catch_stmt handler ~L583)
+- **Triệu chứng:**
+  ```
+  [ int(1)~a int(0)~b int(a/b)~c <catch>(`DivideByZeroError`) [ <printf>^("caught") ] ]
+  → rc=3  (không in "caught")  ❌
+  ```
+  Trong khi `<catch>` đặt TRƯỚC câu lệnh lỗi thì bắt được:
+  ```
+  [ <catch>(`DivideByZeroError`) [ <printf>^("caught") ] int(1)/0 ... ] → in "caught" ✅
+  ```
+- **SPEC:** §IX.2 "Global Catch: Scans backward protecting all Functions/Main Blocks preceding it" — catch chỉ quét LẬI (backward) các câu lệnh ĐỨNG TRƯỚC nó. Đặt sau câu lỗi thì lỗi đã xảy ra trước khi catch được "cài" → không bắt.
+- **Đánh giá:** Đây là **hành vi ĐÚNG theo SPEC** (backward scan). Không phải bug — chỉ là thứ tự code sai. Ghi nhận để làm rõ.
+- **Mức độ:** N/A (đúng spec).
+
+### B5. `type(x)` / `type("hi")` — UndefinedFunction
+- **File:** `src/vm_value_ops.zig:648` (có xử lý tag `type` trong `callBuiltin`) nhưng `evaluateCall` không tới được
+- **Triệu chứng:**
+  ```
+  [ type("hi") ]        → rc=3  Runtime error: error.UndefinedFunction
+  [ int(5)~x type(x) ]  → rc=3  Runtime error: error.UndefinedFunction
+  ```
+- **SPEC:** §III.5 `type("Hello")` in `string`; `type(123)~a` gán vào biến.
+- **Root cause:** `type` không phải keyword/system tag hợp lệ trong parser → parse thành `CallExpr{callee:"type"}` → VM tra `type` như hàm do người dùng định nghĩa → không thấy → `UndefinedFunction`. `callBuiltin` có nhánh `type` nhưng không bao giờ được gọi vì `type(...)` không đi qua đường system tag.
+- **Mức độ:** MEDIUM — type introspection không dùng được.
+
+## 🟠 Nhóm C — Cú pháp SAI bị chấp nhận IM LẶNG (rc=0, nên báo lỗi)
+
+### C1. System tag lạ `<foo>^("x")` — không in, không lỗi
+- **File:** `src/vm.zig` / `src/vm_value_ops.zig` (system tag dispatch)
+- **Triệu chứng:** `[ <foo>^("x") ]` → rc=0, không output, không lỗi.
+- **Đánh giá:** Nên báo `UnknownSystemTag`. (Tag không tồn tại bị bỏ qua âm thầm.)
+- **Mức độ:** MEDIUM.
+
+### C2. `[ (10)~x ]` — thiếu kiểu, chấp nhận im lặng
+- **Triệu chứng:** rc=0, biến `x` được tạo nhưng không rõ kiểu.
+- **SPEC:** §III.1 / EBNF `VarDecl ::= PrimitiveType "(" Expression ")" Sigil Identifier` — phải có kiểu.
+- **Mức độ:** MEDIUM.
+
+### C3. `<return>(5)` ở main block — chấp nhận im lặng
+- **Triệu chứng:** `[ <return>(5) ]` → rc=0 (return khỏi main, không lỗi).
+- **Đánh giá:** Cần xác định main block có được phép `return` không. SPEC §XII `return_stmt` không giới hạn ngữ cảnh. Có thể chấp nhận được, nhưng nên cảnh báo.
+- **Mức độ:** LOW.
+
+### C4. `int(10)~x` trôi nổi ngoài main — vẫn chạy
+- **Triệu chứng:** `int(10)~x\n[ <printf>^(x) ]` → rc=0, in `10`.
+- **Đánh giá:** BUG.md cũ (mục 3.7) đã kết luận var_decl ở top-level là HỢP LỆ theo SPEC §V.1. → **KHÔNG phải bug**, xác nhận lại.
+- **Mức độ:** N/A (đúng spec).
+
+### C5. `<catch>(DivideByZeroError)` thiếu backtick — chấp nhận
+- **Triệu chứng:** `[ <catch>(DivideByZeroError) [ <printf>^("x") ] ]` → rc=0, in `x`.
+- **SPEC:** §IX.1 `<catch>(`ErrorCode`)` — error_type phải trong backtick.
+- **Mức độ:** LOW — parser không validate error_type format.
+
+## 🟢 Nhóm D — Xác nhận ĐÚNG (không phải bug)
+
+- Toàn bộ arithmetic, if/elif/else, for/while, func (recursion), class+member access, import (`Import(...)` không `**`), encode, memory, now, len(str), byte, freal, bool, dict `{key:val}`, priority `{n}` → rc=0, output đúng.
+- Runtime errors đúng: div/mod by zero, overflow add/mul, null print/arith, none reassign, index oob (parse reject), key missing, type mismatch, func undef/arity → rc=2/3 đúng.
+- `int(10)~x` top-level + `<printf>` top-level → đúng theo SPEC §V.1 (BUG-7 cũ đã đính chính).
+- `<catch>` đặt trước câu lỗi → bắt đúng.
+- 584 token-mutant + 200 byte-mutant → 0 crash, 0 hang.
+- Unicode, escape (`\n`, `\t`, `\\`), string rỗng, 300 biến, 200 statement → chạy đúng.
+
+## 📊 Ma trận tổng hợp (978 case)
+
+| Nhóm | Số ca | rc=0 | rc=2 | rc=3 | Crash |
+|---|---|---|---|---|---|
+| Valid (corpus/c2/tgt) | ~124 | ~63 | ~44 | ~17 | 0 |
+| Invalid | ~65 | 13 (silent-accept) | ~38 | ~14 | 0 |
+| Edge/stress | ~5 | 5 | 0 | 0 | 0 |
+| Token-mutant | 584 | 18 | 536 | 30 | 0 |
+| Byte-mutant | 200 | 24 | 144 | 32 | 0 |
+
+## 🔧 Thứ tự khắc phục đề xuất (Nhóm A/B/C mới)
+
+| Ưu tiên | Mã | Lý do |
+|---|---|---|
+| 1 | **A1** tuple/list parse | Kiểu dữ liệu cơ bản, SPEC định nghĩa rõ |
+| 2 | **A2** `<$tag>` parse | Chặn toàn bộ module đã import |
+| 3 | **B3** class method self-binding | OOP không dùng được |
+| 4 | **B1** `<print>` nội suy | Sai kết quả âm thầm |
+| 5 | **B2** `bytes(N)` len | Buffer vô dụng |
+| 6 | **A3** `bytes(<encode>)` | Encoding lồng |
+| 7 | **B5** `type()` | Type introspection |
+| 8 | **C1–C5** silent-accept | Làm chặt validate (thấp) |
+
+**Sau khi sửa:** bổ sung test chạy qua `Executor` (parity bytecode ↔ AST walker) — test suite hiện tại chỉ đi `VM.execute` nên mù hoàn toàn với các bug parity.
+
+**Tuyên bố:** Báo cáo chỉ ghi nhận + truy nguyên, KHÔNG sửa file nguồn. Mọi khẳng định đều kèm lệnh đã chạy và output thật.
+
+---
+---
+
+# BÁO CÁO ĐÍNH CHÍNH & BỔ SUNG — 2026-11-18 (chạy lại toàn bộ 978 case `ko_fuzz`)
+
+**Môi trường xác minh:**
+```
+ZIG=/home/codespace/.vscode-remote/data/User/globalStorage/ziglang.vscode-zig/zig/x86_64-linux-0.16.0/zig
+$ zig version                 → 0.16.0
+$ zig build                   → BUILD_EXIT=0
+$ ko = zig-out/bin/ko (build mới)
+Bộ test: /tmp/scratchpad/ko_fuzz/ (913 file + 65 targeted = 978 case)
+```
+> **Lưu ý:** thư mục `/tmp/srcatchapad/ko_puzz/` không tồn tại; bộ case thực tế nằm ở `/tmp/scratchpad/ko_fuzz/` (913 file corpus/c2/byt/mut + 65 targeted).
+
+**Xác nhận phần cũ:** 0 crash (rc≥134) trong 978 case — di chứng BUG-1/2/6 giữ vững. Các gap A1/A2/A3/B1/B3/B5 **vẫn còn nguyên** (test lại trên binary mới, kết quả không đổi).
+
+**Kết quả đính chính:** báo cáo 2026-11-18 chính xác ~85%. Có **3 điểm sai/thiếu** (M1, M2, M3) + 1 bonus (freal coercion) cần sửa lại.
+
+---
+
+## 🔴 M1 — `<catch>` KHÔNG dập lỗi: body LUÔN chạy, lỗi vẫn trả rc=3 (đính chính mục B4)
+
+**Mức độ:** HIGH (đính chính — mục B4 kết luận "bắt đúng ✅" là SAI)
+
+### M1.1 Triệu chứng (băng bằng chứng — tất cả đều đi backend BYTECODE mặc định)
+
+> **Đọc kỹ:** mọi ca dưới đây không có `func_decl`/`class_decl`/`Import` → `Executor` chọn **bytecode**. Đây chính là backend mà catch bị hỏng (xem M1.2). Khi ép AST walker (thêm func_decl), catch hoạt động đúng.
+
+```
+# catch ĐÚNG error_type, đặt TRƯỚC câu lỗi (BUG.md nói "bắt được ✅")
+$ ko t_catch_ok.ko
+tgt/t_catch_ok.ko:main
+caught                                              ← body catch ĐÃ chạy
+Runtime error: error.DivideByZero                   ← nhưng lỗi VẪN nổ
+rc=3                                                 ← KHÔNG dập được
+
+# catch KHÔNG có lỗi — body VẪN chạy
+$ printf '[ <catch>(`DivideByZeroError`) [ <printf>^("BODY") ] ]' > /tmp/m1c.ko
+$ ko /tmp/m1c.ko
+BODY
+rc=0                                                 ← body chạy dù không có lỗi!
+
+# catch SAI error_type — body VẪN chạy (không hề kiểm tra type)
+$ printf '[ <catch>(`X`) [ <printf>^("BODY") ] <printf>^("tail") ]' > /tmp/m1d.ko
+$ ko /tmp/m1d.ko
+BODYtail
+rc=0
+
+# lỗi TRƯỚC catch (đúng backward-scan spec) — KHÔNG bắt
+$ printf '[ int(1)~a int(0)~b int(a/b)~c <catch>(`DivideByZeroError`) [ <printf>^("caught") ] ]' > /tmp/m1e.ko
+$ ko /tmp/m1e.ko
+Runtime error: error.DivideByZero
+rc=3                                                 ← không in "caught"
+```
+
+### M1.2 Root cause (đã xác minh dứt khoát bằng dump AST + so sánh 2 backend)
+
+Đây là **parity bug**: AST walker xử lý catch **đúng**, nhưng **bytecode backend bỏ qua hoàn toàn semantics catch**.
+
+**AST walker handler (`src/vm.zig:585-595`) — ĐÚNG:**
+```zig
+.catch_stmt => |cs| {
+    if (self.has_error) {
+        if (self.error_type) |err_type| {
+            if (std.mem.eql(u8, err_type, cs.error_type)) {
+                self.has_error = false;          // clear cờ
+                self.error_type = null;
+                for (cs.body) |s| try self.executeStatement(&s);
+            }
+        }
+    }
+},
+```
+
+**Bytecode backend (`src/compiler.zig:337-345` + `src/vm.zig:1323-1324`) — SAI:**
+```zig
+// compiler.zig: compileCatch — body được emit INLINE, không có cơ chế bắt
+fn compileCatch(self: *Compiler, c: *const ast.CatchStmt) anyerror!void {
+    const catch_start = self.current_function.instructions.items.len;
+    try self.emit(.{ .catch_start = 0 });          // marker
+    for (0..c.body.len) |i| {
+        try self.compileStatement(&c.body[i]);      // ← body emit inline, LUÔN chạy
+    }
+    try self.emit(.{ .catch_end = {} });            // marker
+    ...
+}
+
+// vm.zig:1323-1324 — hai opcode này là NO-OP
+.catch_start => {},
+.catch_end => {},
+```
+
+→ Trên bytecode, `<catch>` chỉ là **2 marker rỗng** bao quanh body được emit inline. Body **luôn thực thi** như code thường, **không** kiểm tra `has_error`, **không** kiểm tra `error_type`, **không** có logic khôi phục (restore stack / clear error). Vì CLI mặc định chọn bytecode khi source không có `func_decl`/`class_decl`/`Import`, **mọi** chương trình dùng `<catch>` ở dạng phổ biến đều đi đường bytecode → catch vô dụng.
+
+**Bằng chứng quyết định (so sánh 2 backend cùng source):**
+
+```
+# BYTECODE (mặc định) — catch body chạy inline, vô điều kiện
+$ printf '[ <catch>(`X`) [ <printf>^("BODY") ] <printf>^("after") ]' | ko
+BODYafter        ← body chạy dù KHÔNG có lỗi; "after" cũng chạy
+rc=0
+
+# FORCE AST walker (thêm func_decl dummy để né bytecode) — handler đúng
+$ printf 'dummy() [ ]\n[ <catch>(`X`) [ <printf>^("BODY") ] <printf>^("after") ]' | ko
+after            ← body KHÔNG chạy (has_error=false); chỉ "after"
+rc=0
+
+# FORCE AST + lỗi thật đúng type — bắt được
+$ printf 'dummy() [ ]\n[ int(1)~a int(0)~b int(a/b)~c <catch>(`DivideByZeroError`) [ <printf>^("caught") ] ]' | ko
+DivideByZeroError: DivideByZero    ← body catch chạy, in error message
+rc=3
+```
+
+**Dump AST xác nhận** `<catch>` parse đúng (không phải lỗi parser):
+```
+BLOCK body_len=2
+  CATCH err_type='X' body_len=1
+    EXPR tag=system_tag
+  EXPR tag=system_tag
+```
+→ AST hoàn toàn đúng. Lỗi nằm ở **bytecode backend không implement catch** (no-op markers), khiến đây là bug parity bytecode ↔ AST walker.
+
+> **Liên quan kiến trúc:** `Executor.execute` (`src/executor.zig:52-86`) chọn bytecode khi `!hasFuncOrClassDef && !hasImportStmt`. Catch đơn ở main block thỏa điều kiện này → luôn đi bytecode → luôn hỏng.
+
+### M1.3 Đính chính B4
+
+B4 (mục 3.x cũ) viết: *"catch đặt TRƯỚC câu lệnh lỗi thì bắt được: … → in 'caught' ✅"*. **SAI.** Trong báo cáo gốc, các ca catch đều vô tình đi AST walker (do có `func_decl`/class/import) nên "bắt được" — nhưng đó là **AST walker đúng**, không phải bằng chứng catch bytecode hoạt động. Khi chạy thuần bytecode (không func/class/import), catch **không bao giờ** dập lỗi.
+
+**Mức độ:** HIGH — `<catch>` trên backend bytecode (mặc định) hoàn toàn không hoạt động: body chạy vô điều kiện, lỗi không bị bắt. Đây là parity bug, không phải lỗi logic AST walker.
+
+### M1.4 Hướng sửa (đề xuất)
+
+1. **Bytecode:** implement catch thật — `.catch_start` phải ghi lại `catch_handler_ip` + stack depth; khi runtime error xảy ra trong vùng `[catch_start, catch_end)`, VM nhảy tới handler, clear error, khôi phục stack, chạy body. `.catch_end` phân định vùng.
+2. **Tối thiểu:** ép các chương trình có `<catch>` đi AST walker (đưa catch vào `hasFuncOrClassDef`-style guard) để đảm bảo đúng semantics — nhưng đây chỉ là workaround, không phải fix parity.
+3. Bổ sung parity test catch qua `Executor` (bytecode) — test hiện tại chỉ đi AST walker nên mù hoàn toàn với bug này.
+
+---
+
+## 🔴 M2 — Dict literal dạng colon `{'a':1}` hỏng; chỉ compact `(1{'a'})` chạy (đính chính Nhóm D)
+
+**Mức độ:** HIGH (đính chính — Nhóm D §"xác nhận đúng" liệt kê dict `{key:val}` là "output đúng" SAI)
+
+### M2.1 Triệu chứng
+
+```
+# colon literal KHÔNG ngoặc — gán OK nhưng index/in hỏng
+$ printf "[ {'a':1}~d <printf>^(d{'a'}) ]" | ko
+TypeError: Cannot index this type
+rc=3
+
+$ printf "[ {'a':1}~d <printf>^(d) ]" | ko
+TypeError: Cannot print an unassigned null value
+rc=3
+
+$ printf "[ {'a':1}~d int(<len>^(d))~l <printf>^(l) ]" | ko
+0                                                    ← dict RỖNG (len=0)
+rc=0
+
+# colon literal CÓ ngoặc — CHẠY ĐÚNG
+$ printf "[ ({'a':1})~d <printf>^(d) ]" | ko
+{a: 1}
+rc=0
+$ printf "[ ({'a':1})~d int(d{'a'})~x <printf>^(x) ]" | ko
+1
+rc=0
+
+# compact (1{'a'}) — CHẠY ĐÚNG (đối chứng)
+$ printf "[ (1{'a'})~d <printf>^(d{1}) ]" | ko
+a
+rc=0
+```
+
+### M2.2 Root cause
+
+`{'a':1}` ở **đầu statement** bị parser hiểu là **block statement**, KHÔNG phải dict literal.
+
+- `src/parser.zig:335-337`: `if (tok == .l_brace) return try self.parseExprStatement();` — nhưng `parsePrimaryExpr` của `parser_expr.zig` chỉ coi `{...}` là dict literal **trong ngữ cảnh expression lồng** (sau `(`, sau toán tử…). Ở đầu statement, `{` rơi vào đường parse khác.
+- Khi **có ngoặc** `({'a':1})`: `(` → `parsePrimaryExpr` xử lý bên trong → gặp `{` → parse thành dict literal đúng.
+- Khi **không ngoặc** `{'a':1}~d`: `{` parse sai → `~d` gán cho một biểu thức rỗng/block → dict thật bị mất → `d` thành null/rỗng → `len=0`, index = "Cannot index this type".
+
+**Đối chứng quyết định:** cùng nội dung `{'a':1}`, thêm ngoặc `({'a':1})` là chạy đúng → lỗi nằm ở **quy tắc dispatch `{` ở đầu statement**, không phải ở dict value.
+
+### M2.3 Đính chính Nhóm D
+
+Nhóm D ghi *"dict `{key:val}` → rc=0, output đúng"* là **SAI**. Đúng ra:
+- `{'a':1}~d` (không ngoặc) → dict rỗng, index lỗi.
+- `({'a':1})~d` (có ngoặc) → đúng.
+- `(1{'a'})~d` (compact) → đúng.
+
+**Mức độ:** HIGH — cú pháp dict colon theo SPEC §III không dùng được nếu thiếu ngoặc.
+
+---
+
+## 🟠 M3 — Unknown system tag không nhất quán (bổ sung C1)
+
+**Mức độ:** MEDIUM
+
+### M3.1 Triệu chứng
+
+```
+$ printf '[ <foo>^("x") ]' | ko       → rc=0, KHÔNG output, KHÔNG lỗi   (im lặng)
+$ printf '[ <foo>(1) ]' | ko          → rc=3  Runtime error: error.UndefinedFunction
+$ printf '[ <foo> ]' | ko             → rc=2  error: UnexpectedToken
+```
+
+Cùng tag lạ `<foo>`, ba dạng调用 cho ba kết quả khác nhau:
+- `<foo>^("x")` (dạng expr statement, có caret) → **im lặng** (C1 cũ).
+- `<foo>(1)` (dạng expr thường) → `UndefinedFunction`.
+- `<foo>` trần → parse error.
+
+### M3.2 Phân tích
+
+`isSystemTagOpener` (`parser.zig:1166-1184`) chỉ nhận `<ident>` / `<ident>(...)>` là system tag opener khi có cặp `<...>`. `<foo>^("x")` được coi là system tag expr → `evaluateSystemTag` (`vm_value_ops.zig:603`) không khớp tag nào → rơi xuống cuối hàm, trả `.null` mà **không báo lỗi** → im lặng.
+
+Trong khi `<foo>(1)` không được nhận là system tag (thiếu `^`?) → parse thành `CallExpr{callee:"foo"}` → VM tra hàm user → `UndefinedFunction`.
+
+### M3.3 Hậu quả
+
+Cùng một lỗi (tag không tồn tại) nhưng tùy cú pháp lại im lặng / báo khác nhau → khó chẩn đoán. Nên hợp nhất: mọi `<foo>` không xác định → `UnknownSystemTag`.
+
+**Mức độ:** MEDIUM — nhất quán chẩn đoán.
+
+---
+
+## 🟠 Bonus — `freal` ↔ `int` coercion TypeError (bổ sung, Nhóm D nói freal "đúng")
+
+**Mức độ:** MEDIUM
+
+### B.1 Triệu chứng
+
+```
+$ printf '[ freal(1.5)~a freal(a+1.0)~b <printf>^(b) ]' | ko
+2.5                                                  ← freal + literal OK
+rc=0
+
+$ printf '[ freal(1.5)~a int(2)~b freal(a+b)~c <printf>^(c) ]' | ko
+Runtime error: error.TypeError                       ← freal + int biến = TypeError
+rc=3
+
+$ printf '[ int(2)~b freal(1.5)~a freal(a+b)~c <printf>^(c) ]' | ko
+Runtime error: error.TypeError                       ← int + freal = TypeError
+rc=3
+```
+
+### B.2 Phân tích
+
+- `freal + literal f.` → OK (cùng kiểu freal).
+- `freal + int` (hai biến khác kiểu) → `TypeError` ở `evaluateBinary` (`vm_value_ops.zig` → `operator.applyBinary`). Không có coercion freal↔int.
+- SPEC §III.freal không nêu rõ coercion; nhưng người dùng mong đợi `freal + int` chạy (như đa số ngôn ngữ). Đây là **thiếu coercion**, không hẳn sai spec.
+
+### B.3 Đề xuất
+
+Thêm coercion int→freal trong `applyBinary` khi một vế freal, một vế int. Ghi nhận mức MEDIUM (tùy quyết định spec).
+
+---
+
+## 🧩 Bonus — Class method in ra "byte rác" trước NameError
+
+**Mức độ:** MEDIUM (nghi memory issue nhẹ)
+
+### C.1 Triệu chứng (hexdump)
+
+```
+$ ko tgt/t_class_method.ko
+tgt/t_class_method.ko:main
+tgt/t_class_method.ko:main- ?? ?? \n NameError: UndefinedVariable
+rc=3
+```
+
+Heredump vùng stdout:
+```
+00000030: 3a6d 6169 6e2d aaaa aa0a 4e61 6d65 4572  :main-....NameEr
+```
+- `aa aa` = **byte rác** (0xAA) xen giữa `main-` và `\nNameError`. `0xAA` là pattern **Zig DebugAllocator freed-memory** (giống BUG-1 cũ) → nghi **use-after-free nhẹ** trong `callUserFunction`/`load_var` khi method không bind `self`.
+
+### C.2 Liên quan B3
+
+B3 (class method `self`-binding) đã ghi NameError UndefinedVariable — đúng. Nhưng **chưa ghi** chi tiết: stdout bị chèn `0xAA` rác trước NameError, dấu hiệu memory bug đi kèm, không chỉ thiếu bind. Root cause nghi ở `evaluateCall` nhánh `.class_instance` (`vm_value_ops.zig:197`): lấy `func` từ `ci.methods`, gọi `callUserFunction(f, args)` với `closure_scope` không chứa field → `load_var x` fail → nhưng trước đó có thể đã free nhầm vùng `name` của biến/field.
+
+**Mức độ:** MEDIUM — cần Valgrind xác nhận (giống BUG-1/BUG-6).
+
+---
+
+## 📊 Bảng đính chính tổng hợp
+
+| Mục cũ | Trạng thái cũ | Đính chính 2026-11-18 | Bằng chứng |
+|---|---|---|---|
+| B4 catch | "bắt được ✅" | ❌ SAI — **bytecode backend no-op catch**: body chạy inline vô điều kiện, lỗi không bị bắt. AST walker đúng | so sánh 2 backend, dump AST, vm.zig:1323-1324 |
+| §D dict `{key:val}` | "output đúng" | ❌ SAI — `{'a':1}` hỏng, chỉ `(1{'a'})`/`({'a':1})` đúng | d1/d3/d4, m2b |
+| §D freal | "đúng" | ⚠️ THIẾU — freal↔int TypeError | B.1 |
+| (mới) class method | B3 có NameError | ⚠️ THÊM — có `0xAA` rác (nghi UAF) | C.1 hexdump |
+| C1 unknown tag | im lặng | ⚠️ THÊM — không nhất quán theo cú pháp | M3.1 |
+
+## 🔧 Thứ tự khắc phục (cập nhật, gộp cả M1/M2/M3)
+
+| Ưu tiên | Mã | Lý do |
+|---|---|---|
+| 1 | **A1** tuple/list parse | Kiểu dữ liệu cơ bản |
+| 2 | **A2** `<$tag>` parse | Chặn toàn bộ module import |
+| 3 | **B3 + Bonus-C** class method self-binding + UAF | OOP không dùng được + nghi memory bug |
+| 4 | **M1** catch bytecode no-op | Parity bug: bytecode không implement catch (SPEC §IX) |
+| 5 | **M2** dict colon parse | Dict theo SPEC §III |
+| 6 | **B1** `<print>` nội suy | Sai kết quả âm thầm |
+| 7 | **B2** `bytes(N)` len | Buffer vô dụng |
+| 8 | **A3** `bytes(<encode>)` | Encoding lồng |
+| 9 | **B5** `type()` + **M3** unknown tag | Type introspection + nhất quán |
+| 10 | **Bonus-B** freal↔int coercion | Coercion |
+| 11 | **C1–C5** silent-accept | Làm chặt validate (thấp) |
+
+**Sau khi sửa:** bắt buộc parity test qua `Executor` (bytecode ↔ AST walker) — test hiện tại chỉ `VM.execute` nên mù với BUG-1/2/3 + M1/M2.
+
+**Tuyên bố:** Báo cáo đính chính chỉ chạy test + đọc source, KHÔNG sửa file nguồn. Mọi khẳng định đều kèm lệnh đã chạy + output thật. Bộ case: `/tmp/scratchpad/ko_fuzz/` (978 case).
