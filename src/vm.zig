@@ -904,6 +904,11 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
         var sp: usize = 0;
         var ip: usize = 0;
 
+        errdefer {
+            var i: usize = 0;
+            while (i < sp) : (i += 1) stack[i].deinit(self.allocator);
+        }
+
         while (ip < func.instructions.items.len) {
             const inst = func.instructions.items[ip];
             ip += 1;
@@ -912,7 +917,7 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                 .load_const => |idx| {
                     if (sp >= stack.len) return error.StackOverflow;
                     const val = chunk.constants.items[idx];
-                    stack[sp] = val;
+                    stack[sp] = try val.clone(self.allocator);
                     sp += 1;
                 },
                 .load_var => |idx| {
@@ -933,6 +938,8 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                         var old_val = old_entry.value;
                         old_val.deinit(self.allocator);
                     }
+                    var consumed = val;
+                    consumed.deinit(self.allocator);
                     sp -= 1;
                 },
                 .binary => |op| {
@@ -940,6 +947,8 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     const lhs = stack[sp - 2];
                     sp -= 2;
                     const result = try self.binaryOp(op, lhs, rhs);
+                    var a = lhs; a.deinit(self.allocator);
+                    var b = rhs; b.deinit(self.allocator);
                     stack[sp] = result;
                     sp += 1;
                 },
@@ -947,6 +956,7 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     const val = stack[sp - 1];
                     sp -= 1;
                     const result = try self.evaluateUnaryOp(op, val);
+                    var v = val; v.deinit(self.allocator);
                     stack[sp] = result;
                     sp += 1;
                 },
@@ -980,6 +990,8 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                         self.current_scope = saved_scope;
                         self.return_value = saved_rv;
                         self.has_returned = saved_hr;
+                        var _ai: usize = 0;
+                        while (_ai < arg_count) : (_ai += 1) args[_ai].deinit(self.allocator);
                         sp -= arg_count;
                         if (rv) |v| {
                             stack[sp] = v;
@@ -989,11 +1001,15 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                         sp += 1;
                     } else if (self.current_scope.classes.get(callee_name) != null or self.global_scope.classes.get(callee_name) != null) {
                         const instance_val = try self.instantiateClassByName(callee_name);
+                        var _ai: usize = 0;
+                        while (_ai < arg_count) : (_ai += 1) args[_ai].deinit(self.allocator);
                         sp -= arg_count;
                         stack[sp] = instance_val;
                         sp += 1;
                     } else {
                         const result = try self.callBuiltin(callee_name, args);
+                        var _ai: usize = 0;
+                        while (_ai < arg_count) : (_ai += 1) args[_ai].deinit(self.allocator);
                         sp -= arg_count;
                         stack[sp] = result;
                         sp += 1;
@@ -1032,6 +1048,10 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     }
                     if (method_func) |f| {
                         const result = try self.callUserFunctionValues(f, args, target_instance);
+                        var _ai2: usize = 0;
+                        while (_ai2 < ac) : (_ai2 += 1) args[_ai2].deinit(self.allocator);
+                        var _mv = method_val; _mv.deinit(self.allocator);
+                        var _tv = target_val; _tv.deinit(self.allocator);
                         sp -= ac + 2;
                         stack[sp] = result;
                         sp += 1;
@@ -1039,10 +1059,12 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                 },
                 .index_access => {
                     if (sp < 2) return error.StackUnderflow;
-                    const idx_val = stack[sp - 1];
-                    const obj = stack[sp - 2];
+                    var idx_val = stack[sp - 1];
+                    var obj = stack[sp - 2];
                     sp -= 2;
                     var result: value_mod.Value = undefined;
+                    defer idx_val.deinit(self.allocator);
+                    defer obj.deinit(self.allocator);
                     var handled = false;
                     switch (obj) {
                         .tuple, .list => |arr| {
@@ -1107,18 +1129,23 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                 .ret => {
                     if (sp > 0) {
                         self.return_value = try stack[sp - 1].clone(self.allocator);
+                        var _rv = stack[sp - 1]; _rv.deinit(self.allocator);
                         self.has_returned = true;
                         sp -= 1;
                     } else {
                         self.return_value = null;
                         self.has_returned = true;
                     }
+                    {
+                        var i: usize = 0;
+                        while (i < sp) : (i += 1) stack[i].deinit(self.allocator);
+                    }
                     return;
                 },
                 .get_member => {
                     if (sp < 2) return error.StackUnderflow;
-                    const member_val = stack[sp - 1];
-                    const obj = stack[sp - 2];
+                    var member_val = stack[sp - 1];
+                    var obj = stack[sp - 2];
                     const member_name = switch (member_val) {
                         .string => |s| s,
                         else => {
@@ -1129,6 +1156,8 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     sp -= 2;
                     var result: value_mod.Value = undefined;
                     var handled = false;
+                    defer member_val.deinit(self.allocator);
+                    defer obj.deinit(self.allocator);
                     switch (obj) {
                         .class_instance => |ci| {
                             if (ci.fields.get(member_name)) |val| {
@@ -1236,8 +1265,9 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     self.pending_class_original_scope = null;
                 },
                 .print => {
-                    const val = stack[sp - 1];
+                    var val = stack[sp - 1];
                     sp -= 1;
+                    defer val.deinit(self.allocator);
                     // Mirror the AST walker's evaluateCall: a string payload is
                     // subject to `{name}` interpolation. Without this the
                     // bytecode backend emitted the literal text (`x={x}`) while
@@ -1268,8 +1298,9 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     sp += 1;
                 },
                 .len => {
-                    const val = stack[sp - 1];
+                    var val = stack[sp - 1];
                     sp -= 1;
+                    defer val.deinit(self.allocator);
                     const len: i64 = switch (val) {
                         .string => |s| @intCast(s.len),
                         .tuple => |t| @intCast(t.len),
@@ -1286,8 +1317,9 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     sp += 1;
                 },
                 .encode => {
-                    const val = stack[sp - 1];
+                    var val = stack[sp - 1];
                     sp -= 1;
+                    defer val.deinit(self.allocator);
                     var aw: std.Io.Writer.Allocating = .init(self.allocator);
                     errdefer aw.deinit();
                     try val.print(&aw.writer);
@@ -1309,6 +1341,8 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     for (0..n) |i| {
                         elems[i] = try stack[start + i].clone(self.allocator);
                     }
+                    var i: usize = start;
+                    while (i < sp) : (i += 1) stack[i].deinit(self.allocator);
                     sp = start;
                     stack[sp] = value_mod.Value{ .tuple = elems };
                     sp += 1;
@@ -1345,13 +1379,19 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     ip = @intCast(@as(isize, @intCast(ip)) + offset);
                 },
                 .jump_if_false => |offset| {
-                    const val = stack[sp - 1];
+                    var val = stack[sp - 1];
                     sp -= 1;
+                    defer val.deinit(self.allocator);
                     if (!try val.toBool()) {
                         ip = @intCast(@as(isize, @intCast(ip)) + offset);
                     }
                 },
             }
+        }
+        // Deinitialize any values left on the stack on normal completion.
+        {
+            var i: usize = 0;
+            while (i < sp) : (i += 1) stack[i].deinit(self.allocator);
         }
     }
 

@@ -487,11 +487,13 @@ pub fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Val
 
     var func: ?*value_mod.Function = null;
     var call_instance: ?*value_mod.ClassInstance = null;
+    var member_obj: ?value_mod.Value = null;
 
     if (call.target) |target_expr| {
         if (target_expr.* == .member_access) {
             const ma = target_expr.*.member_access;
             const obj = try self.evaluateExpression(ma.object);
+            member_obj = obj;
             switch (obj) {
                 .class_instance => |ci| {
                     call_instance = ci;
@@ -510,6 +512,7 @@ pub fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Val
             }
         } else {
             const callee_val = try self.evaluateExpression(target_expr);
+            defer @constCast(&callee_val).deinit(self.allocator);
             switch (callee_val) {
                 .function => |f| func = f,
                 .class_instance => |ci| {
@@ -525,6 +528,7 @@ pub fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Val
         }
     } else {
         const callee_val = try self.evaluateIdentifier(call.callee);
+        defer @constCast(&callee_val).deinit(self.allocator);
         switch (callee_val) {
             .function => |f| func = f,
             .class_instance => |ci| {
@@ -540,7 +544,14 @@ pub fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Val
     }
 
     if (func) |f| {
-        return try self.callUserFunction(f, call.args, call_instance);
+        const result = try self.callUserFunction(f, call.args, call_instance);
+        if (member_obj) |*mo| mo.deinit(self.allocator);
+        member_obj = null;
+        return result;
+    }
+    if (member_obj) |*mo| {
+        mo.deinit(self.allocator);
+        member_obj = null;
     }
 
     // Giữ nguyên hành vi tạo instance lớp khi gọi tên lớp như hàm: `Foo(...)`.
@@ -704,7 +715,7 @@ pub fn evaluateSystemTag(self: *VM, st: *ast.SystemTagExpr) !value_mod.Value {
         return value_mod.Value{ .null = {} };
     }
     if (st.args.len > 0) {
-        const arg = try self.evaluateExpression(&st.args[0]);
+        var arg = try self.evaluateExpression(&st.args[0]);
         if (std.mem.eql(u8, st.tag, "printf")) {
             if (arg == .string) {
                 try self.printInterpolated(arg.string);
@@ -758,6 +769,7 @@ pub fn evaluateSystemTag(self: *VM, st: *ast.SystemTagExpr) !value_mod.Value {
             @constCast(&arg).deinit(self.allocator);
             return value_mod.Value{ .bytes = &[_]u8{} };
         }
+        @constCast(&arg).deinit(self.allocator);
     }
     const msg = try std.fmt.allocPrint(self.allocator, "Unknown system tag '{s}'", .{st.tag});
     defer self.allocator.free(msg);
