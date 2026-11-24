@@ -77,7 +77,13 @@ pub fn evaluateLiteral(self: *VM, lit: ast.Literal) !value_mod.Value {
         .bool_false => value_mod.Value{ .booling = false },
         .none => value_mod.Value{ .none = {} },
         .null => value_mod.Value{ .null = {} },
-        .tuple => value_mod.Value{ .tuple = &[_]value_mod.Value{} },
+        .tuple => blk: {
+            const elems = try self.allocator.alloc(value_mod.Value, lit.elements.len);
+            for (lit.elements, 0..) |el, i| {
+                elems[i] = try self.evaluateExpression(el);
+            }
+            break :blk value_mod.Value{ .tuple = elems };
+        },
         .dict => blk: {
             const d = try self.allocator.create(std.StringHashMap(value_mod.Value));
             d.* = std.StringHashMap(value_mod.Value).init(self.allocator);
@@ -194,7 +200,7 @@ pub fn instantiateClassByName(self: *VM, name: []const u8) !value_mod.Value {
     return value_mod.Value{ .class_instance = instance };
 }
 
-pub fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr) anyerror!value_mod.Value {
+pub fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr, instance: ?*value_mod.ClassInstance) anyerror!value_mod.Value {
     if (args.len != func.params.len) {
         self.raiseError("ArgumentError", "Argument count mismatch");
         return error.RuntimeError;
@@ -207,6 +213,15 @@ pub fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr) 
         const arg_val = try self.evaluateExpression(@constCast(&arg_expr));
         const param_name = try self.allocator.dupe(u8, param.name);
         try new_scope.variables.put(param_name, arg_val);
+    }
+
+    if (instance) |ci| {
+        var fiter = ci.fields.iterator();
+        while (fiter.next()) |entry| {
+            const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
+            const val_clone = try entry.value_ptr.*.clone(self.allocator);
+            try new_scope.variables.put(key_copy, val_clone);
+        }
     }
 
     const prev_scope = self.current_scope;
@@ -259,7 +274,7 @@ pub fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr) 
     return ret;
 }
 
-pub fn callUserFunctionValues(self: *VM, func: *value_mod.Function, args: []const value_mod.Value) anyerror!value_mod.Value {
+pub fn callUserFunctionValues(self: *VM, func: *value_mod.Function, args: []const value_mod.Value, instance: ?*value_mod.ClassInstance) anyerror!value_mod.Value {
     if (args.len != func.params.len) {
         self.raiseError("ArgumentError", "Argument count mismatch");
         return error.RuntimeError;
@@ -272,6 +287,15 @@ pub fn callUserFunctionValues(self: *VM, func: *value_mod.Function, args: []cons
         const param_name = try self.allocator.dupe(u8, param.name);
         const cloned = try arg_val.clone(self.allocator);
         try new_scope.variables.put(param_name, cloned);
+    }
+
+    if (instance) |ci| {
+        var fiter = ci.fields.iterator();
+        while (fiter.next()) |entry| {
+            const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
+            const val_clone = try entry.value_ptr.*.clone(self.allocator);
+            try new_scope.variables.put(key_copy, val_clone);
+        }
     }
 
     const prev_scope = self.current_scope;
@@ -452,58 +476,106 @@ pub fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Val
         return value_mod.Value{ .null = {} };
     }
 
-    const callee_val = if (call.target) |target_expr| try self.evaluateExpression(target_expr) else try self.evaluateIdentifier(call.callee);
+    if (std.mem.eql(u8, call.callee, "type")) {
+        if (call.args.len == 0) return error.TypeError;
+        const arg = try self.evaluateExpression(&call.args[0]);
+        defer @constCast(&arg).deinit(self.allocator);
+        const name = valueTypeName(arg);
+        const duped = try self.allocator.dupe(u8, name);
+        return value_mod.Value{ .string = duped };
+    }
+
     var func: ?*value_mod.Function = null;
-    switch (callee_val) {
-        .function => |f| func = f,
-        .class_instance => |ci| {
-            if (ci.methods.get(call.callee)) |f| {
-                func = f;
-            } else {
-                self.raiseError("MemberError", "Method not found");
-                return error.RuntimeError;
-            }
-        },
-        else => {
-            var class_def: ?*value_mod.ClassDef = null;
-            if (self.current_scope.classes.get(call.callee)) |cd| {
-                class_def = cd;
-            } else if (self.global_scope.classes.get(call.callee)) |cd| {
-                class_def = cd;
-            }
+    var call_instance: ?*value_mod.ClassInstance = null;
 
-            if (class_def) |cd| {
-                const instance = try self.allocator.create(value_mod.ClassInstance);
-                instance.* = value_mod.ClassInstance{
-                    .class_name = try self.allocator.dupe(u8, cd.name),
-                    .fields = std.StringHashMap(value_mod.Value).init(self.allocator),
-                    .methods = std.StringHashMap(*value_mod.Function).init(self.allocator),
-                    .allocator = self.allocator,
-                };
-
-                var piter = cd.public_fields.iterator();
-                while (piter.next()) |entry| {
-                    const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
-                    const cloned_val = try entry.value_ptr.*.clone(self.allocator);
-                    try instance.fields.put(key_copy, cloned_val);
+    if (call.target) |target_expr| {
+        if (target_expr.* == .member_access) {
+            const ma = target_expr.*.member_access;
+            const obj = try self.evaluateExpression(ma.object);
+            switch (obj) {
+                .class_instance => |ci| {
+                    call_instance = ci;
+                    if (ci.methods.get(ma.member)) |f| {
+                        func = f;
+                    } else {
+                        self.raiseError("MemberError", "Method not found");
+                        return error.RuntimeError;
+                    }
+                },
+                .function => |f| func = f,
+                else => {
+                    self.raiseError("CallError", "Cannot call method on non-object");
+                    return error.RuntimeError;
+                },
+            }
+        } else {
+            const callee_val = try self.evaluateExpression(target_expr);
+            switch (callee_val) {
+                .function => |f| func = f,
+                .class_instance => |ci| {
+                    if (ci.methods.get(call.callee)) |f| {
+                        func = f;
+                    } else {
+                        self.raiseError("MemberError", "Method not found");
+                        return error.RuntimeError;
+                    }
+                },
+                else => {},
+            }
+        }
+    } else {
+        const callee_val = try self.evaluateIdentifier(call.callee);
+        switch (callee_val) {
+            .function => |f| func = f,
+            .class_instance => |ci| {
+                if (ci.methods.get(call.callee)) |f| {
+                    func = f;
+                } else {
+                    self.raiseError("MemberError", "Method not found");
+                    return error.RuntimeError;
                 }
-                var miter = cd.public_methods.iterator();
-                while (miter.next()) |entry| {
-                    const method_copy = entry.value_ptr.*;
-                    const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
-                    try instance.methods.put(key_copy, method_copy);
-                }
-
-                return value_mod.Value{ .class_instance = instance };
-            }
-
-            self.raiseError("CallError", "Cannot call non-function");
-            return error.RuntimeError;
-        },
+            },
+            else => {},
+        }
     }
+
     if (func) |f| {
-        return try self.callUserFunction(f, call.args);
+        return try self.callUserFunction(f, call.args, call_instance);
     }
+
+    // Giữ nguyên hành vi tạo instance lớp khi gọi tên lớp như hàm: `Foo(...)`.
+    if (call.target == null) {
+        var class_def: ?*value_mod.ClassDef = null;
+        if (self.current_scope.classes.get(call.callee)) |cd| {
+            class_def = cd;
+        } else if (self.global_scope.classes.get(call.callee)) |cd| {
+            class_def = cd;
+        }
+        if (class_def) |cd| {
+            const instance = try self.allocator.create(value_mod.ClassInstance);
+            instance.* = value_mod.ClassInstance{
+                .class_name = try self.allocator.dupe(u8, cd.name),
+                .fields = std.StringHashMap(value_mod.Value).init(self.allocator),
+                .methods = std.StringHashMap(*value_mod.Function).init(self.allocator),
+                .allocator = self.allocator,
+            };
+            var piter = cd.public_fields.iterator();
+            while (piter.next()) |entry| {
+                const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
+                const cloned_val = try entry.value_ptr.*.clone(self.allocator);
+                try instance.fields.put(key_copy, cloned_val);
+            }
+            var miter = cd.public_methods.iterator();
+            while (miter.next()) |entry| {
+                const method_copy = entry.value_ptr.*;
+                const key_copy = try self.allocator.dupe(u8, entry.key_ptr.*);
+                try instance.methods.put(key_copy, method_copy);
+            }
+            return value_mod.Value{ .class_instance = instance };
+        }
+    }
+
+    self.raiseError("CallError", "Cannot call non-function");
     return error.RuntimeError;
 }
 
@@ -600,6 +672,28 @@ pub fn evaluateIndexAccess(self: *VM, ia: *ast.IndexAccess) !value_mod.Value {
     }
 }
 
+/// Trả về tên kiểu tĩnh của một giá trị (không cấp phát). Dùng chung cho
+/// `type()` trong AST walker (evaluateCall), system tag `<type>` và bytecode
+/// builtin `type` (callBuiltin) để các backend in chuỗi kiểu giống hệt nhau.
+fn valueTypeName(v: value_mod.Value) []const u8 {
+    return switch (v) {
+        .int => "int",
+        .freal => "freal",
+        .string => "string",
+        .booling => "booling",
+        .byte => "byte",
+        .bytes => "bytes",
+        .tuple => "tuple",
+        .list => "list",
+        .dict => "dict",
+        .none => "none",
+        .null => "null",
+        .function => "function",
+        .class_instance => "class",
+        .error_obj => "error",
+    };
+}
+
 pub fn evaluateSystemTag(self: *VM, st: *ast.SystemTagExpr) !value_mod.Value {
     if (std.mem.eql(u8, st.tag, "Loop") or std.mem.eql(u8, st.tag, "loop")) {
         if (st.args.len > 0) {
@@ -625,7 +719,7 @@ pub fn evaluateSystemTag(self: *VM, st: *ast.SystemTagExpr) !value_mod.Value {
         }
         if (std.mem.eql(u8, st.tag, "print") or std.mem.startsWith(u8, st.tag, "print:")) {
             if (arg == .string) {
-                try self.stdoutWriter().writeAll(arg.string);
+                try self.printInterpolated(arg.string);
             } else {
                 const writer = self.stdoutWriter();
                 try arg.print(writer);
@@ -646,22 +740,7 @@ pub fn evaluateSystemTag(self: *VM, st: *ast.SystemTagExpr) !value_mod.Value {
             return result;
         }
         if (std.mem.eql(u8, st.tag, "type")) {
-            const name = switch (arg) {
-                .int => "int",
-                .freal => "freal",
-                .string => "string",
-                .booling => "booling",
-                .byte => "byte",
-                .bytes => "bytes",
-                .tuple => "tuple",
-                .list => "list",
-                .dict => "dict",
-                .none => "none",
-                .null => "null",
-                .function => "function",
-                .class_instance => "class",
-                .error_obj => "error",
-            };
+            const name = valueTypeName(arg);
             const duped = try self.allocator.dupe(u8, name);
             @constCast(&arg).deinit(self.allocator);
             return value_mod.Value{ .string = duped };
@@ -680,7 +759,10 @@ pub fn evaluateSystemTag(self: *VM, st: *ast.SystemTagExpr) !value_mod.Value {
             return value_mod.Value{ .bytes = &[_]u8{} };
         }
     }
-    return value_mod.Value{ .null = {} };
+    const msg = try std.fmt.allocPrint(self.allocator, "Unknown system tag '{s}'", .{st.tag});
+    defer self.allocator.free(msg);
+    self.raiseError("UnknownSystemTag", msg);
+    return error.RuntimeError;
 }
 
 pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
@@ -751,6 +833,24 @@ pub fn callBuiltin(self: *VM, name: []const u8, args: []value_mod.Value) !value_
             .int => |v| value_mod.Value{ .string = try std.fmt.allocPrint(self.allocator, "{d}", .{v}) },
             else => error.TypeError,
         };
+    }
+    if (std.mem.eql(u8, name, "bytes")) {
+        if (args.len < 1) return error.TypeError;
+        return switch (args[0]) {
+            .int => |v| {
+                if (v < 0) return error.TypeError;
+                const buf = try self.allocator.alloc(u8, @intCast(v));
+                @memset(buf, 0);
+                return value_mod.Value{ .bytes = buf };
+            },
+            else => error.TypeError,
+        };
+    }
+    if (std.mem.eql(u8, name, "type")) {
+        if (args.len < 1) return error.TypeError;
+        const name_str = valueTypeName(args[0]);
+        const duped = try self.allocator.dupe(u8, name_str);
+        return value_mod.Value{ .string = duped };
     }
     if (std.mem.eql(u8, name, "Import")) {
         if (args.len < 3) return error.TypeError;

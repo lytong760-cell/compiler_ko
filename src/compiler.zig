@@ -315,6 +315,12 @@ pub const Compiler = struct {
 
     fn compileVarDecl(self: *Compiler, v: *const ast.VarDecl) !void {
         try self.compileExpression(v.value_expr);
+        if (std.mem.eql(u8, v.type_name, "bytes")) {
+            const callee_duped = try self.allocator.dupe(u8, "bytes");
+            const callee_idx = self.chunk.constants.items.len;
+            try self.chunk.constants.append(.{ .string = callee_duped });
+            try self.emit(.{ .call = @intCast((callee_idx << 16) | 1) });
+        }
         const name_duped = try self.allocator.dupe(u8, v.name);
         const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped });
         try self.emit(.{ .store_var = @intCast(idx) });
@@ -400,6 +406,13 @@ pub const Compiler = struct {
             .tuple => value_mod.Value{ .null = {} },
             .dict => unreachable,
         };
+        if (lit.kind == .tuple) {
+            for (lit.elements) |el| {
+                try self.compileExpression(el);
+            }
+            try self.emit(.{ .make_tuple = @intCast(lit.elements.len) });
+            return;
+        }
         const idx = self.chunk.constants.items.len; try self.chunk.constants.append(val);
         try self.emit(.{ .load_const = @intCast(idx) });
     }

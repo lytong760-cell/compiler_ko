@@ -809,12 +809,12 @@ pub fn readInputLine(self: *VM) ![]const u8 {
         return @import("vm_value_ops.zig").instantiateClassByName(self, name);
     }
 
-    pub fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr) anyerror!value_mod.Value {
-        return @import("vm_value_ops.zig").callUserFunction(self, func, args);
+    pub fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr, instance: ?*value_mod.ClassInstance) anyerror!value_mod.Value {
+        return @import("vm_value_ops.zig").callUserFunction(self, func, args, instance);
     }
 
-    pub fn callUserFunctionValues(self: *VM, func: *value_mod.Function, args: []const value_mod.Value) anyerror!value_mod.Value {
-        return @import("vm_value_ops.zig").callUserFunctionValues(self, func, args);
+    pub fn callUserFunctionValues(self: *VM, func: *value_mod.Function, args: []const value_mod.Value, instance: ?*value_mod.ClassInstance) anyerror!value_mod.Value {
+        return @import("vm_value_ops.zig").callUserFunctionValues(self, func, args, instance);
     }
 
     pub fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Value {
@@ -1013,8 +1013,10 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                         },
                     };
                     var method_func: ?*value_mod.Function = null;
+                    var target_instance: ?*value_mod.ClassInstance = null;
                     switch (target_val) {
                         .class_instance => |ci| {
+                            target_instance = ci;
                             if (ci.methods.get(method_name)) |f| {
                                 method_func = f;
                             } else {
@@ -1029,7 +1031,7 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                         },
                     }
                     if (method_func) |f| {
-                        const result = try self.callUserFunctionValues(f, args);
+                        const result = try self.callUserFunctionValues(f, args, target_instance);
                         sp -= ac + 2;
                         stack[sp] = result;
                         sp += 1;
@@ -1272,6 +1274,7 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                         .string => |s| @intCast(s.len),
                         .tuple => |t| @intCast(t.len),
                         .list => |l| @intCast(l.len),
+                        .bytes => |b| @intCast(b.len),
                         .dict => |d| @intCast(d.count()),
                         else => 0,
                     };
@@ -1296,6 +1299,18 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     const d = try self.allocator.create(std.StringHashMap(value_mod.Value));
                     d.* = std.StringHashMap(value_mod.Value).init(self.allocator);
                     stack[sp] = value_mod.Value{ .dict = d };
+                    sp += 1;
+                },
+                .make_tuple => |count| {
+                    const n: usize = @intCast(count);
+                    if (sp < n) return error.StackUnderflow;
+                    const start = sp - n;
+                    const elems = try self.allocator.alloc(value_mod.Value, n);
+                    for (0..n) |i| {
+                        elems[i] = try stack[start + i].clone(self.allocator);
+                    }
+                    sp = start;
+                    stack[sp] = value_mod.Value{ .tuple = elems };
                     sp += 1;
                 },
                 .dict_set => {
