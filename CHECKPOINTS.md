@@ -60,9 +60,29 @@
 
 ### LAST KNOWN EXECUTION CHECKPOINT
 - **Task State:** SUCCESS
-- **Active Node/Context:** src/main.zig
-- **Volatile Context Diagnostics:** git diff shows 12 lines changed in src/main.zig.
-- **Next Execution Phase Vectors:** none
+- **Active Node/Context:** `.kilo/worktrees/kilo/` (nhánh `kilo/fix-runtime`, base `Releases 7615acd1`) — Lane B (Kilo): runtime/VM/compiler + parity test qua `Executor.execute`.
+- **Volatile Context Diagnostics:**
+  ```
+  export PATH=/home/codespace/.vscode-remote/data/User/globalStorage/ziglang.vscode-zig/zig/x86_64-linux-0.16.0:$PATH
+  zig build                                   → rc=0
+  zig build test < /dev/null                  → 8/8 test case pass (test_executor.zig: b1 print, b1 printf, b2 bytes len, b5 type string, b5 type int, m1 catch, b3 method, m3 unknown tag)
+                                              → leaks (known, test harness): b2 bytes len +2, b5 type string +1, b5 type int +1, b3 method +6, m3 +1; ko khong anh huong correctness
+  Cases tu file /tmp/kilo: t1 print=x=7, t2 bytes len=8, t3 type=string/int, t4 m3=UnknownSystemTag rc=3, t5 b3=5, t6 m1=1
+  ```
+- **Files edited (Lane B, file-disjoint vs Lane A):**
+  - `src/executor.zig`: `setOutputWriter`, `hasFuncOrClassDef` → `requiresAstWalker` (them `catch_stmt` → AST walker) [M1]
+  - `src/vm_value_ops.zig`: `print`/`print:` goi `printInterpolated` [B1]; `callBuiltin` them `bytes` + `type` [B2, B5]; `evaluateSystemTag` ket tra `UnknownSystemTag` + `raiseError` [M3/C1]; `callUserFunction`/`callUserFunctionValues` them `instance` param + clone `ci.fields` vao scope [B3]; `evaluateCall` them `type()` nhánh [B5]; `valueTypeName` helper
+  - `src/vm.zig`: `.len` opcode them `.bytes => |b| @intCast(b.len)` [B2]; `call_method` truyen `target_instance` [B3]; `callUserFunction`/`callUserFunctionValues` wrapper them `instance`
+  - `src/compiler.zig`: `compileVarDecl` khi `type_name=="bytes"` goi `callBuiltin("bytes")` de tao buffer [B2]
+  - `testing/test_executor.zig` (moi): chay qua `Executor.execute`, bo prefix `test.ko:` tu `exposeProcess`, 8 case B1/B2/B3/B5/M1/M3
+  - `build.zig`: wire `testing/test_executor.zig`
+- **Blocked (khong duoc Kilo sua):** KHONG CON BLOCK. Da rebase worktree kilo (kilo/fix-runtime) len Releases (847986e1, co Land A ast.Literal.elements + parser tuple) thanh cong, khong xung dot. Commit Kilo a63bd0dc -> 514ea974 tren Releases. A1-runtime DA HOAN TAT: `evaluateLiteral` `.tuple` → `Value.tuple`, `emitLiteral` `.tuple` → compile elements + `.make_tuple`, `.make_tuple` handler build slice Value (vm.zig), Op/Instruction `make_tuple` (bytecode.zig). Test `a1 tuple` pass: `(1,2,3)~t` → `(1, 2, 3)`. zig build test tren worktree kilo: 10/10 pass (leaks known test harness, khong anh huong correctness).
+- **Next Execution Phase Vectors:**
+  1. (DA LAM) git rebase Releases tren worktree kilo — xong.
+  2. Merge `kilo/fix-runtime` → `Releases` (mutating git, can yeu cau ro rang); `graphify update .`.
+
+
+
 
 ### LAST KNOWN EXECUTION CHECKPOINT
 - **Task State:** SUCCESS

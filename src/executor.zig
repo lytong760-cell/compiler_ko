@@ -49,8 +49,12 @@ pub const Executor = struct {
         return self.backend_used;
     }
 
+    pub fn setOutputWriter(self: *Executor, writer: *std.Io.Writer) void {
+        self.vm.setOutputWriter(writer);
+    }
+
     pub fn execute(self: *Executor, program: []ast.Statement) !void {
-        if (!hasFuncOrClassDef(program) and !hasImportStmt(program)) {
+        if (!requiresAstWalker(program) and !hasImportStmt(program)) {
             var chunk = try bytecode_mod.Chunk.init(self.allocator);
             // Single owner: `defer` runs on every exit path, and `freed` guards
             // against the early frees below. Using `errdefer` here (the previous
@@ -113,14 +117,15 @@ fn hasImportStmt(program: []ast.Statement) bool {
     return false;
 }
 
-fn hasFuncOrClassDef(program: []ast.Statement) bool {
+fn requiresAstWalker(program: []ast.Statement) bool {
     for (program) |stmt| {
         switch (stmt) {
             .func_decl => return true,
             .class_decl => return true,
             .class_instantiation => return true,
+            .catch_stmt => return true,
             .block => |b| {
-                if (hasFuncOrClassDef(b.body)) return true;
+                if (requiresAstWalker(b.body)) return true;
             },
             else => {},
         }
