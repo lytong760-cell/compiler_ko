@@ -76,10 +76,12 @@
   - `src/compiler.zig`: `compileVarDecl` khi `type_name=="bytes"` goi `callBuiltin("bytes")` de tao buffer [B2]
   - `testing/test_executor.zig` (moi): chay qua `Executor.execute`, bo prefix `test.ko:` tu `exposeProcess`, 8 case B1/B2/B3/B5/M1/M3
   - `build.zig`: wire `testing/test_executor.zig`
-- **Blocked (khong duoc Kilo sua):** KHONG CON BLOCK. Da rebase worktree kilo (kilo/fix-runtime) len Releases (847986e1, co Land A ast.Literal.elements + parser tuple) thanh cong, khong xung dot. Commit Kilo a63bd0dc -> 514ea974 tren Releases. A1-runtime DA HOAN TAT: `evaluateLiteral` `.tuple` → `Value.tuple`, `emitLiteral` `.tuple` → compile elements + `.make_tuple`, `.make_tuple` handler build slice Value (vm.zig), Op/Instruction `make_tuple` (bytecode.zig). Test `a1 tuple` pass: `(1,2,3)~t` → `(1, 2, 3)`. zig build test tren worktree kilo: 10/10 pass (leaks known test harness, khong anh huong correctness).
+- **Blocked (khong duoc Kilo sua):** KHONG CON BLOCK. Da rebase worktree kilo (kilo/fix-runtime) len Releases (847986e1) thanh cong, khong xung dot. Da merge `kilo/fix-runtime` (a63bd0dc) -> `Releases` (commit merge 216a750f tren Releases). A1-runtime DA HOAN TAT: `evaluateLiteral` `.tuple` → `Value.tuple`, `emitLiteral` `.tuple` → compile elements + `.make_tuple`, `.make_tuple` handler build slice Value (vm.zig), Op/Instruction `make_tuple` (bytecode.zig). Test `a1 tuple` pass: `(1,2,3)~t` → `(1, 2, 3)`. zig build test tren Releases: 10/10 pass (leaks known test harness, khong anh huong correctness).
 - **Next Execution Phase Vectors:**
   1. (DA LAM) git rebase Releases tren worktree kilo — xong.
-  2. Merge `kilo/fix-runtime` → `Releases` (mutating git, can yeu cau ro rang); `graphify update .`.
+  2. (DA LAM) Merge `kilo/fix-runtime` → `Releases` — xong (216a750f tren Releases).
+  3. (DA LAM) `graphify update .` — xong (10773 nodes, graph.json/graph.html/GRAPH_REPORT.md duoc cap nhat).
+  4. (DA LAM) Xoá worktree `.kilo/worktrees/kilo` — xong (con lai worktree claude/fix-parser cua Lane A).
 
 
 
