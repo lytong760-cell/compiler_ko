@@ -6,7 +6,15 @@ const lexer = @import("lexer.zig");
 const value_mod = @import("value.zig");
 
 pub fn parseSystemTagName(self: *Parser) ![]const u8 {
-    const tok = self.current();
+    var tok = self.current();
+    // A2: system tag may carry a `$` sigil prefix, e.g. `<$random>`.
+    // Lexer emits `.dollar` then the bare name; consume the `$` and read the
+    // identifier/keyword that follows. The returned name has the `$` stripped
+    // so existing `std.mem.eql(u8, tag, "...")` comparisons keep working.
+    if (tok == .dollar) {
+        _ = self.advance();
+        tok = self.current();
+    }
     if (tok == .keyword) {
         const name = lexer.Token.keywordText(tok.keyword);
         _ = self.advance();
@@ -186,7 +194,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
     if (tok == .int_lit) {
         _ = self.advance();
         const lit = try self.allocator.create(ast.Literal);
-        lit.* = ast.Literal{ .kind = .int, .int_value = tok.int_lit, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+        lit.* = ast.Literal{ .kind = .int, .int_value = tok.int_lit, .freal_value = 0, .raw = "", .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .literal = lit.* };
         return e;
@@ -195,7 +203,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
     if (tok == .freal_lit) {
         _ = self.advance();
         const lit = try self.allocator.create(ast.Literal);
-        lit.* = ast.Literal{ .kind = .freal, .int_value = 0, .freal_value = tok.freal_lit, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+        lit.* = ast.Literal{ .kind = .freal, .int_value = 0, .freal_value = tok.freal_lit, .raw = "", .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .literal = lit.* };
         return e;
@@ -205,7 +213,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
         const str = tok.string_lit;
         _ = self.advance();
         const lit = try self.allocator.create(ast.Literal);
-        lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = str, .dict_entries = &.{}, .allocator = self.allocator };
+        lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = str, .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .literal = lit.* };
         return e;
@@ -214,7 +222,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
     if (tok == .bool_true) {
         _ = self.advance();
         const lit = try self.allocator.create(ast.Literal);
-        lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+        lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .literal = lit.* };
         return e;
@@ -223,7 +231,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
     if (tok == .bool_false) {
         _ = self.advance();
         const lit = try self.allocator.create(ast.Literal);
-        lit.* = ast.Literal{ .kind = .bool_false, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+        lit.* = ast.Literal{ .kind = .bool_false, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .literal = lit.* };
         return e;
@@ -232,7 +240,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
     if (tok == .identifier and std.mem.eql(u8, tok.identifier, "none")) {
         _ = self.advance();
         const lit = try self.allocator.create(ast.Literal);
-        lit.* = ast.Literal{ .kind = .none, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+        lit.* = ast.Literal{ .kind = .none, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .literal = lit.* };
         return e;
@@ -241,7 +249,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
     if (tok == .identifier and std.mem.eql(u8, tok.identifier, "null")) {
         _ = self.advance();
         const lit = try self.allocator.create(ast.Literal);
-        lit.* = ast.Literal{ .kind = .null, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+        lit.* = ast.Literal{ .kind = .null, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .literal = lit.* };
         return e;
@@ -250,7 +258,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
     if (tok == .identifier and std.mem.eql(u8, tok.identifier, "none")) {
         _ = self.advance();
         const lit = try self.allocator.create(ast.Literal);
-        lit.* = ast.Literal{ .kind = .none, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+        lit.* = ast.Literal{ .kind = .none, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .literal = lit.* };
         return e;
@@ -286,7 +294,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
             const num = self.current().priority_lit;
             _ = self.advance();
             const idx_expr = try self.allocator.create(ast.Expr);
-            idx_expr.* = .{ .literal = .{ .kind = .int, .int_value = num, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator } };
+            idx_expr.* = .{ .literal = .{ .kind = .int, .int_value = num, .freal_value = 0, .raw = "", .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator } };
             const ia = try self.allocator.create(ast.IndexAccess);
             ia.* = ast.IndexAccess{ .object = try self.allocator.create(ast.Expr), .index = idx_expr };
             ia.object.* = .{ .identifier = name };
@@ -392,7 +400,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
             _ = self.advance();
             // null literal
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .null, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+            lit.* = ast.Literal{ .kind = .null, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             return e;
@@ -446,7 +454,7 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
             const dict_entries = entries.items;
             consumed = true;
             const lit = try self.allocator.create(ast.Literal);
-            lit.* = ast.Literal{ .kind = .dict, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = dict_entries, .allocator = self.allocator };
+            lit.* = ast.Literal{ .kind = .dict, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = dict_entries, .elements = &.{}, .allocator = self.allocator };
             const e = try self.allocator.create(ast.Expr);
             e.* = .{ .literal = lit.* };
             // free first expr node (key was extracted)
@@ -454,7 +462,37 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
             self.allocator.destroy(val1);
             return e;
         }
-        // normal parenthesized expression (possibly tuple? treat as single)
+        // A1: parenthesised comma list → tuple/list literal, e.g. `(1,2,3)`.
+        // Collect `expr ("," expr)*` into `elements`. A single `(expr)` with no
+        // comma stays a plain parenthesised expression (unchanged behaviour).
+        if (self.current() == .comma) {
+            var elems = std.array_list.Managed(*ast.Expr).init(self.allocator);
+            var consumed = false;
+            errdefer if (!consumed) elems.deinit();
+            try elems.append(first);
+            while (self.current() == .comma) {
+                _ = self.advance();
+                const next = try self.parseExpression();
+                try elems.append(next);
+            }
+            try self.expectRParen();
+            const slice = try elems.toOwnedSlice();
+            consumed = true;
+            const lit = try self.allocator.create(ast.Literal);
+            lit.* = ast.Literal{
+                .kind = .tuple,
+                .int_value = 0,
+                .freal_value = 0,
+                .raw = "",
+                .dict_entries = &.{},
+                .elements = slice,
+                .allocator = self.allocator,
+            };
+            const e = try self.allocator.create(ast.Expr);
+            e.* = .{ .literal = lit.* };
+            return e;
+        }
+        // normal parenthesized expression (single, no comma)
         try self.expectRParen();
         return first;
     }
@@ -502,10 +540,54 @@ pub fn parsePrimaryExpr(self: *Parser) anyerror!*ast.Expr {
             .freal_value = 0,
             .raw = "",
             .dict_entries = dict_entries,
+            .elements = &.{},
             .allocator = self.allocator,
         };
         const e = try self.allocator.create(ast.Expr);
         e.* = .{ .literal = lit.* };
+        return e;
+    }
+
+    if (tok == .lt and self.peek(1) == .keyword and self.peek(1).keyword == .encode_kw) {
+        // A3: `<encode(`UTF-8`)>^("text")` used as a nested expression, e.g.
+        // inside `bytes(<encode(...)>)`. The statement-level parser handles
+        // `<encode>` as a statement; here we build the same AST node so it can
+        // appear anywhere an expression is expected.
+        _ = self.advance(); // '<'
+        const enc_kw = self.advance(); // 'encode'
+        _ = enc_kw;
+        try self.expectLParen();
+        const enc_expr = try self.parseExpression();
+        try self.expectRParen();
+        var encoding_type: []const u8 = "";
+        switch (enc_expr.*) {
+            .literal => |lit| {
+                if (lit.kind == .string) encoding_type = self.allocator.dupe(u8, lit.raw) catch lit.raw;
+            },
+            .identifier => |name| encoding_type = self.allocator.dupe(u8, name) catch name,
+            else => {},
+        }
+        enc_expr.deinit();
+        self.allocator.destroy(enc_expr);
+        try self.expectGT();
+        try self.expectCaret();
+        try self.expectLParen();
+        const payload = try self.parseExpression();
+        try self.expectRParen();
+        // A3: build a SystemTagExpr with tag="encode" so evaluateSystemTag
+        // handles it (it already knows the "encode" tag). Avoids allocating
+        // an unused EncodingOp/Statement that would leak memory.
+        const ste = try self.allocator.create(ast.SystemTagExpr);
+        var args = std.array_list.Managed(ast.Expr).init(self.allocator);
+        defer args.deinit();
+        const enc_lit = try self.allocator.create(ast.Literal);
+        enc_lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = encoding_type, .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
+        try args.append(ast.Expr{ .literal = enc_lit.* });
+        self.allocator.destroy(enc_lit);
+        try args.append(payload.*);
+        ste.* = ast.SystemTagExpr{ .tag = "encode", .args = try args.toOwnedSlice() };
+        const e = try self.allocator.create(ast.Expr);
+        e.* = .{ .system_tag = ste };
         return e;
     }
 
@@ -529,7 +611,7 @@ pub fn parseSystemTagExpr(self: *Parser) anyerror!*ast.Expr {
         _ = self.advance();
         try self.expectGT();
         const enc_lit = try self.allocator.create(ast.Literal);
-        enc_lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = enc_name, .dict_entries = &.{}, .allocator = self.allocator };
+        enc_lit.* = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = enc_name, .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
         try args.append(ast.Expr{ .literal = enc_lit.* });
     } else {
         try self.expectGT();
@@ -551,16 +633,25 @@ pub fn parseSystemTagExpr(self: *Parser) anyerror!*ast.Expr {
     if (self.current() == .caret) {
         _ = self.advance();
         try self.expectLParen();
-        const expr = try self.parseExpression();
+        // A2: a system tag arg list may hold several comma-separated
+        // expressions, e.g. `<$random>(1, 5)`. Parse the full list rather
+        // than a single expression so multi-arg tags stop at the right `)`.
+        while (!(self.current() == .r_paren) and !self.isAtEnd()) {
+            const expr = try self.parseExpression();
+            try args.append(expr.*);
+            if (self.current() == .comma) _ = self.advance();
+        }
         try self.expectRParen();
-        try args.append(expr.*);
     }
 
     if (self.current() == .l_paren) {
         _ = self.advance();
-        const expr = try self.parseExpression();
+        while (!(self.current() == .r_paren) and !self.isAtEnd()) {
+            const expr = try self.parseExpression();
+            try args.append(expr.*);
+            if (self.current() == .comma) _ = self.advance();
+        }
         try self.expectRParen();
-        try args.append(expr.*);
     }
 
     if (args.items.len == 0) return error.UnexpectedToken;

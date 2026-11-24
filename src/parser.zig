@@ -333,7 +333,25 @@ pub const Parser = struct {
         }
 
         if (tok == .l_brace) {
-            return try self.parseExprStatement();
+            // M2: a dict literal at the start of a statement may be a
+            // variable declaration, e.g. `{'a':1}~d`. Parse the expression,
+            // then if a `~ident` suffix follows, produce a VarDecl (with an
+            // empty type_name) instead of a bare expression statement.
+            const expr = try self.parseExpression();
+            if (self.current() == .sigil) {
+                _ = self.advance();
+                const name_tok = self.current();
+                if (name_tok != .identifier) return error.ExpectedIdentifier;
+                const name = name_tok.identifier;
+                _ = self.advance();
+                const vd = ast.VarDecl{
+                    .type_name = "",
+                    .value_expr = expr,
+                    .name = name,
+                };
+                return ast.Statement{ .var_decl = vd };
+            }
+            return ast.Statement{ .expr = expr };
         }
 
         if (tok == .l_bracket) {
@@ -628,7 +646,7 @@ pub const Parser = struct {
             const body = try self.parseBlock();
 
             const true_lit = try self.allocator.create(ast.Literal);
-            true_lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+            true_lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
             const true_expr = try self.allocator.create(ast.Expr);
             true_expr.* = .{ .literal = true_lit.* };
 
@@ -1165,10 +1183,16 @@ pub const Parser = struct {
 
     pub fn isSystemTagOpener(self: *Parser) bool {
         if (self.current() != .lt) return false;
-        const peek1 = self.peek(1);
-        if (peek1 != .identifier and peek1 != .keyword) return false;
-        if (self.peek(2) == .gt) return true;
-        var i: usize = 2;
+        var name_idx: usize = 1;
+        // A2: a system tag may carry a `$` sigil prefix, e.g. `<$random>`.
+        // Lexer emits `.lt`, `.dollar`, `.identifier`, `.gt` — skip the `$`
+        // when locating the tag name so `<$random>` is recognised as an
+        // opener instead of a `<` comparison.
+        if (self.peek(1) == .dollar) name_idx = 2;
+        const peek_name = self.peek(name_idx);
+        if (peek_name != .identifier and peek_name != .keyword) return false;
+        if (self.peek(name_idx + 1) == .gt) return true;
+        var i: usize = name_idx + 1;
         var paren_depth: i32 = 0;
         while (i < 32) {
             const tok = self.peek(i);

@@ -379,7 +379,7 @@ pub const Compiler = struct {
         if (lit.kind == .dict) {
             try self.emit(.{ .make_dict = {} });
             for (lit.dict_entries) |entry| {
-                const key_lit = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = entry.key, .dict_entries = &.{}, .allocator = self.allocator };
+                const key_lit = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = entry.key, .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
                 try self.emitLiteral(key_lit);
                 try self.compileExpression(entry.value);
                 try self.emit(.{ .dict_set = {} });
