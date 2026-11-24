@@ -417,13 +417,14 @@ pub fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Val
                 const f = std.Io.Dir.cwd().openFile(self.io, full_path, .{}) catch continue;
                 f.close(self.io);
 
-                const lib = std.DynLib.open(full_path) catch continue;
-                try self.loaded_libs.append(lib);
-                loaded = true;
-
-                try writer.print("Imported module {s} from {s}\n", .{ module_name, full_path });
-                try writer.flush();
-                break;
+                const lib = vm_mod.tryOpenDynLib(self.allocator, full_path);
+                if (lib) |l| {
+                    try self.loaded_libs.append(l);
+                    loaded = true;
+                    try writer.print("Imported module {s} from {s}\n", .{ module_name, full_path });
+                    try writer.flush();
+                    break;
+                }
             }
             if (loaded) break;
         }

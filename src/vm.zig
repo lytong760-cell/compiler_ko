@@ -6,6 +6,8 @@ const operator = @import("operator.zig");
 
 const EndOfInput = error.EndOfInput;
 
+const target_os = @import("builtin").target.os.tag;
+
 const KoLoopEngine = opaque {};
 const KoLoopCreateFn = *const fn () callconv(.c) ?*KoLoopEngine;
 const KoLoopDestroyFn = *const fn (?*KoLoopEngine) callconv(.c) void;
@@ -15,6 +17,17 @@ const KoLoopConditionFn = *const fn (?*anyopaque) callconv(.c) bool;
 const KoLoopExecuteWhileLoopFn = *const fn (*KoLoopEngine, [*:0]const u8, KoLoopConditionFn, ?*anyopaque, KoLoopBodyFn, ?*anyopaque, u64) callconv(.c) c_int;
 const KoLoopExecuteFn = *const fn (*KoLoopEngine, [*:0]const u8, KoLoopBodyFn, ?*anyopaque, u64) callconv(.c) c_int;
 const KoLoopGetStatsFn = *const fn (*KoLoopEngine, ?[*]u8, usize) callconv(.c) c_int;
+
+/// Open a shared library safely. On Windows (Zig 0.16 cross-toolchain from
+/// Linux) `std.DynLib.open` is a compile error, so return null there and skip
+/// native module loading — the program still runs via AST-walker bytecode.
+pub fn tryOpenDynLib(_: std.mem.Allocator, path: []const u8) ?std.DynLib {
+    if (comptime target_os == .windows) {
+        return null;
+    } else {
+        return std.DynLib.open(path) catch null;
+    }
+}
 
 pub const VM = struct {
     allocator: std.mem.Allocator,
@@ -481,16 +494,18 @@ pub fn readInputLine(self: *VM) ![]const u8 {
                             try self.assignValue(init_assign.target, val);
                         }
                         var used_loop_lib = false;
-                        if (self.loop_lib) |*lib| {
-                            if (lib.lookup(KoLoopCreateFn, "ko_loop_engine_create")) |create_fn| {
-                                if (create_fn()) |eng| {
-                                    defer if (lib.lookup(KoLoopDestroyFn, "ko_loop_engine_destroy")) |destroy_fn| destroy_fn(eng);
-                                    if (lib.lookup(KoLoopExecuteWhileLoopFn, "ko_loop_execute_while_loop")) |exec_fn| {
-                                        const prev_cf = self.current_loop_cf;
-                                        self.current_loop_cf = cf;
-                                        const rc = exec_fn(eng, "ko_loop", loopConditionTrampoline, @ptrCast(self), loopBodyTrampoline, @ptrCast(self), 1000000000);
-                                        self.current_loop_cf = prev_cf;
-                                        if (rc == 0 or rc == 5) used_loop_lib = true;
+                        if (comptime target_os != .windows) {
+                            if (self.loop_lib) |*lib| {
+                                if (lib.lookup(KoLoopCreateFn, "ko_loop_engine_create")) |create_fn| {
+                                    if (create_fn()) |eng| {
+                                        defer if (lib.lookup(KoLoopDestroyFn, "ko_loop_engine_destroy")) |destroy_fn| destroy_fn(eng);
+                                        if (lib.lookup(KoLoopExecuteWhileLoopFn, "ko_loop_execute_while_loop")) |exec_fn| {
+                                            const prev_cf = self.current_loop_cf;
+                                            self.current_loop_cf = cf;
+                                            const rc = exec_fn(eng, "ko_loop", loopConditionTrampoline, @ptrCast(self), loopBodyTrampoline, @ptrCast(self), 1000000000);
+                                            self.current_loop_cf = prev_cf;
+                                            if (rc == 0 or rc == 5) used_loop_lib = true;
+                                        }
                                     }
                                 }
                             }
@@ -524,16 +539,18 @@ pub fn readInputLine(self: *VM) ![]const u8 {
                     .while_loop => {
                         self.dispatchLoop();
                         var used_loop_lib = false;
-                        if (self.loop_lib) |*lib| {
-                            if (lib.lookup(KoLoopCreateFn, "ko_loop_engine_create")) |create_fn| {
-                                if (create_fn()) |eng| {
-                                    defer if (lib.lookup(KoLoopDestroyFn, "ko_loop_engine_destroy")) |destroy_fn| destroy_fn(eng);
-                                    if (lib.lookup(KoLoopExecuteWhileLoopFn, "ko_loop_execute_while_loop")) |exec_fn| {
-                                        const prev_cf = self.current_loop_cf;
-                                        self.current_loop_cf = cf;
-                                        const rc = exec_fn(eng, "ko_loop", loopConditionTrampoline, @ptrCast(self), loopBodyTrampoline, @ptrCast(self), 1000000000);
-                                        self.current_loop_cf = prev_cf;
-                                        if (rc == 0 or rc == 5) used_loop_lib = true;
+                        if (comptime target_os != .windows) {
+                            if (self.loop_lib) |*lib| {
+                                if (lib.lookup(KoLoopCreateFn, "ko_loop_engine_create")) |create_fn| {
+                                    if (create_fn()) |eng| {
+                                        defer if (lib.lookup(KoLoopDestroyFn, "ko_loop_engine_destroy")) |destroy_fn| destroy_fn(eng);
+                                        if (lib.lookup(KoLoopExecuteWhileLoopFn, "ko_loop_execute_while_loop")) |exec_fn| {
+                                            const prev_cf = self.current_loop_cf;
+                                            self.current_loop_cf = cf;
+                                            const rc = exec_fn(eng, "ko_loop", loopConditionTrampoline, @ptrCast(self), loopBodyTrampoline, @ptrCast(self), 1000000000);
+                                            self.current_loop_cf = prev_cf;
+                                            if (rc == 0 or rc == 5) used_loop_lib = true;
+                                        }
                                     }
                                 }
                             }
@@ -840,40 +857,44 @@ pub fn readInputLine(self: *VM) ![]const u8 {
                 "/usr/local/lib/libko_loop.so",
             };
             for (candidates) |path| {
-                const lib = std.DynLib.open(path) catch continue;
-                self.loop_lib = lib;
-                break;
+                const lib = tryOpenDynLib(self.allocator, path);
+                if (lib) |l| {
+                    self.loop_lib = l;
+                    break;
+                }
             }
         }
 
         const writer = self.stdoutWriter();
-        if (self.loop_lib) |*lib| {
-            const create_fn = lib.lookup(KoLoopCreateFn, "ko_loop_engine_create");
-            const destroy_fn = lib.lookup(KoLoopDestroyFn, "ko_loop_engine_destroy");
-            if (create_fn == null or destroy_fn == null) {
-                writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
-                writer.flush() catch {};
-                return;
+        if (comptime target_os != .windows) {
+            if (self.loop_lib) |*lib| {
+                const create_fn = lib.lookup(KoLoopCreateFn, "ko_loop_engine_create");
+                const destroy_fn = lib.lookup(KoLoopDestroyFn, "ko_loop_engine_destroy");
+                if (create_fn == null or destroy_fn == null) {
+                    writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
+                    writer.flush() catch {};
+                    return;
+                }
+                const eng = create_fn.?() orelse {
+                    writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
+                    writer.flush() catch {};
+                    return;
+                };
+                if (lib.lookup(KoLoopOptimizeForFn, "ko_loop_optimize_for")) |opt_fn| {
+                    _ = opt_fn(eng, "ko_loop", 0, 4, 1, 4);
+                }
+                if (lib.lookup(KoLoopExecuteFn, "ko_loop_execute_optimized_loop")) |exec_fn| {
+                    const body_fn = struct {
+                        fn f(_: u64, _: ?*anyopaque) callconv(.c) void {}
+                    }.f;
+                    _ = exec_fn(eng, "ko_loop", body_fn, null, 4);
+                }
+                if (lib.lookup(KoLoopGetStatsFn, "ko_loop_get_stats")) |stats_fn| {
+                    var buf: [256]u8 = undefined;
+                    _ = stats_fn(eng, &buf, buf.len);
+                }
+                destroy_fn.?(eng);
             }
-            const eng = create_fn.?() orelse {
-                writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
-                writer.flush() catch {};
-                return;
-            };
-            if (lib.lookup(KoLoopOptimizeForFn, "ko_loop_optimize_for")) |opt_fn| {
-                _ = opt_fn(eng, "ko_loop", 0, 4, 1, 4);
-            }
-            if (lib.lookup(KoLoopExecuteFn, "ko_loop_execute_optimized_loop")) |exec_fn| {
-                const body_fn = struct {
-                    fn f(_: u64, _: ?*anyopaque) callconv(.c) void {}
-                }.f;
-                _ = exec_fn(eng, "ko_loop", body_fn, null, 4);
-            }
-            if (lib.lookup(KoLoopGetStatsFn, "ko_loop_get_stats")) |stats_fn| {
-                var buf: [256]u8 = undefined;
-                _ = stats_fn(eng, &buf, buf.len);
-            }
-            destroy_fn.?(eng);
         } else {
             writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
             writer.flush() catch {};
