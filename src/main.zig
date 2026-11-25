@@ -236,7 +236,7 @@ fn mainInner(it: std.process.Init) !u8 {
             writer.flush() catch {};
             return 1;
         }
-        var inst = try installer.Installer.init(allocator, it.io, it.minimal.environ);
+        var inst = try installer.Installer.init(allocator, it.io);
         defer inst.deinit();
 
         inst.installLibrary(args[2]) catch |err| {
@@ -283,8 +283,12 @@ fn mainInner(it: std.process.Init) !u8 {
             scanPluginDir(writer, it.io, d);
         }
         // Convention path: ~/.ko/plugins
+        // Use libc getenv rather than std.process.Environ.getPosix: the latter
+        // fails to cross-compile to Windows from a Linux host (Zig 0.16 stdlib
+        // bug where GlobalBlock has no view()).
         var home_buf: [4096]u8 = undefined;
-        if (it.minimal.environ.getPosix("HOME")) |home| {
+        if (std.c.getenv("HOME")) |home_ptr| {
+            const home = std.mem.span(home_ptr);
             const home_path = std.fmt.bufPrint(&home_buf, "{s}/.ko/plugins", .{home}) catch null;
             if (home_path) |hp| scanPluginDir(writer, it.io, hp);
         }
@@ -301,7 +305,7 @@ fn mainInner(it: std.process.Init) !u8 {
             writer.flush() catch {};
             return 1;
         }
-        var inst = try installer.Installer.init(allocator, it.io, it.minimal.environ);
+        var inst = try installer.Installer.init(allocator, it.io);
         defer inst.deinit();
 
         const results = inst.searchLibraries(args[2]) catch |err| {

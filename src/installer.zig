@@ -5,17 +5,15 @@ const MODULE_STORE_BASE = "https://ko-lang.ai.studio";
 pub const Installer = struct {
     allocator: std.mem.Allocator,
     temp_dir: []const u8,
-    environ_map: std.process.Environ.Map,
     io: std.Io,
 
-    pub fn init(allocator: std.mem.Allocator, io: std.Io, environ: std.process.Environ) !Installer {
-        const temp_dir = try std.fmt.allocPrint(allocator, "/tmp/.ko_temp_{d}", .{std.posix.getppid()});
+    pub fn init(allocator: std.mem.Allocator, io: std.Io) !Installer {
+        const ts = std.Io.Clock.now(.real, io);
+        const temp_dir = try std.fmt.allocPrint(allocator, "/tmp/.ko_temp_{d}", .{ts.nanoseconds});
         try std.Io.Dir.cwd().createDirPath(io, temp_dir);
-        const environ_map = try std.process.Environ.createMap(environ, allocator);
         return .{
             .allocator = allocator,
             .temp_dir = temp_dir,
-            .environ_map = environ_map,
             .io = io,
         };
     }
@@ -23,7 +21,6 @@ pub const Installer = struct {
     pub fn deinit(self: *Installer) void {
         self.cleanup() catch {};
         self.allocator.free(self.temp_dir);
-        self.environ_map.deinit();
     }
 
     pub fn installLibrary(self: *Installer, lib_name: []const u8) !void {

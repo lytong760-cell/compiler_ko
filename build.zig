@@ -3,6 +3,7 @@ const std = @import("std");
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+    const is_windows = target.result.os.tag == .windows;
 
     const root_module = b.createModule(.{
         .root_source_file = b.path("src/main.zig"),
@@ -33,7 +34,7 @@ pub fn build(b: *std.Build) !void {
     var lib_handles: [4]*std.Build.Step.Compile = undefined;
     var lib_count: usize = 0;
 
-    // --- Build C modules as shared libraries ---
+    // --- Build C/C++ modules as shared libraries ---
     const c_modules = [_]struct { name: []const u8, source: []const u8, include_dir: []const u8 }{
         .{ .name = "ko_os",      .source = "src/module/Os/Os.c",      .include_dir = "src/module/Os" },
         .{ .name = "ko_random",  .source = "src/module/Random/Random.c",  .include_dir = "src/module/Random" },
@@ -41,6 +42,9 @@ pub fn build(b: *std.Build) !void {
     };
 
     for (c_modules) |mod| {
+        // Os.c uses POSIX-only headers (<sys/wait.h>, <unistd.h>, <signal.h>)
+        // that are unavailable on the Windows cross-toolchain from Linux.
+        if (is_windows and std.mem.eql(u8, mod.name, "ko_os")) continue;
         const mod_root = b.createModule(.{
             .target = target,
             .optimize = optimize,
@@ -81,22 +85,27 @@ pub fn build(b: *std.Build) !void {
     lib_handles[lib_count] = loop_lib;
     lib_count += 1;
 
-const mod_check_exe = b.addExecutable(.{
-    .name = "mod_check",
-    .root_module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    }),
-});
-mod_check_exe.root_module.addCSourceFiles(.{
-    .files = &.{"testing/mod_check.c"},
-    .flags = &.{ "-std=gnu11", "-O2" },
-});
-mod_check_exe.root_module.linkSystemLibrary("dl", .{ .use_pkg_config = .force });
-b.installArtifact(mod_check_exe);
+    // mod_check uses <dlfcn.h> (POSIX-only), so skip it on Windows.
+    var mod_check_step: ?*std.Build.Step = null;
+    if (target.result.os.tag != .windows) {
+        const mod_check_exe = b.addExecutable(.{
+            .name = "mod_check",
+            .root_module = b.createModule(.{
+                .target = target,
+                .optimize = optimize,
+                .link_libc = true,
+            }),
+        });
+        mod_check_exe.root_module.addCSourceFiles(.{
+            .files = &.{"testing/mod_check.c"},
+            .flags = &.{ "-std=gnu11", "-O2" },
+        });
+        mod_check_exe.root_module.linkSystemLibrary("dl", .{ .use_pkg_config = .force });
+        b.installArtifact(mod_check_exe);
+        mod_check_step = &mod_check_exe.step;
+    }
 
-const test_step = b.step("test", "Run all tests");
+    const test_step = b.step("test", "Run all tests");
     const files = [_][]const u8{
         "testing/test_harness.zig",
         "testing/test_executor.zig",
@@ -128,9 +137,11 @@ const test_step = b.step("test", "Run all tests");
             .root_module = test_root_module,
         });
         const test_run = b.addRunArtifact(test_exe);
-        if (std.mem.eql(u8, file, "testing/test_modules.zig")) {
-            test_run.addPathDir(b.getInstallPath(.bin, ""));
-            test_run.step.dependOn(&mod_check_exe.step);
+        if (target.result.os.tag != .windows) {
+            if (std.mem.eql(u8, file, "testing/test_modules.zig")) {
+                test_run.addPathDir(b.getInstallPath(.bin, ""));
+                test_run.step.dependOn(mod_check_step.?);
+            }
         }
         // Libraries must be built (and installed to zig-out/lib) before the test runs.
         var i: usize = 0;

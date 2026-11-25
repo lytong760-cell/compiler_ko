@@ -131,7 +131,9 @@ pub fn readInputLine(self: *VM) ![]const u8 {
     }
 
     pub fn deinit(self: *VM) void {
-        for (self.loaded_libs.items) |*lib| lib.close();
+        if (comptime target_os != .windows) {
+            for (self.loaded_libs.items) |*lib| lib.close();
+        }
         self.loaded_libs.deinit();
         self.allocator.free(self.file_path);
         var fiter = self.global_scope.functions.iterator();
