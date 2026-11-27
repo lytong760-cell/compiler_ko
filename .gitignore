@@ -10,4 +10,5 @@ zig/zig
 .my_pass/
 __pycache__/
 *.pyc
-graphify-out/.pack/
+graphify-out/
+.pack/
