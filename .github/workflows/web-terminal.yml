@@ -1,0 +1,110 @@
+name: Web Terminal
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: "How long to keep the terminal alive (minutes, max 360)"
+        required: false
+        default: "60"
+
+permissions:
+  contents: read
+
+jobs:
+  # -------------------------
+  # Linux (bash) web terminal
+  # -------------------------
+  linux-terminal:
+    name: Linux Web Terminal
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: "0.16.0"
+
+      - name: Build ko
+        run: |
+          zig build
+          zig build test --summary all
+          echo "=== ko ready ==="
+          ./zig-out/bin/ko --version
+
+      - name: Install ttyd + cloudflared
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ttyd
+          # cloudflared quick tunnel (no auth needed)
+          curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /tmp/cloudflared
+          chmod +x /tmp/cloudflared
+          /tmp/cloudflared --version
+
+      - name: Start web terminal
+        run: |
+          export LD_LIBRARY_PATH=$PWD/zig-out/lib:$LD_LIBRARY_PATH
+          # ttyd serves a bash shell on port 7681; cloudflared exposes it publicly
+          ttyd -p 7681 -W bash &
+          sleep 2
+          echo "=== PUBLIC URL BELOW (open in browser) ==="
+          /tmp/cloudflared tunnel --url http://localhost:7681 2>&1 | tee /tmp/tunnel.log &
+          TUNNEL_PID=$!
+          # Keep alive for the requested duration
+          DUR=${{ github.event.inputs.duration || 60 }}
+          echo "Keeping terminal alive for ${DUR} minutes..."
+          sleep $((DUR * 60))
+          kill $TUNNEL_PID 2>/dev/null || true
+
+  # -------------------------
+  # Windows (PowerShell) web terminal
+  # -------------------------
+  windows-terminal:
+    name: Windows PowerShell Web Terminal
+    runs-on: windows-latest
+    timeout-minutes: 360
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v2
+        with:
+          version: "0.16.0"
+
+      - name: Build ko
+        shell: pwsh
+        run: |
+          zig build
+          zig build test --summary all
+          Write-Host "=== ko ready ==="
+          .\zig-out\bin\ko.exe --version
+
+      - name: Install ttyd + cloudflared (Windows)
+        shell: pwsh
+        run: |
+          # ttyd Windows binary
+          $ttydUrl = "https://github.com/tsl0922/ttyd/releases/latest/download/ttyd.win32.exe"
+          Invoke-WebRequest -Uri $ttydUrl -OutFile "ttyd.exe"
+          # cloudflared Windows binary
+          $cfUrl = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
+          Invoke-WebRequest -Uri $cfUrl -OutFile "cloudflared.exe"
+          .\ttyd.exe --version
+          .\cloudflared.exe --version
+
+      - name: Start PowerShell web terminal
+        shell: pwsh
+        run: |
+          $env:PATH = "$PWD\zig-out\bin;$env:PATH"
+          # ttyd serves PowerShell on port 7681
+          Start-Process -FilePath ".\ttyd.exe" -ArgumentList "-p","7681","powershell.exe" -NoNewWindow
+          Start-Sleep -Seconds 2
+          Write-Host "=== PUBLIC URL BELOW (open in browser) ==="
+          $tunnel = Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://localhost:7681" -NoNewWindow -PassThru -RedirectStandardOutput "tunnel.log"
+          $DUR = [int]("${{ github.event.inputs.duration || 60 }}")
+          Write-Host "Keeping terminal alive for $DUR minutes..."
+          Start-Sleep -Seconds ($DUR * 60)
+          Stop-Process -Id $tunnel.Id -ErrorAction SilentlyContinue

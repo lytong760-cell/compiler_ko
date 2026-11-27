@@ -194,6 +194,14 @@ fn mainInner(it: std.process.Init) !u8 {
     const allocator = it.arena.allocator();
     const args = try it.minimal.args.toSlice(allocator);
 
+    // Standalone mode: this executable carries an embedded .ko program. It takes
+    // priority over argv handling because the artifact has no .ko file to point
+    // at, so running `./build/hello` must execute the embedded source.
+    if (try readStandaloneSource(allocator, it.io)) |embedded| {
+        defer allocator.free(embedded);
+        return try executeCode(allocator, it.io, embedded, "<standalone>");
+    }
+
     if (args.len < 2) {
         printUsage(it);
         var buf: [4096]u8 = undefined;
@@ -228,7 +236,7 @@ fn mainInner(it: std.process.Init) !u8 {
             writer.flush() catch {};
             return 1;
         }
-        var inst = try installer.Installer.init(allocator, it.io, it.minimal.environ);
+        var inst = try installer.Installer.init(allocator, it.io);
         defer inst.deinit();
 
         inst.installLibrary(args[2]) catch |err| {
@@ -275,8 +283,12 @@ fn mainInner(it: std.process.Init) !u8 {
             scanPluginDir(writer, it.io, d);
         }
         // Convention path: ~/.ko/plugins
+        // Use libc getenv rather than std.process.Environ.getPosix: the latter
+        // fails to cross-compile to Windows from a Linux host (Zig 0.16 stdlib
+        // bug where GlobalBlock has no view()).
         var home_buf: [4096]u8 = undefined;
-        if (it.minimal.environ.getPosix("HOME")) |home| {
+        if (std.c.getenv("HOME")) |home_ptr| {
+            const home = std.mem.span(home_ptr);
             const home_path = std.fmt.bufPrint(&home_buf, "{s}/.ko/plugins", .{home}) catch null;
             if (home_path) |hp| scanPluginDir(writer, it.io, hp);
         }
@@ -293,7 +305,7 @@ fn mainInner(it: std.process.Init) !u8 {
             writer.flush() catch {};
             return 1;
         }
-        var inst = try installer.Installer.init(allocator, it.io, it.minimal.environ);
+        var inst = try installer.Installer.init(allocator, it.io);
         defer inst.deinit();
 
         const results = inst.searchLibraries(args[2]) catch |err| {
@@ -347,7 +359,7 @@ fn mainInner(it: std.process.Init) !u8 {
         const arg = args[2];
         const source = readSourceFile(allocator, it.io, arg) catch return 1;
         defer allocator.free(source);
-        // validate
+        // Validate first: a program that does not run cannot be "built".
         const rc = executeCode(allocator, it.io, source, arg) catch 1;
         if (rc != 0) {
             var buf: [4096]u8 = undefined;
@@ -357,29 +369,7 @@ fn mainInner(it: std.process.Init) !u8 {
             writer.flush() catch {};
             return rc;
         }
-        // create build dir + wrapper
-        std.Io.Dir.cwd().createDirPath(it.io, "build") catch {};
-        var name_buf: [256]u8 = undefined;
-        const base = std.fs.path.basename(arg);
-        const stem = if (std.mem.endsWith(u8, base, ".ko")) base[0 .. base.len - 3] else base;
-        const out_name = std.fmt.bufPrint(&name_buf, "build/{s}", .{stem}) catch return 1;
-        // write wrapper script
-        var fbuf: [4096]u8 = undefined;
-        var fw = std.Io.Dir.cwd().createFile(it.io, out_name, .{}) catch return 1;
-        defer fw.close(it.io);
-        _ = std.process.run(allocator, it.io, .{ .argv = &.{ "chmod", "+x", out_name } }) catch {};
-        var w = fw.writer(it.io, &fbuf);
-        const writer2 = &w.interface;
-        writer2.print("#!/bin/sh\nexec ko run '{s}' \"$@\"\n", .{arg}) catch {};
-        writer2.flush() catch {};
-        // chmod +x
-        // (best effort; ignore errors)
-        var buf2: [4096]u8 = undefined;
-        var fw2 = std.Io.File.stdout().writer(it.io, &buf2);
-        const w2 = &fw2.interface;
-        w2.print("Built: {s}\n", .{out_name}) catch {};
-        w2.flush() catch {};
-        return 0;
+        return buildStandalone(allocator, it, arg, source);
     }
 
     if (std.mem.eql(u8, args[1], "repl")) {
@@ -419,19 +409,149 @@ fn mainInner(it: std.process.Init) !u8 {
     return try executeCode(allocator, it.io, source, file_path);
 }
 
+fn isValidLibraryName(name: []const u8) bool {
+    if (name.len == 0) return false;
+    for (name) |c| {
+        if (!(std.ascii.isAlphanumeric(c) or c == '_' or c == '-')) return false;
+    }
+    return true;
+}
+
 fn scanPluginDir(writer: *std.Io.Writer, io: std.Io, path: []const u8) void {
     var dir = std.Io.Dir.cwd().openDir(io, path, .{ .iterate = true }) catch return;
     defer dir.close(io);
     writer.print("  {s}:\n", .{path}) catch {};
+
     var iter = dir.iterate();
     while (iter.next(io) catch null) |entry| {
         if (entry.kind != .directory) continue;
+        if (!isValidLibraryName(entry.name)) continue;
+
         var mbuf: [4096]u8 = undefined;
         const manifest_path = std.fmt.bufPrint(&mbuf, "{s}/{s}/module.json", .{ path, entry.name }) catch continue;
         const data = std.Io.Dir.cwd().readFileAlloc(io, manifest_path, std.heap.page_allocator, .limited(64 * 1024)) catch continue;
         defer std.heap.page_allocator.free(data);
+
+        var parsed = std.json.parseFromSlice(std.json.Value, std.heap.page_allocator, data, .{}) catch continue;
+        defer parsed.deinit();
+
+        if (parsed.value != .object) continue;
+        const obj = parsed.value.object;
+
+        const name_val = obj.get("name") orelse continue;
+        if (name_val != .string) continue;
+        const version_val = obj.get("version") orelse continue;
+        if (version_val != .string) continue;
+        const language_val = obj.get("language") orelse continue;
+        if (language_val != .string) continue;
+
+        const name = name_val.string;
+        const version = version_val.string;
+        const language = language_val.string;
+
+        if (!isValidLibraryName(name)) continue;
+        if (version.len == 0) continue;
+        if (language.len == 0) continue;
+
         writer.print("    - {s}\n", .{entry.name}) catch {};
     }
+}
+
+/// A standalone artifact is `<compiler bytes> <source> <FOOTER>`.
+///
+/// The footer is written at the very end of the file, so the ordinary compiler
+/// (which has no footer) is never mistaken for a build. This is deliberately not
+/// a marker literal embedded before the payload: any literal used to find the
+/// payload also gets compiled into the compiler's own read-only data, so a search
+/// for it would match the code instead of the payload.
+const STANDALONE_FOOTER_MAGIC: u64 = 0x4B4F5F5341414E44; // "KO_SSTAND"
+
+/// Build a self-contained executable: a copy of the current `ko` binary with the
+/// .ko source and a footer appended. The ELF loader ignores the tail; the copied
+/// binary validates the footer at startup and runs the embedded program.
+fn buildStandalone(allocator: std.mem.Allocator, it: std.process.Init, source_path: []const u8, source: []const u8) !u8 {
+    std.Io.Dir.cwd().createDirPath(it.io, "build") catch |err| switch (err) {
+        error.PathAlreadyExists => {},
+        else => return err,
+    };
+
+    var name_buf: [512]u8 = undefined;
+    const base = std.fs.path.basename(source_path);
+    const stem = if (std.mem.endsWith(u8, base, ".ko")) base[0 .. base.len - 3] else base;
+    const out_name = std.fmt.bufPrint(&name_buf, "build/{s}", .{stem}) catch return 1;
+
+    // Locate our own executable so the artifact is a real copy of the compiler.
+    const self_path = try std.process.executablePathAlloc(it.io, allocator);
+    defer allocator.free(self_path);
+
+    const self_bytes = std.Io.Dir.cwd().readFileAlloc(it.io, self_path, allocator, .limited(512 * 1024 * 1024)) catch |err| {
+        var buf: [4096]u8 = undefined;
+        var file_writer = std.Io.File.stderr().writer(it.io, &buf);
+        const writer = &file_writer.interface;
+        writer.print("Error: cannot read compiler binary '{s}': {any}\n", .{ self_path, err }) catch {};
+        writer.flush() catch {};
+        return 1;
+    };
+    defer allocator.free(self_bytes);
+
+    const out_file = std.Io.Dir.cwd().createFile(it.io, out_name, .{ .truncate = true }) catch |err| {
+        var buf: [4096]u8 = undefined;
+        var file_writer = std.Io.File.stderr().writer(it.io, &buf);
+        const writer = &file_writer.interface;
+        writer.print("Error: cannot create '{s}': {any}\n", .{ out_name, err }) catch {};
+        writer.flush() catch {};
+        return 1;
+    };
+    defer out_file.close(it.io);
+
+    var buf: [64 * 1024]u8 = undefined;
+    var w = out_file.writer(it.io, &buf);
+    const writer = &w.interface;
+    writer.writeAll(self_bytes) catch |err| {
+        std.debug.print("write failed: {any}\n", .{err});
+        return 1;
+    };
+    writer.writeAll(source) catch return 1;
+
+    // Footer: payload length, then the magic. Read backwards from EOF.
+    var footer: [16]u8 = undefined;
+    std.mem.writeInt(u64, footer[0..8], @intCast(source.len), .little);
+    std.mem.writeInt(u64, footer[8..16], STANDALONE_FOOTER_MAGIC, .little);
+    writer.writeAll(&footer) catch return 1;
+    writer.flush() catch return 1;
+
+    // createFile has no mode option, so make the artifact executable afterwards.
+    _ = std.process.run(allocator, it.io, .{ .argv = &.{ "chmod", "+x", out_name } }) catch {};
+
+    var msg: [4096]u8 = undefined;
+    var fw = std.Io.File.stdout().writer(it.io, &msg);
+    const w2 = &fw.interface;
+    w2.print("Built standalone: {s}\n", .{out_name}) catch {};
+    w2.flush() catch {};
+    return 0;
+}
+
+/// If this process was launched as a standalone artifact, the .ko source sits
+/// just before the footer inside our own executable. Returns it, or null when we
+/// are running as the ordinary compiler.
+fn readStandaloneSource(allocator: std.mem.Allocator, io: std.Io) !?[]u8 {
+    const self_path = try std.process.executablePathAlloc(io, allocator);
+    defer allocator.free(self_path);
+
+    const bytes = std.Io.Dir.cwd().readFileAlloc(io, self_path, allocator, .limited(512 * 1024 * 1024)) catch return null;
+    defer allocator.free(bytes);
+
+    // Need at least a footer, and the magic must be the last 8 bytes.
+    if (bytes.len < 16) return null;
+    const magic = std.mem.readInt(u64, bytes[bytes.len - 8 ..][0..8], .little);
+    if (magic != STANDALONE_FOOTER_MAGIC) return null;
+
+    const payload_len = std.mem.readInt(u64, bytes[bytes.len - 16 ..][0..8], .little);
+    if (payload_len == 0) return null;
+    if (payload_len > bytes.len - 16) return null;
+
+    const start = bytes.len - 16 - @as(usize, @intCast(payload_len));
+    return try allocator.dupe(u8, bytes[start .. bytes.len - 16]);
 }
 
 fn readSourceFile(allocator: std.mem.Allocator, io: std.Io, path: []const u8) ![]u8 {
@@ -509,6 +629,67 @@ fn executeCode(allocator: std.mem.Allocator, io: std.Io, source: []const u8, sou
     return 0;
 }
 
+// Returns true when `source` has balanced brackets/parens/braces, no
+// unclosed string/comment, and never went negative. Brackets inside strings
+// (single/double/backtick quotes) and |...| comments are ignored.
+fn blockComplete(source: []const u8) bool {
+    var square: i32 = 0;
+    var curly: i32 = 0;
+    var round: i32 = 0;
+    var bad = false;
+    var i: usize = 0;
+    var in_str: u8 = 0;
+    var in_comment = false;
+    while (i < source.len) {
+        const c = source[i];
+        if (in_comment) {
+            if (c == '|') in_comment = false;
+            i += 1;
+            continue;
+        }
+        if (in_str != 0) {
+            if (c == '\\') {
+                i += 2;
+                continue;
+            }
+            if (c == in_str) in_str = 0;
+            i += 1;
+            continue;
+        }
+        if (c == '"' or c == '\'' or c == '`') {
+            in_str = c;
+            i += 1;
+            continue;
+        }
+        if (c == '|') {
+            in_comment = true;
+            i += 1;
+            continue;
+        }
+        switch (c) {
+            '[' => square += 1,
+            ']' => {
+                square -= 1;
+                if (square < 0) bad = true;
+            },
+            '{' => curly += 1,
+            '}' => {
+                curly -= 1;
+                if (curly < 0) bad = true;
+            },
+            '(' => round += 1,
+            ')' => {
+                round -= 1;
+                if (round < 0) bad = true;
+            },
+            else => {},
+        }
+        i += 1;
+    }
+    if (in_str != 0 or in_comment or bad) return false;
+    return square == 0 and curly == 0 and round == 0;
+}
+
 fn runRepl(allocator: std.mem.Allocator, io: std.Io) !u8 {
     var stdin_buf: [4096]u8 = undefined;
     var file_reader = std.Io.File.stdin().reader(io, &stdin_buf);
@@ -521,16 +702,28 @@ fn runRepl(allocator: std.mem.Allocator, io: std.Io) !u8 {
     var accum = std.array_list.Managed(u8).init(allocator);
     defer accum.deinit();
 
-    var depth: i32 = 0;
     out.writeAll("ko repl (type 'exit' to quit)\n") catch {};
     out.flush() catch {};
 
     while (true) {
-        out.writeAll(if (depth == 0) "ko> " else "... ") catch {};
+        out.writeAll(if (accum.items.len == 0 or blockComplete(accum.items)) "ko> " else "... ") catch {};
         out.flush() catch {};
 
         const line = reader.takeDelimiterInclusive('\n') catch |err| switch (err) {
-            error.EndOfStream => break,
+            error.EndOfStream => {
+                // Execute a final, complete, non-empty block before exiting.
+                if (accum.items.len > 0 and blockComplete(accum.items)) {
+                    const trimmed = std.mem.trim(u8, accum.items, " \t\r\n");
+                    if (trimmed.len > 0) {
+                        if (accum.items.len == 0 or accum.items[accum.items.len - 1] != '\n') try accum.append('\n');
+                        const source = accum.items;
+                        const rc = executeCode(allocator, io, source, "<repl>") catch 1;
+                        if (rc != 0) std.debug.print("exit code: {d}\n", .{rc});
+                    }
+                    accum.clearRetainingCapacity();
+                }
+                break;
+            },
             else => {
                 std.debug.print("read error: {any}\n", .{err});
                 return 1;
@@ -538,24 +731,23 @@ fn runRepl(allocator: std.mem.Allocator, io: std.Io) !u8 {
         };
 
         const trimmed = std.mem.trim(u8, line, " \t\r\n");
-        if (depth == 0 and (std.mem.eql(u8, trimmed, "exit") or std.mem.eql(u8, trimmed, "quit"))) {
+        if ((accum.items.len == 0 or blockComplete(accum.items)) and
+            (std.mem.eql(u8, trimmed, "exit") or std.mem.eql(u8, trimmed, "quit")))
+        {
             break;
         }
 
-        for (line) |c| {
-            if (c == '[') depth += 1;
-            if (c == ']') depth -= 1;
-        }
         try accum.appendSlice(line);
 
-        if (depth <= 0 and accum.items.len > 0) {
-            // ensure at least one newline
-            if (accum.items[accum.items.len - 1] != '\n') try accum.append('\n');
-            const source = accum.items;
-            const rc = executeCode(allocator, io, source, "<repl>") catch 1;
-            if (rc != 0) std.debug.print("exit code: {d}\n", .{rc});
+        if (blockComplete(accum.items)) {
+            const trimmed_acc = std.mem.trim(u8, accum.items, " \t\r\n");
+            if (trimmed_acc.len > 0) {
+                if (accum.items.len == 0 or accum.items[accum.items.len - 1] != '\n') try accum.append('\n');
+                const source = accum.items;
+                const rc = executeCode(allocator, io, source, "<repl>") catch 1;
+                if (rc != 0) std.debug.print("exit code: {d}\n", .{rc});
+            }
             accum.clearRetainingCapacity();
-            depth = 0;
         }
     }
     out.writeAll("bye\n") catch {};

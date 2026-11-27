@@ -6,13 +6,28 @@ const operator = @import("operator.zig");
 
 const EndOfInput = error.EndOfInput;
 
+const target_os = @import("builtin").target.os.tag;
+
 const KoLoopEngine = opaque {};
 const KoLoopCreateFn = *const fn () callconv(.c) ?*KoLoopEngine;
 const KoLoopDestroyFn = *const fn (?*KoLoopEngine) callconv(.c) void;
 const KoLoopOptimizeForFn = *const fn (*KoLoopEngine, [*:0]const u8, i64, i64, i64, u64) callconv(.c) c_int;
 const KoLoopBodyFn = *const fn (u64, ?*anyopaque) callconv(.c) void;
+const KoLoopConditionFn = *const fn (?*anyopaque) callconv(.c) bool;
+const KoLoopExecuteWhileLoopFn = *const fn (*KoLoopEngine, [*:0]const u8, KoLoopConditionFn, ?*anyopaque, KoLoopBodyFn, ?*anyopaque, u64) callconv(.c) c_int;
 const KoLoopExecuteFn = *const fn (*KoLoopEngine, [*:0]const u8, KoLoopBodyFn, ?*anyopaque, u64) callconv(.c) c_int;
 const KoLoopGetStatsFn = *const fn (*KoLoopEngine, ?[*]u8, usize) callconv(.c) c_int;
+
+/// Open a shared library safely. On Windows (Zig 0.16 cross-toolchain from
+/// Linux) `std.DynLib.open` is a compile error, so return null there and skip
+/// native module loading — the program still runs via AST-walker bytecode.
+pub fn tryOpenDynLib(_: std.mem.Allocator, path: []const u8) ?std.DynLib {
+    if (comptime target_os == .windows) {
+        return null;
+    } else {
+        return std.DynLib.open(path) catch null;
+    }
+}
 
 pub const VM = struct {
     allocator: std.mem.Allocator,
@@ -32,6 +47,9 @@ pub const VM = struct {
     loaded_libs: std.array_list.Managed(std.DynLib),
     loop_lib: ?std.DynLib,
     loop_lib_checked: bool,
+    current_loop_cf: ?*ast.ControlFlow,
+    pending_class_def: ?*value_mod.ClassDef,
+    pending_class_original_scope: ?*value_mod.Scope,
     stdin_buf: [4096]u8,
     stdin_file_reader: ?std.Io.File.Reader,
     stdin_reader: ?std.Io.Reader,
@@ -58,6 +76,9 @@ pub const VM = struct {
             .loaded_libs = std.array_list.Managed(std.DynLib).init(allocator),
             .loop_lib = null,
             .loop_lib_checked = false,
+            .current_loop_cf = null,
+            .pending_class_def = null,
+            .pending_class_original_scope = null,
             .stdin_buf = undefined,
             .stdin_file_reader = null,
             .stdin_reader = null,
@@ -87,11 +108,14 @@ pub const VM = struct {
 pub fn readInputLine(self: *VM) ![]const u8 {
     const reader = try self.stdinReader();
     const result = reader.takeDelimiterInclusive('\n') catch |err| switch (err) {
-        error.EndOfStream => return reader.buffered(),
+        error.EndOfStream => {
+            const buf = reader.buffered();
+            return try self.allocator.dupe(u8, buf);
+        },
         else => return err,
     };
-    if (result.len > 0 and result[result.len - 1] == '\n') return result[0 .. result.len - 1];
-    return result;
+    const trimmed = if (result.len > 0 and result[result.len - 1] == '\n') result[0 .. result.len - 1] else result;
+    return try self.allocator.dupe(u8, trimmed);
 }
 
     pub fn stdoutWriter(self: *VM) *std.Io.Writer {
@@ -107,7 +131,9 @@ pub fn readInputLine(self: *VM) ![]const u8 {
     }
 
     pub fn deinit(self: *VM) void {
-        for (self.loaded_libs.items) |*lib| lib.close();
+        if (comptime target_os != .windows) {
+            for (self.loaded_libs.items) |*lib| lib.close();
+        }
         self.loaded_libs.deinit();
         self.allocator.free(self.file_path);
         var fiter = self.global_scope.functions.iterator();
@@ -176,6 +202,19 @@ pub fn readInputLine(self: *VM) ![]const u8 {
         }
 
         for (entries.items) |e| {
+            const allowed_top = switch (e.stmt.*) {
+                .func_decl, .class_decl, .catch_stmt, .block, .var_decl,
+                .class_instantiation, .priority_stmt => true,
+                .expr => |expr| switch (expr.*) {
+                    .call => |c| c.target != null or std.mem.eql(u8, c.callee, "Import"),
+                    else => false,
+                },
+                else => false,
+            };
+            if (!allowed_top) {
+                self.raiseError("SyntaxError", "Statement not allowed outside main block");
+                return error.RuntimeError;
+            }
             if (self.has_returned) break;
             if (self.has_error) {
                 self.dispatchCatchBlocks(program, e.index) catch |err| std.debug.print("dispatchCatchBlocks: {any}\n", .{err});
@@ -189,6 +228,22 @@ pub fn readInputLine(self: *VM) ![]const u8 {
             if (self.error_type) |et| {
                 if (std.mem.eql(u8, et, "InputError")) return error.EndOfInput;
             }
+            return error.RuntimeError;
+        }
+
+        // SPEC §3: a variable that still holds `null` when the program ends
+        // was never assigned a value. Report it instead of silently dropping
+        // it, so an uninitialised placeholder cannot pass unnoticed.
+        var null_name: ?[]const u8 = null;
+        var viter = self.global_scope.variables.iterator();
+        while (viter.next()) |entry| {
+            if (entry.value_ptr.* == .null) {
+                null_name = entry.key_ptr.*;
+                break;
+            }
+        }
+        if (null_name) |name| {
+            self.raiseError("NullUnassigned", name);
             return error.RuntimeError;
         }
     }
@@ -440,37 +495,75 @@ pub fn readInputLine(self: *VM) ![]const u8 {
                             const val = try self.evaluateExpression(init_assign.value_expr);
                             try self.assignValue(init_assign.target, val);
                         }
-                        var cond_val = try self.evaluateExpression(cf.condition.?);
-                        while (try cond_val.toBool() and !self.has_returned and !self.has_error) {
-                            for (cf.body) |s| try self.executeStatement(&s);
-                            if (self.has_returned or self.has_error) break;
-                            if (cf.step) |step_expr| {
-                                const step_val = try self.evaluateExpression(step_expr);
-                                const current_val = self.current_scope.variables.get(cf.loop_var) orelse cond_val;
-                                const new_val = try current_val.add(step_val, self.allocator);
-                                const target = try self.allocator.create(ast.Expr);
-                                target.* = .{ .identifier = cf.loop_var };
-                                try self.assignValue(target, new_val);
-                                self.allocator.destroy(target);
-                            } else {
-                                const one = value_mod.Value{ .int = 1 };
-                                const current_val = self.current_scope.variables.get(cf.loop_var) orelse cond_val;
-                                const new_val = try current_val.add(one, self.allocator);
-                                const target = try self.allocator.create(ast.Expr);
-                                target.* = .{ .identifier = cf.loop_var };
-                                try self.assignValue(target, new_val);
-                                self.allocator.destroy(target);
+                        var used_loop_lib = false;
+                        if (comptime target_os != .windows) {
+                            if (self.loop_lib) |*lib| {
+                                if (lib.lookup(KoLoopCreateFn, "ko_loop_engine_create")) |create_fn| {
+                                    if (create_fn()) |eng| {
+                                        defer if (lib.lookup(KoLoopDestroyFn, "ko_loop_engine_destroy")) |destroy_fn| destroy_fn(eng);
+                                        if (lib.lookup(KoLoopExecuteWhileLoopFn, "ko_loop_execute_while_loop")) |exec_fn| {
+                                            const prev_cf = self.current_loop_cf;
+                                            self.current_loop_cf = cf;
+                                            const rc = exec_fn(eng, "ko_loop", loopConditionTrampoline, @ptrCast(self), loopBodyTrampoline, @ptrCast(self), 1000000000);
+                                            self.current_loop_cf = prev_cf;
+                                            if (rc == 0 or rc == 5) used_loop_lib = true;
+                                        }
+                                    }
+                                }
                             }
-                            cond_val = try self.evaluateExpression(cf.condition.?);
+                        }
+                        if (!used_loop_lib) {
+                            var cond_val = try self.evaluateExpression(cf.condition.?);
+                            while (try cond_val.toBool() and !self.has_returned and !self.has_error) {
+                                for (cf.body) |s| try self.executeStatement(&s);
+                                if (self.has_returned or self.has_error) break;
+                                if (cf.step) |step_expr| {
+                                    const step_val = try self.evaluateExpression(step_expr);
+                                    const current_val = self.current_scope.variables.get(cf.loop_var) orelse cond_val;
+                                    const new_val = try current_val.add(step_val, self.allocator);
+                                    const target = try self.allocator.create(ast.Expr);
+                                    target.* = .{ .identifier = cf.loop_var };
+                                    try self.assignValue(target, new_val);
+                                    self.allocator.destroy(target);
+                                } else {
+                                    const one = value_mod.Value{ .int = 1 };
+                                    const current_val = self.current_scope.variables.get(cf.loop_var) orelse cond_val;
+                                    const new_val = try current_val.add(one, self.allocator);
+                                    const target = try self.allocator.create(ast.Expr);
+                                    target.* = .{ .identifier = cf.loop_var };
+                                    try self.assignValue(target, new_val);
+                                    self.allocator.destroy(target);
+                                }
+                                cond_val = try self.evaluateExpression(cf.condition.?);
+                            }
                         }
                     },
                     .while_loop => {
                         self.dispatchLoop();
-                        var cond_val = try self.evaluateExpression(cf.condition.?);
-                        while (try cond_val.toBool() and !self.has_returned and !self.has_error) {
-                            for (cf.body) |s| try self.executeStatement(&s);
-                            if (self.has_returned or self.has_error) break;
-                            cond_val = try self.evaluateExpression(cf.condition.?);
+                        var used_loop_lib = false;
+                        if (comptime target_os != .windows) {
+                            if (self.loop_lib) |*lib| {
+                                if (lib.lookup(KoLoopCreateFn, "ko_loop_engine_create")) |create_fn| {
+                                    if (create_fn()) |eng| {
+                                        defer if (lib.lookup(KoLoopDestroyFn, "ko_loop_engine_destroy")) |destroy_fn| destroy_fn(eng);
+                                        if (lib.lookup(KoLoopExecuteWhileLoopFn, "ko_loop_execute_while_loop")) |exec_fn| {
+                                            const prev_cf = self.current_loop_cf;
+                                            self.current_loop_cf = cf;
+                                            const rc = exec_fn(eng, "ko_loop", loopConditionTrampoline, @ptrCast(self), loopBodyTrampoline, @ptrCast(self), 1000000000);
+                                            self.current_loop_cf = prev_cf;
+                                            if (rc == 0 or rc == 5) used_loop_lib = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (!used_loop_lib) {
+                            var cond_val = try self.evaluateExpression(cf.condition.?);
+                            while (try cond_val.toBool() and !self.has_returned and !self.has_error) {
+                                for (cf.body) |s| try self.executeStatement(&s);
+                                if (self.has_returned or self.has_error) break;
+                                cond_val = try self.evaluateExpression(cf.condition.?);
+                            }
                         }
                     },
                 }
@@ -671,7 +764,7 @@ pub fn readInputLine(self: *VM) ![]const u8 {
                                 const key = idx.string;
                                 const key_copy = try self.allocator.dupe(u8, key);
                                 if (try d.fetchPut(key_copy, val)) |old_entry| {
-                                    self.allocator.free(old_entry.key);
+                                    self.allocator.free(key_copy);
                                     var old_val = old_entry.value;
                                     old_val.deinit(self.allocator);
                                 }
@@ -691,9 +784,16 @@ pub fn readInputLine(self: *VM) ![]const u8 {
     }
 
     pub fn raiseError(self: *VM, err_type: []const u8, message: []const u8) void {
+        if (self.has_error) return;
         self.has_error = true;
         self.error_type = err_type;
-        _ = message;
+        // Surface the diagnostic instead of discarding it (`_ = message`).
+        // The test harness installs a discarding writer via setOutputWriter, so
+        // writing here stays hermetic; in the CLI it lands on stdout/stderr
+        // alongside the runtime error line.
+        const writer = self.stdoutWriter();
+        writer.print("{s}: {s}\n", .{ err_type, message }) catch {};
+        writer.flush() catch {};
     }
 
     pub fn evaluateExpression(self: *VM, expr: *ast.Expr) !value_mod.Value {
@@ -728,12 +828,12 @@ pub fn readInputLine(self: *VM) ![]const u8 {
         return @import("vm_value_ops.zig").instantiateClassByName(self, name);
     }
 
-    pub fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr) anyerror!value_mod.Value {
-        return @import("vm_value_ops.zig").callUserFunction(self, func, args);
+    pub fn callUserFunction(self: *VM, func: *value_mod.Function, args: []ast.Expr, instance: ?*value_mod.ClassInstance) anyerror!value_mod.Value {
+        return @import("vm_value_ops.zig").callUserFunction(self, func, args, instance);
     }
 
-    pub fn callUserFunctionValues(self: *VM, func: *value_mod.Function, args: []const value_mod.Value) anyerror!value_mod.Value {
-        return @import("vm_value_ops.zig").callUserFunctionValues(self, func, args);
+    pub fn callUserFunctionValues(self: *VM, func: *value_mod.Function, args: []const value_mod.Value, instance: ?*value_mod.ClassInstance) anyerror!value_mod.Value {
+        return @import("vm_value_ops.zig").callUserFunctionValues(self, func, args, instance);
     }
 
     pub fn evaluateCall(self: *VM, call: *const ast.CallExpr) anyerror!value_mod.Value {
@@ -759,40 +859,44 @@ pub fn readInputLine(self: *VM) ![]const u8 {
                 "/usr/local/lib/libko_loop.so",
             };
             for (candidates) |path| {
-                const lib = std.DynLib.open(path) catch continue;
-                self.loop_lib = lib;
-                break;
+                const lib = tryOpenDynLib(self.allocator, path);
+                if (lib) |l| {
+                    self.loop_lib = l;
+                    break;
+                }
             }
         }
 
         const writer = self.stdoutWriter();
-        if (self.loop_lib) |*lib| {
-            const create_fn = lib.lookup(KoLoopCreateFn, "ko_loop_engine_create");
-            const destroy_fn = lib.lookup(KoLoopDestroyFn, "ko_loop_engine_destroy");
-            if (create_fn == null or destroy_fn == null) {
-                writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
-                writer.flush() catch {};
-                return;
+        if (comptime target_os != .windows) {
+            if (self.loop_lib) |*lib| {
+                const create_fn = lib.lookup(KoLoopCreateFn, "ko_loop_engine_create");
+                const destroy_fn = lib.lookup(KoLoopDestroyFn, "ko_loop_engine_destroy");
+                if (create_fn == null or destroy_fn == null) {
+                    writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
+                    writer.flush() catch {};
+                    return;
+                }
+                const eng = create_fn.?() orelse {
+                    writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
+                    writer.flush() catch {};
+                    return;
+                };
+                if (lib.lookup(KoLoopOptimizeForFn, "ko_loop_optimize_for")) |opt_fn| {
+                    _ = opt_fn(eng, "ko_loop", 0, 4, 1, 4);
+                }
+                if (lib.lookup(KoLoopExecuteFn, "ko_loop_execute_optimized_loop")) |exec_fn| {
+                    const body_fn = struct {
+                        fn f(_: u64, _: ?*anyopaque) callconv(.c) void {}
+                    }.f;
+                    _ = exec_fn(eng, "ko_loop", body_fn, null, 4);
+                }
+                if (lib.lookup(KoLoopGetStatsFn, "ko_loop_get_stats")) |stats_fn| {
+                    var buf: [256]u8 = undefined;
+                    _ = stats_fn(eng, &buf, buf.len);
+                }
+                destroy_fn.?(eng);
             }
-            const eng = create_fn.?() orelse {
-                writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
-                writer.flush() catch {};
-                return;
-            };
-            if (lib.lookup(KoLoopOptimizeForFn, "ko_loop_optimize_for")) |opt_fn| {
-                _ = opt_fn(eng, "ko_loop", 0, 4, 1, 4);
-            }
-            if (lib.lookup(KoLoopExecuteFn, "ko_loop_execute_optimized_loop")) |exec_fn| {
-                const body_fn = struct {
-                    fn f(_: u64, _: ?*anyopaque) callconv(.c) void {}
-                }.f;
-                _ = exec_fn(eng, "ko_loop", body_fn, null, 4);
-            }
-            if (lib.lookup(KoLoopGetStatsFn, "ko_loop_get_stats")) |stats_fn| {
-                var buf: [256]u8 = undefined;
-                _ = stats_fn(eng, &buf, buf.len);
-            }
-            destroy_fn.?(eng);
         } else {
             writer.print("Warning: libko_loop not available; continuing\n", .{}) catch {};
             writer.flush() catch {};
@@ -823,6 +927,11 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
         var sp: usize = 0;
         var ip: usize = 0;
 
+        errdefer {
+            var i: usize = 0;
+            while (i < sp) : (i += 1) stack[i].deinit(self.allocator);
+        }
+
         while (ip < func.instructions.items.len) {
             const inst = func.instructions.items[ip];
             ip += 1;
@@ -831,7 +940,7 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                 .load_const => |idx| {
                     if (sp >= stack.len) return error.StackOverflow;
                     const val = chunk.constants.items[idx];
-                    stack[sp] = val;
+                    stack[sp] = try val.clone(self.allocator);
                     sp += 1;
                 },
                 .load_var => |idx| {
@@ -848,10 +957,12 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     const owned = try self.allocator.dupe(u8, name);
                     const cloned = try val.clone(self.allocator);
                     if (try self.current_scope.variables.fetchPut(owned, cloned)) |old_entry| {
-                        self.allocator.free(old_entry.key);
+                        self.allocator.free(owned);
                         var old_val = old_entry.value;
                         old_val.deinit(self.allocator);
                     }
+                    var consumed = val;
+                    consumed.deinit(self.allocator);
                     sp -= 1;
                 },
                 .binary => |op| {
@@ -859,6 +970,8 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     const lhs = stack[sp - 2];
                     sp -= 2;
                     const result = try self.binaryOp(op, lhs, rhs);
+                    var a = lhs; a.deinit(self.allocator);
+                    var b = rhs; b.deinit(self.allocator);
                     stack[sp] = result;
                     sp += 1;
                 },
@@ -866,6 +979,7 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     const val = stack[sp - 1];
                     sp -= 1;
                     const result = try self.evaluateUnaryOp(op, val);
+                    var v = val; v.deinit(self.allocator);
                     stack[sp] = result;
                     sp += 1;
                 },
@@ -874,13 +988,51 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     const arg_count = @as(usize, @intCast(arity & 0xFFFF));
                     const callee_name = chunk.constants.items[name_idx].string;
                     const args = stack[sp - arg_count .. sp];
-                    if (self.current_scope.classes.get(callee_name) != null or self.global_scope.classes.get(callee_name) != null) {
+                    var user_func: ?*bytecode.Function = null;
+                    for (chunk.functions.items) |*f| {
+                        if (std.mem.eql(u8, f.name, callee_name)) { user_func = f; break; }
+                    }
+                    if (user_func) |uf| {
+                        const saved_scope = self.current_scope;
+                        const new_scope = try self.allocator.create(value_mod.Scope);
+                        new_scope.* = value_mod.Scope.init(self.allocator, saved_scope);
+                        self.current_scope = new_scope;
+                        for (uf.params, 0..) |pname, i| {
+                            if (i < args.len) {
+                                const name_copy = try self.allocator.dupe(u8, pname);
+                                const cloned = try args[i].clone(self.allocator);
+                                try self.current_scope.variables.put(name_copy, cloned);
+                            }
+                        }
+                        const saved_rv = self.return_value;
+                        const saved_hr = self.has_returned;
+                        self.return_value = null;
+                        self.has_returned = false;
+                        try self.runFunction(uf, chunk);
+                        const rv = self.return_value;
+                        self.current_scope = saved_scope;
+                        self.return_value = saved_rv;
+                        self.has_returned = saved_hr;
+                        var _ai: usize = 0;
+                        while (_ai < arg_count) : (_ai += 1) args[_ai].deinit(self.allocator);
+                        sp -= arg_count;
+                        if (rv) |v| {
+                            stack[sp] = v;
+                        } else {
+                            stack[sp] = value_mod.Value{ .null = {} };
+                        }
+                        sp += 1;
+                    } else if (self.current_scope.classes.get(callee_name) != null or self.global_scope.classes.get(callee_name) != null) {
                         const instance_val = try self.instantiateClassByName(callee_name);
+                        var _ai: usize = 0;
+                        while (_ai < arg_count) : (_ai += 1) args[_ai].deinit(self.allocator);
                         sp -= arg_count;
                         stack[sp] = instance_val;
                         sp += 1;
                     } else {
                         const result = try self.callBuiltin(callee_name, args);
+                        var _ai: usize = 0;
+                        while (_ai < arg_count) : (_ai += 1) args[_ai].deinit(self.allocator);
                         sp -= arg_count;
                         stack[sp] = result;
                         sp += 1;
@@ -900,8 +1052,10 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                         },
                     };
                     var method_func: ?*value_mod.Function = null;
+                    var target_instance: ?*value_mod.ClassInstance = null;
                     switch (target_val) {
                         .class_instance => |ci| {
+                            target_instance = ci;
                             if (ci.methods.get(method_name)) |f| {
                                 method_func = f;
                             } else {
@@ -916,26 +1070,249 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                         },
                     }
                     if (method_func) |f| {
-                        const result = try self.callUserFunctionValues(f, args);
+                        const result = try self.callUserFunctionValues(f, args, target_instance);
+                        var _ai2: usize = 0;
+                        while (_ai2 < ac) : (_ai2 += 1) args[_ai2].deinit(self.allocator);
+                        var _mv = method_val; _mv.deinit(self.allocator);
+                        var _tv = target_val; _tv.deinit(self.allocator);
                         sp -= ac + 2;
                         stack[sp] = result;
                         sp += 1;
                     }
                 },
+                .index_access => {
+                    if (sp < 2) return error.StackUnderflow;
+                    var idx_val = stack[sp - 1];
+                    var obj = stack[sp - 2];
+                    sp -= 2;
+                    var result: value_mod.Value = undefined;
+                    defer idx_val.deinit(self.allocator);
+                    defer obj.deinit(self.allocator);
+                    var handled = false;
+                    switch (obj) {
+                        .tuple, .list => |arr| {
+                            if (idx_val == .int) {
+                                const i: usize = @intCast(idx_val.int);
+                                if (i < arr.len) {
+                                    result = try arr[i].clone(self.allocator);
+                                    handled = true;
+                                } else {
+                                    self.raiseError("IndexError", "Index out of bounds");
+                                    return error.RuntimeError;
+                                }
+                            } else {
+                                self.raiseError("TypeError", "Index must be integer");
+                                return error.RuntimeError;
+                            }
+                        },
+                        .dict => |d| {
+                            const key_str = if (idx_val == .string) idx_val.string else if (idx_val == .int) blk: {
+                                break :blk try std.fmt.allocPrint(self.allocator, "{d}", .{idx_val.int});
+                            } else null;
+                            if (key_str) |ks| {
+                                if (d.get(ks)) |val| {
+                                    result = try val.clone(self.allocator);
+                                    handled = true;
+                                } else {
+                                    if (idx_val == .int) self.allocator.free(ks);
+                                    self.raiseError("KeyError", "Key not found");
+                                    return error.RuntimeError;
+                                }
+                                if (idx_val == .int) self.allocator.free(ks);
+                            } else {
+                                self.raiseError("TypeError", "Dict key must be string or int");
+                                return error.RuntimeError;
+                            }
+                        },
+                        .string => |str| {
+                            if (idx_val == .int) {
+                                const i: usize = @intCast(idx_val.int);
+                                if (i < str.len) {
+                                    const ch = try self.allocator.dupe(u8, str[i..i + 1]);
+                                    result = value_mod.Value{ .string = ch };
+                                    handled = true;
+                                } else {
+                                    self.raiseError("IndexError", "Index out of bounds");
+                                    return error.RuntimeError;
+                                }
+                            } else {
+                                self.raiseError("TypeError", "Index must be integer");
+                                return error.RuntimeError;
+                            }
+                        },
+                        else => {},
+                    }
+                    if (!handled) {
+                        self.raiseError("TypeError", "Cannot index this type");
+                        return error.RuntimeError;
+                    }
+                    stack[sp] = result;
+                    sp += 1;
+                },
                 .ret => {
+                    if (sp > 0) {
+                        self.return_value = try stack[sp - 1].clone(self.allocator);
+                        var _rv = stack[sp - 1]; _rv.deinit(self.allocator);
+                        self.has_returned = true;
+                        sp -= 1;
+                    } else {
+                        self.return_value = null;
+                        self.has_returned = true;
+                    }
+                    {
+                        var i: usize = 0;
+                        while (i < sp) : (i += 1) stack[i].deinit(self.allocator);
+                    }
                     return;
                 },
+                .get_member => {
+                    if (sp < 2) return error.StackUnderflow;
+                    var member_val = stack[sp - 1];
+                    var obj = stack[sp - 2];
+                    const member_name = switch (member_val) {
+                        .string => |s| s,
+                        else => {
+                            self.raiseError("TypeError", "Member name must be string");
+                            return error.RuntimeError;
+                        },
+                    };
+                    sp -= 2;
+                    var result: value_mod.Value = undefined;
+                    var handled = false;
+                    defer member_val.deinit(self.allocator);
+                    defer obj.deinit(self.allocator);
+                    switch (obj) {
+                        .class_instance => |ci| {
+                            if (ci.fields.get(member_name)) |val| {
+                                result = try val.clone(self.allocator);
+                                handled = true;
+                            } else if (ci.methods.get(member_name)) |mfunc| {
+                                result = value_mod.Value{ .function = mfunc };
+                                handled = true;
+                            }
+                        },
+                        .dict => |d| {
+                            if (d.get(member_name)) |val| {
+                                result = try val.clone(self.allocator);
+                                handled = true;
+                            }
+                        },
+                        else => {},
+                    }
+                    if (!handled) {
+                        self.raiseError("MemberError", "Member not found");
+                        return error.RuntimeError;
+                    }
+                    stack[sp] = result;
+                    sp += 1;
+                },
+                .class_decl_start => |name_idx| {
+                    const name = chunk.constants.items[name_idx].string;
+                    const class_def = try self.allocator.create(value_mod.ClassDef);
+                    const private_scope = try self.allocator.create(value_mod.Scope);
+                    private_scope.* = value_mod.Scope.init(self.allocator, self.current_scope);
+                    const public_scope = try self.allocator.create(value_mod.Scope);
+                    public_scope.* = value_mod.Scope.init(self.allocator, self.current_scope);
+                    class_def.* = value_mod.ClassDef{
+                        .name = name,
+                        .private_fields = std.StringHashMap(value_mod.Value).init(self.allocator),
+                        .private_methods = std.StringHashMap(*value_mod.Function).init(self.allocator),
+                        .public_fields = std.StringHashMap(value_mod.Value).init(self.allocator),
+                        .public_methods = std.StringHashMap(*value_mod.Function).init(self.allocator),
+                        .allocator = self.allocator,
+                        .private_scope = private_scope,
+                        .public_scope = public_scope,
+                    };
+                    const name_copy = try self.allocator.dupe(u8, name);
+                    try self.current_scope.classes.put(name_copy, class_def);
+                    self.pending_class_def = class_def;
+                    self.pending_class_original_scope = self.current_scope;
+                    self.current_scope = class_def.private_scope.?;
+                },
+                .class_decl_private_done => {
+                    const class_def = self.pending_class_def.?;
+                    const private_scope = class_def.private_scope.?;
+                    var piter = private_scope.variables.iterator();
+                    while (piter.next()) |entry| {
+                        try class_def.private_fields.put(try self.allocator.dupe(u8, entry.key_ptr.*), entry.value_ptr.*);
+                    }
+                    var miter = private_scope.functions.iterator();
+                    while (miter.next()) |entry| {
+                        try class_def.private_methods.put(try self.allocator.dupe(u8, entry.key_ptr.*), entry.value_ptr.*);
+                    }
+                    {
+                        var free_iter = private_scope.variables.iterator();
+                        while (free_iter.next()) |entry| {
+                            self.allocator.free(entry.key_ptr.*);
+                        }
+                    }
+                    private_scope.variables.clearRetainingCapacity();
+                    {
+                        var free_iter = private_scope.functions.iterator();
+                        while (free_iter.next()) |entry| {
+                            self.allocator.free(entry.key_ptr.*);
+                        }
+                    }
+                    private_scope.functions.clearRetainingCapacity();
+                    private_scope.classes.clearRetainingCapacity();
+                    self.current_scope = class_def.public_scope.?;
+                },
+                .class_decl_finish => {
+                    const class_def = self.pending_class_def.?;
+                    const public_scope = class_def.public_scope.?;
+                    var ppiter = public_scope.variables.iterator();
+                    while (ppiter.next()) |entry| {
+                        try class_def.public_fields.put(try self.allocator.dupe(u8, entry.key_ptr.*), entry.value_ptr.*);
+                    }
+                    var pmiter = public_scope.functions.iterator();
+                    while (pmiter.next()) |entry| {
+                        try class_def.public_methods.put(try self.allocator.dupe(u8, entry.key_ptr.*), entry.value_ptr.*);
+                    }
+                    {
+                        var free_iter = public_scope.variables.iterator();
+                        while (free_iter.next()) |entry| {
+                            self.allocator.free(entry.key_ptr.*);
+                        }
+                    }
+                    public_scope.variables.clearRetainingCapacity();
+                    {
+                        var free_iter = public_scope.functions.iterator();
+                        while (free_iter.next()) |entry| {
+                            self.allocator.free(entry.key_ptr.*);
+                        }
+                    }
+                    public_scope.functions.clearRetainingCapacity();
+                    public_scope.classes.clearRetainingCapacity();
+                    self.current_scope = self.pending_class_original_scope.?;
+                    self.pending_class_def = null;
+                    self.pending_class_original_scope = null;
+                },
                 .print => {
-                    const val = stack[sp - 1];
+                    var val = stack[sp - 1];
                     sp -= 1;
-                    try val.print(self.stdoutWriter());
-                    try self.stdoutWriter().print("\n", .{});
-                    try self.stdoutWriter().flush();
+                    defer val.deinit(self.allocator);
+                    // Mirror the AST walker's evaluateCall: a string payload is
+                    // subject to `{name}` interpolation. Without this the
+                    // bytecode backend emitted the literal text (`x={x}`) while
+                    // the AST walker emitted the substituted value (`x=7`).
+                    if (val == .null) {
+                        self.raiseError("TypeError", "Cannot print an unassigned null value");
+                        return error.TypeError;
+                    }
+                    if (val == .string) {
+                        try self.printInterpolated(val.string);
+                    } else {
+                        try val.print(self.stdoutWriter());
+                        try self.stdoutWriter().print("\n", .{});
+                        try self.stdoutWriter().flush();
+                    }
                 },
                 .input => {
+                    // readInputLine already returns an owned allocation; using
+                    // it directly avoids a second dupe that was never freed
+                    // (one leaked allocation per <input>).
                     const line = try self.readInputLine();
-                    const str = try self.allocator.dupe(u8, line);
-                    stack[sp] = value_mod.Value{ .string = str };
+                    stack[sp] = value_mod.Value{ .string = line };
                     sp += 1;
                 },
                 .now => {
@@ -944,12 +1321,14 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     sp += 1;
                 },
                 .len => {
-                    const val = stack[sp - 1];
+                    var val = stack[sp - 1];
                     sp -= 1;
+                    defer val.deinit(self.allocator);
                     const len: i64 = switch (val) {
                         .string => |s| @intCast(s.len),
                         .tuple => |t| @intCast(t.len),
                         .list => |l| @intCast(l.len),
+                        .bytes => |b| @intCast(b.len),
                         .dict => |d| @intCast(d.count()),
                         else => 0,
                     };
@@ -961,8 +1340,9 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     sp += 1;
                 },
                 .encode => {
-                    const val = stack[sp - 1];
+                    var val = stack[sp - 1];
                     sp -= 1;
+                    defer val.deinit(self.allocator);
                     var aw: std.Io.Writer.Allocating = .init(self.allocator);
                     errdefer aw.deinit();
                     try val.print(&aw.writer);
@@ -974,6 +1354,20 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     const d = try self.allocator.create(std.StringHashMap(value_mod.Value));
                     d.* = std.StringHashMap(value_mod.Value).init(self.allocator);
                     stack[sp] = value_mod.Value{ .dict = d };
+                    sp += 1;
+                },
+                .make_tuple => |count| {
+                    const n: usize = @intCast(count);
+                    if (sp < n) return error.StackUnderflow;
+                    const start = sp - n;
+                    const elems = try self.allocator.alloc(value_mod.Value, n);
+                    for (0..n) |i| {
+                        elems[i] = try stack[start + i].clone(self.allocator);
+                    }
+                    var i: usize = start;
+                    while (i < sp) : (i += 1) stack[i].deinit(self.allocator);
+                    sp = start;
+                    stack[sp] = value_mod.Value{ .tuple = elems };
                     sp += 1;
                 },
                 .dict_set => {
@@ -989,7 +1383,7 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     const d = dict_val.dict;
                     const duped_key = try self.allocator.dupe(u8, key_str);
                     if (try d.fetchPut(duped_key, value)) |old| {
-                        self.allocator.free(old.key);
+                        self.allocator.free(duped_key);
                         var v = old.value;
                         v.deinit(self.allocator);
                     }
@@ -1008,13 +1402,19 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
                     ip = @intCast(@as(isize, @intCast(ip)) + offset);
                 },
                 .jump_if_false => |offset| {
-                    const val = stack[sp - 1];
+                    var val = stack[sp - 1];
                     sp -= 1;
+                    defer val.deinit(self.allocator);
                     if (!try val.toBool()) {
                         ip = @intCast(@as(isize, @intCast(ip)) + offset);
                     }
                 },
             }
+        }
+        // Deinitialize any values left on the stack on normal completion.
+        {
+            var i: usize = 0;
+            while (i < sp) : (i += 1) stack[i].deinit(self.allocator);
         }
     }
 
@@ -1031,3 +1431,68 @@ pub fn evaluateInput(self: *VM, ie: *ast.InputExpr) !value_mod.Value {
     }
 
 };
+
+fn loopConditionTrampoline(ctx: ?*anyopaque) callconv(.c) bool {
+    const self: *VM = @ptrCast(@alignCast(ctx.?));
+    const cf = self.current_loop_cf orelse return false;
+    if (self.has_returned or self.has_error) return false;
+    if (cf.condition) |cond_expr| {
+        var val = self.evaluateExpression(cond_expr) catch return false;
+        defer val.deinit(self.allocator);
+        return val.toBool() catch false;
+    }
+    return false;
+}
+
+fn loopBodyTrampoline(iteration: u64, ctx: ?*anyopaque) callconv(.c) void {
+    _ = iteration;
+    const self: *VM = @ptrCast(@alignCast(ctx.?));
+    const cf = self.current_loop_cf orelse return;
+    if (self.has_returned or self.has_error) return;
+    for (cf.body) |s| {
+        self.executeStatement(&s) catch {
+            self.has_error = true;
+        };
+        if (self.has_returned or self.has_error) break;
+    }
+    if (cf.kind == .for_loop) {
+        if (cf.step) |step_expr| {
+            var step_val = self.evaluateExpression(step_expr) catch {
+                self.has_error = true;
+                return;
+            };
+            const current_val = self.current_scope.variables.get(cf.loop_var) orelse step_val;
+            const new_val = current_val.add(step_val, self.allocator) catch {
+                step_val.deinit(self.allocator);
+                self.has_error = true;
+                return;
+            };
+            step_val.deinit(self.allocator);
+            const target = self.allocator.create(ast.Expr) catch {
+                self.has_error = true;
+                return;
+            };
+            target.* = .{ .identifier = cf.loop_var };
+            self.assignValue(target, new_val) catch {
+                self.has_error = true;
+            };
+            self.allocator.destroy(target);
+        } else {
+            const one = value_mod.Value{ .int = 1 };
+            const current_val = self.current_scope.variables.get(cf.loop_var) orelse one;
+            const new_val = current_val.add(one, self.allocator) catch {
+                self.has_error = true;
+                return;
+            };
+            const target = self.allocator.create(ast.Expr) catch {
+                self.has_error = true;
+                return;
+            };
+            target.* = .{ .identifier = cf.loop_var };
+            self.assignValue(target, new_val) catch {
+                self.has_error = true;
+            };
+            self.allocator.destroy(target);
+        }
+    }
+}

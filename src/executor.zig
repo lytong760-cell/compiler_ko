@@ -49,29 +49,43 @@ pub const Executor = struct {
         return self.backend_used;
     }
 
+    pub fn setOutputWriter(self: *Executor, writer: *std.Io.Writer) void {
+        self.vm.setOutputWriter(writer);
+    }
+
     pub fn execute(self: *Executor, program: []ast.Statement) !void {
-        if (!hasFuncOrClassDef(program) and !hasImportStmt(program)) {
+        if (!requiresAstWalker(program) and !hasImportStmt(program)) {
             var chunk = try bytecode_mod.Chunk.init(self.allocator);
-            errdefer chunk.deinit(self.allocator);
+            // Single owner: `defer` runs on every exit path, and `freed` guards
+            // against the early frees below. Using `errdefer` here (the previous
+            // shape) double-freed whenever a runtime error was returned after an
+            // explicit chunk.deinit(): the errdefer fired on the same pointer a
+            // second time, corrupting the heap (rc=134, SIGABRT).
+            var freed = false;
+            defer if (!freed) chunk.deinit(self.allocator);
             var comp = try compiler_mod.Compiler.init(self.allocator, &chunk, "main", 0);
             defer comp.deinit();
             if (comp.compileProgram(program)) |_| {
                 self.vm.executeChunk(&chunk) catch |err| {
                     if (err == error.EndOfInput) {
                         std.debug.print("InputError: end of input\n", .{});
+                        freed = true;
                         chunk.deinit(self.allocator);
                         return error.EndOfInput;
                     }
                     std.debug.print("Runtime error: {any}\n", .{err});
+                    freed = true;
                     chunk.deinit(self.allocator);
                     return error.RuntimeError;
                 };
+                freed = true;
                 chunk.deinit(self.allocator);
                 self.backend_used = .bytecode;
                 return;
             } else |err| {
                 std.debug.print("Bytecode compile failed ({any}); falling back to AST walker\n", .{err});
             }
+            freed = true;
             chunk.deinit(self.allocator);
         }
 
@@ -103,14 +117,15 @@ fn hasImportStmt(program: []ast.Statement) bool {
     return false;
 }
 
-fn hasFuncOrClassDef(program: []ast.Statement) bool {
+fn requiresAstWalker(program: []ast.Statement) bool {
     for (program) |stmt| {
         switch (stmt) {
             .func_decl => return true,
             .class_decl => return true,
             .class_instantiation => return true,
+            .catch_stmt => return true,
             .block => |b| {
-                if (hasFuncOrClassDef(b.body)) return true;
+                if (requiresAstWalker(b.body)) return true;
             },
             else => {},
         }

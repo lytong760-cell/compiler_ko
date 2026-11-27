@@ -33,6 +33,12 @@ BASE_PATH = f"/v1/projects/{PROJECT_ID}/databases/{DATABASE_ID}/documents"
 _RATE_BUCKETS = defaultdict(deque)
 _RATE_LIMIT = 120  # requests per minute per IP
 
+# CORS: restrict to specific origins instead of wildcard.
+# Configurable via KO_CORS_ORIGINS (comma-separated). Default: localhost dev origins.
+_DEFAULT_CORS_ORIGINS = "http://localhost:3000,http://127.0.0.1:3000"
+_CORS_ORIGINS = [o.strip() for o in os.environ.get("KO_CORS_ORIGINS", _DEFAULT_CORS_ORIGINS).split(",") if o.strip()]
+_CORS_ORIGINS_SET = set(_CORS_ORIGINS)
+
 class ModuleStore:
     def __init__(self, data_dir):
         self.data_dir = data_dir
@@ -129,14 +135,27 @@ class RequestHandler(BaseHTTPRequestHandler):
             format % args
         ))
 
+    def _cors_origin(self):
+        origin = self.headers.get("Origin", "")
+        if origin in _CORS_ORIGINS_SET:
+            return origin
+        return None
+
+    def _send_cors_headers(self):
+        origin = self._cors_origin()
+        if origin:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, x-goog-api-key")
+        self.send_header("Access-Control-Allow-Credentials", "true")
+
     def _send_json(self, status, data):
         body = json.dumps(data).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, x-goog-api-key")
+        self._send_cors_headers()
         self.end_headers()
         self.wfile.write(body)
 
@@ -165,9 +184,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, x-goog-api-key")
+        self._send_cors_headers()
         self.end_headers()
 
     def do_GET(self):
@@ -297,6 +314,9 @@ def main():
     RequestHandler.store = store
 
     server = HTTPServer((args.host, args.port), RequestHandler)
+    # Socket-level timeout so a slow/stalled client cannot hold a worker forever.
+    server.timeout = 30
+    server.RequestHandlerClass = RequestHandler
     print(f".ko Module Store API Server running on http://{args.host}:{args.port}")
     print(f"Firestore-compatible base path: {BASE_PATH}")
     print(f"API key status: {'configured' if API_KEY else 'not configured'}")

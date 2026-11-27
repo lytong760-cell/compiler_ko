@@ -57,7 +57,17 @@ pub const Value = union(enum) {
         try self.print(writer);
     }
 
+    /// Render a value. A `null` placeholder is unusable per SPEC §3, so this
+    /// reports TypeError instead of fabricating a textual form for it. Use
+    /// `printAllowNull` for diagnostics that must describe an in-progress value.
     pub fn print(self: Value, writer: anytype) !void {
+        if (self == .null) return error.TypeError;
+        return self.printAllowNull(writer);
+    }
+
+    /// Same as `print`, but renders `.null` as the literal text `null`.
+    /// Diagnostic paths only — never reachable from user program output.
+    pub fn printAllowNull(self: Value, writer: anytype) !void {
         switch (self) {
             .null => try writer.print("null", .{}),
             .none => try writer.print("none", .{}),
@@ -78,7 +88,7 @@ pub const Value = union(enum) {
                 try writer.print("(", .{});
                 for (v, 0..) |item, i| {
                     if (i > 0) try writer.print(", ", .{});
-                    try item.print(writer);
+                    try item.printAllowNull(writer);
                 }
                 try writer.print(")", .{});
             },
@@ -89,7 +99,7 @@ pub const Value = union(enum) {
                 while (iter.next()) |entry| {
                     if (!first) try writer.print(", ", .{});
                     try writer.print("{s}: ", .{entry.key_ptr.*});
-                    try entry.value_ptr.print(writer);
+                    try entry.value_ptr.printAllowNull(writer);
                     first = false;
                 }
                 try writer.print("}}", .{});

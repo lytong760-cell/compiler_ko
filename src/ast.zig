@@ -253,6 +253,10 @@ pub const Literal = struct {
     freal_value: f64,
     raw: []const u8,
     dict_entries: []DictEntry,
+    /// A1: tuple/list literal elements. Owned slice of `*Expr`, populated only
+    /// when `kind == .tuple`. Empty (`&.{}`) for every other kind. Lane B
+    /// consumes this in `evaluateLiteral` to build `Value.tuple`/`.list`.
+    elements: []*Expr,
     allocator: std.mem.Allocator,
 
     pub const Kind = enum { int, freal, string, bool_true, bool_false, none, null, tuple, dict };
@@ -263,6 +267,13 @@ pub const Literal = struct {
             .dict => {
                 for (self.dict_entries) |*e| e.deinit();
                 self.allocator.free(self.dict_entries);
+            },
+            .tuple => {
+                for (self.elements) |*e| {
+                    e.*.deinit();
+                    self.allocator.destroy(e.*);
+                }
+                self.allocator.free(self.elements);
             },
             else => {},
         }

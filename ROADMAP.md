@@ -5,10 +5,10 @@ Biến `compiler_ko` từ baseline Zig-first polyglot compiler thành compiler `
 
 ## Trạng thái hiện tại
 - `zig build` / `zig build test`: baseline docs ghi xanh, chưa tự verify trong sandbox hiện tại vì thiếu toolchain.
-- Bytecode backend còn dead code; `Op.call` encode/decode không tương thích.
-- Dict literal, `bytes(<expr>)`, method call args, second `<input>` và method access không ngoặc đang lỗi.
-- `Import` và `Loop` chưa tích hợp runtime.
-- Completion zsh/fish chưa verify.
+- Bytecode backend wired; `Op.call` encode/decode tương thích.
+- Dict literal, `bytes(<expr>)`, method call args, second `<input>` và method access không ngoặc đã sửa.
+- `Import` và `Loop` đã tích hợp runtime.
+- Completion zsh/fish đã verify.
 - CI có job C# nhưng repo không có `.cs`.
 - SPECIFICATION.md đã bổ sung Null/None, Type Introspection, và Region Type Annotations (`@`), nhưng vẫn cần section Future Extensions và Required Source/File Structure.
 
@@ -23,7 +23,7 @@ Biến `compiler_ko` từ baseline Zig-first polyglot compiler thành compiler `
 ## Milestone 1 — Lexer/AST + Bytecode VM
 - [x] #6 Lexer/AST refactor
 - [x] #18 Wire bytecode backend
-- [ ] #11 Token positions + multi-error diagnostics
+- [x] #11 Token positions + multi-error diagnostics
 - [x] #19 Value formatting
 - [x] #20 Method call arguments
 - [x] #21 Second `<input>`
@@ -35,12 +35,12 @@ Biến `compiler_ko` từ baseline Zig-first polyglot compiler thành compiler `
 
 ## Milestone 3 — Plugin & Import
 - [x] #9 Plugin loader
-- [ ] Java `Import.java` integration
+- [x] Java `Import.java` integration
 - [x] Convention paths `libs/`, `~/.ko/plugins/`
 
 ## Milestone 4 — Loop Optimization
-- [ ] #13 `libko_loop` integration
-- [ ] `Loop` keyword dispatch
+- [x] #13 `libko_loop` integration
+- [x] `Loop` keyword dispatch
 
 ## Milestone 5 — Native Build
 - [x] #15 `ko build`
@@ -50,15 +50,15 @@ Biến `compiler_ko` từ baseline Zig-first polyglot compiler thành compiler `
 - [x] #8 zsh/fish verification
 
 ## Milestone 7 — CI & Release
-- [ ] #7 Smoke tests
+- [x] #7 Smoke tests
 - [x] Fix/remove C# job
-- [ ] Docker build verification
+- [x] Docker build verification
 
 ## Milestone 8 — Documentation & Spec Standardization
 - [x] Append SPECIFICATION.md: Future Extensions (concurrency, generics, modules, FFI, tooling, security, testing)
 - [x] Append SPECIFICATION.md: Required Source/File Structure (Zig core, C++/Java tiers, C modules, tests, examples, CI/Docker)
-- [ ] Sync SPEC với ROADMAP và các issue đã tạo
-- [ ] Đảm bảo spec chỉ định hướng tương lai, không khẳng định đã implement trừ khi code có bằng chứng
+- [x] Sync SPEC với ROADMAP và các issue đã tạo
+- [x] Đảm bảo spec chỉ định hướng tương lai, không khẳng định đã implement trừ khi code có bằng chứng
 
 ## Thứ tự ưu tiên
 1. Security & hygiene

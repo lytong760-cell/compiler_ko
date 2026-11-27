@@ -10,6 +10,9 @@ pub const Parser = struct {
     arena: *std.heap.ArenaAllocator,
     allocator: std.mem.Allocator,
     errors: []ParseError = &.{},
+    in_class: bool = false,
+    in_loop: bool = false,
+    in_generic: bool = false,
 
     pub const Position = lexer.Position;
     pub const Span = struct {
@@ -60,6 +63,9 @@ pub const Parser = struct {
             .arena = arena,
             .allocator = arena.allocator(),
             .errors = &.{},
+            .in_class = false,
+            .in_loop = false,
+            .in_generic = false,
         };
     }
 
@@ -208,6 +214,45 @@ pub const Parser = struct {
             } };
         }
 
+        if (tok == .l_paren) {
+            const expr = try self.parseExpression();
+            if (self.current() == .sigil) {
+                _ = self.advance();
+                const name_tok = self.current();
+                if (name_tok != .identifier) return error.ExpectedIdentifier;
+                const name = name_tok.identifier;
+                _ = self.advance();
+                const vd = ast.VarDecl{
+                    .type_name = "",
+                    .value_expr = expr,
+                    .name = name,
+                };
+                return ast.Statement{ .var_decl = vd };
+            }
+            // not a var decl; treat as expr statement
+            const stmt = ast.Statement{ .expr = expr };
+            return stmt;
+        }
+
+        if (tok == .identifier and std.mem.eql(u8, tok.identifier, "none")) {
+            const expr = try self.parseExpression();
+            if (self.current() == .sigil) {
+                _ = self.advance();
+                const name_tok = self.current();
+                if (name_tok != .identifier) return error.ExpectedIdentifier;
+                const name = name_tok.identifier;
+                _ = self.advance();
+                const vd = ast.VarDecl{
+                    .type_name = "",
+                    .value_expr = expr,
+                    .name = name,
+                };
+                return ast.Statement{ .var_decl = vd };
+            }
+            const stmt = ast.Statement{ .expr = expr };
+            return stmt;
+        }
+
         if (tok == .keyword) {
             switch (tok.keyword) {
                 .int_kw, .freal_kw, .string_kw, .booling_kw, .byte_kw, .bytes_kw => {
@@ -288,7 +333,25 @@ pub const Parser = struct {
         }
 
         if (tok == .l_brace) {
-            return try self.parseExprStatement();
+            // M2: a dict literal at the start of a statement may be a
+            // variable declaration, e.g. `{'a':1}~d`. Parse the expression,
+            // then if a `~ident` suffix follows, produce a VarDecl (with an
+            // empty type_name) instead of a bare expression statement.
+            const expr = try self.parseExpression();
+            if (self.current() == .sigil) {
+                _ = self.advance();
+                const name_tok = self.current();
+                if (name_tok != .identifier) return error.ExpectedIdentifier;
+                const name = name_tok.identifier;
+                _ = self.advance();
+                const vd = ast.VarDecl{
+                    .type_name = "",
+                    .value_expr = expr,
+                    .name = name,
+                };
+                return ast.Statement{ .var_decl = vd };
+            }
+            return ast.Statement{ .expr = expr };
         }
 
         if (tok == .l_bracket) {
@@ -338,15 +401,28 @@ pub const Parser = struct {
         }
         try self.expectRBracket();
         const slice = try body.toOwnedSlice();
-        std.sort.block(ast.Statement, slice, {}, struct {
-            fn less(_: void, a: ast.Statement, b: ast.Statement) bool {
-                const pa = if (a == .priority_stmt) a.priority_stmt.priority else 0;
-                const pb = if (b == .priority_stmt) b.priority_stmt.priority else 0;
+        // SPEC §XIV: lower priority number runs first; statements sharing a
+        // priority keep their relative source order. The previous comparator
+        // returned false for equal priorities, which breaks the strict weak
+        // ordering contract and lets the unstable block sort reorder equal
+        // elements. Decorating with the original index makes the order total.
+        var order = std.array_list.Managed(usize).init(self.allocator);
+        defer order.deinit();
+        try order.appendNTimes(0, slice.len);
+        for (order.items, 0..) |*slot, i| slot.* = i;
+        const Ctx = struct { stmts: []const ast.Statement };
+        const ctx = Ctx{ .stmts = slice };
+        std.sort.block(usize, order.items, ctx, struct {
+            fn less(c: Ctx, a: usize, b: usize) bool {
+                const pa = if (c.stmts[a] == .priority_stmt) c.stmts[a].priority_stmt.priority else 0;
+                const pb = if (c.stmts[b] == .priority_stmt) c.stmts[b].priority_stmt.priority else 0;
                 if (pa != pb) return pa < pb;
-                return false;
+                return a < b;
             }
         }.less);
-        return slice;
+        const ordered = try self.allocator.alloc(ast.Statement, slice.len);
+        for (order.items, 0..) |src, dst| ordered[dst] = slice[src];
+        return ordered;
     }
 
     pub fn parseBlockStatement(self: *Parser) anyerror!ast.Statement {
@@ -388,6 +464,7 @@ pub const Parser = struct {
             _ = self.advance();
             const role = self.regionRoleName() orelse return error.InvalidRegionRole;
             if (!isKnownRegionRole(role)) return error.InvalidRegionRole;
+            try validateRegionRole(self, role);
             _ = self.advance();
 
             if (self.current() == .percent) {
@@ -480,6 +557,8 @@ pub const Parser = struct {
     }
 
     pub fn parseLoopStmt(self: *Parser) anyerror!ast.Statement {
+        self.in_loop = true;
+        defer self.in_loop = false;
         _ = self.advance();
 
         if (self.current() == .lt) {
@@ -567,7 +646,7 @@ pub const Parser = struct {
             const body = try self.parseBlock();
 
             const true_lit = try self.allocator.create(ast.Literal);
-            true_lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .allocator = self.allocator };
+            true_lit.* = ast.Literal{ .kind = .bool_true, .int_value = 0, .freal_value = 0, .raw = "", .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
             const true_expr = try self.allocator.create(ast.Expr);
             true_expr.* = .{ .literal = true_lit.* };
 
@@ -666,6 +745,8 @@ pub const Parser = struct {
         }
 
         try self.expectLBracket();
+        self.in_class = true;
+        defer self.in_class = false;
         var private_body = std.array_list.Managed(ast.Statement).init(self.allocator);
         var public_body = std.array_list.Managed(ast.Statement).init(self.allocator);
         var region_depth: usize = 0;
@@ -679,6 +760,7 @@ pub const Parser = struct {
                 _ = self.advance();
                 const role = self.regionRoleName() orelse return error.InvalidRegionRole;
                 if (!isKnownRegionRole(role)) return error.InvalidRegionRole;
+                try validateRegionRole(self, role);
                 _ = self.advance();
                 try self.expectLBracket();
                 const is_private = std.mem.eql(u8, role, "private");
@@ -848,7 +930,7 @@ pub const Parser = struct {
 
     pub fn parseSystemTagStmt(self: *Parser) anyerror!ast.Statement {
         try self.expectLT();
-        const tag = try self.parseSystemTagName();
+        var tag = try self.parseSystemTagName();
         
         var encoding_type: []const u8 = "";
         if (std.mem.eql(u8, tag, "encode")) {
@@ -871,7 +953,20 @@ pub const Parser = struct {
         }
         
         try self.expectGT();
-        
+
+        if (std.mem.eql(u8, tag, "print")) {
+            const is_type_kw = self.current() == .keyword;
+            const is_type_id = self.current() == .identifier;
+            if (is_type_kw or is_type_id) {
+                const next_tok = self.peek(1);
+                if (next_tok == .caret or next_tok == .l_paren) {
+                    const type_name = if (is_type_id) self.current().identifier else lexer.Token.keywordText(self.current().keyword);
+                    _ = self.advance();
+                    tag = try std.fmt.allocPrint(self.allocator, "print:{s}", .{type_name});
+                }
+            }
+        }
+
         if (std.mem.eql(u8, tag, "if")) {
             try self.expectLParen();
             const cond = try self.parseExpression();
@@ -964,8 +1059,10 @@ pub const Parser = struct {
             _ = self.advance();
             if (self.current() == .l_paren) {
                 _ = self.advance();
-                const expr = try self.parseExpression();
-                try self.expectRParen();
+                const expr = self.parseExpression() catch |err| {
+                                return err;
+                };
+                        try self.expectRParen();
                 const ste = try self.allocator.create(ast.SystemTagExpr);
                 ste.* = ast.SystemTagExpr{
                     .tag = tag,
@@ -1086,10 +1183,16 @@ pub const Parser = struct {
 
     pub fn isSystemTagOpener(self: *Parser) bool {
         if (self.current() != .lt) return false;
-        const peek1 = self.peek(1);
-        if (peek1 != .identifier and peek1 != .keyword) return false;
-        if (self.peek(2) == .gt) return true;
-        var i: usize = 2;
+        var name_idx: usize = 1;
+        // A2: a system tag may carry a `$` sigil prefix, e.g. `<$random>`.
+        // Lexer emits `.lt`, `.dollar`, `.identifier`, `.gt` — skip the `$`
+        // when locating the tag name so `<$random>` is recognised as an
+        // opener instead of a `<` comparison.
+        if (self.peek(1) == .dollar) name_idx = 2;
+        const peek_name = self.peek(name_idx);
+        if (peek_name != .identifier and peek_name != .keyword) return false;
+        if (self.peek(name_idx + 1) == .gt) return true;
+        var i: usize = name_idx + 1;
         var paren_depth: i32 = 0;
         while (i < 32) {
             const tok = self.peek(i);
@@ -1288,6 +1391,15 @@ fn isKnownRegionRole(role: []const u8) bool {
     const roles = [_][]const u8{ "also", "private", "public", "loop", "girc" };
     for (roles) |r| if (std.mem.eql(u8, r, role)) return true;
     return false;
+}
+
+fn validateRegionRole(self: *Parser, role: []const u8) !void {
+    if (std.mem.eql(u8, role, "loop") and !self.in_loop) {
+        return error.InvalidRegionRole;
+    }
+    if (std.mem.eql(u8, role, "girc") and !self.in_generic) {
+        return error.InvalidRegionRole;
+    }
 }
 
 fn printDiagnosticSlice(writer: anytype, errors: anytype) void {

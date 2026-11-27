@@ -19,6 +19,7 @@ pub const Compiler = struct {
 
         try chunk.functions.append(.{
             .name = duped,
+            .params = &.{},
             .instructions = instructions,
             .arity = arity,
         });
@@ -39,7 +40,14 @@ pub const Compiler = struct {
 
     pub fn compileProgram(self: *Compiler, program: []const ast.Statement) !void {
         for (0..program.len) |i| {
-            try self.compileStatement(&program[i]);
+            const stmt = &program[i];
+            const allowed_top = switch (stmt.*) {
+                .func_decl, .class_decl, .catch_stmt, .block => true,
+                .expr => |expr| expr.* == .call and std.mem.eql(u8, expr.call.callee, "Import"),
+                else => false,
+            };
+            if (!allowed_top) return error.IllegalTopLevelStatement;
+            try self.compileStatement(stmt);
         }
         try self.emit(.{ .ret = {} });
     }
@@ -63,9 +71,7 @@ pub const Compiler = struct {
             .len_op => |lo| try self.compileLenOp(lo),
             .class_instantiation => |ci| try self.compileClassInstantiation(ci),
             .priority_stmt => |ps| try self.compileStatement(ps.stmt),
-            .class_decl => {
-                return error.UnsupportedBytecode;
-            },
+            .class_decl => |c| try self.compileClassDecl(c),
         }
     }
 
@@ -162,8 +168,32 @@ pub const Compiler = struct {
         try self.emit(.{ .len = {} });
     }
 
-    fn compileClassInstantiation(_: *Compiler, _: ast.ClassInstantiation) anyerror!void {
-        return error.UnsupportedBytecode;
+    fn compileClassInstantiation(self: *Compiler, ci: ast.ClassInstantiation) !void {
+        const name_duped = try self.allocator.dupe(u8, ci.class_name);
+        const name_idx = self.chunk.constants.items.len;
+        try self.chunk.constants.append(.{ .string = name_duped });
+        try self.emit(.{ .call = @as(u32, @intCast(name_idx)) << 16 });
+        const inst_duped = try self.allocator.dupe(u8, ci.instance_name);
+        const inst_idx = self.chunk.constants.items.len;
+        try self.chunk.constants.append(.{ .string = inst_duped });
+        try self.emit(.{ .store_var = @intCast(inst_idx) });
+    }
+
+    fn compileClassDecl(self: *Compiler, c: *const ast.ClassDecl) !void {
+        const name_duped = try self.allocator.dupe(u8, c.name);
+        const idx = self.chunk.constants.items.len;
+        try self.chunk.constants.append(.{ .string = name_duped });
+        try self.emit(.{ .class_decl_start = @intCast(idx) });
+
+        for (0..c.private_body.len) |i| {
+            try self.compileStatement(&c.private_body[i]);
+        }
+        try self.emit(.{ .class_decl_private_done = {} });
+
+        for (0..c.public_body.len) |i| {
+            try self.compileStatement(&c.public_body[i]);
+        }
+        try self.emit(.{ .class_decl_finish = {} });
     }
 
     fn emitJumpPlaceholder(self: *Compiler, op: bytecode.Op) anyerror!usize {
@@ -204,6 +234,18 @@ pub const Compiler = struct {
                 try self.compileExpression(u.expr);
                 const op: u8 = operator.unaryToOpcode(u.op);
                 try self.emit(.{ .unary = op });
+            },
+            .index_access => |ia| {
+                try self.compileExpression(ia.object);
+                try self.compileExpression(ia.index);
+                try self.emit(.{ .index_access = {} });
+            },
+            .member_access => |ma| {
+                try self.compileExpression(ma.object);
+                const member_duped = try self.allocator.dupe(u8, ma.member);
+                const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = member_duped });
+                try self.emit(.{ .load_const = @intCast(idx) });
+                try self.emit(.{ .get_member = {} });
             },
             .call => |c| {
                 if (c.target) |target_expr| {
@@ -273,6 +315,12 @@ pub const Compiler = struct {
 
     fn compileVarDecl(self: *Compiler, v: *const ast.VarDecl) !void {
         try self.compileExpression(v.value_expr);
+        if (std.mem.eql(u8, v.type_name, "bytes")) {
+            const callee_duped = try self.allocator.dupe(u8, "bytes");
+            const callee_idx = self.chunk.constants.items.len;
+            try self.chunk.constants.append(.{ .string = callee_duped });
+            try self.emit(.{ .call = @intCast((callee_idx << 16) | 1) });
+        }
         const name_duped = try self.allocator.dupe(u8, v.name);
         const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = name_duped });
         try self.emit(.{ .store_var = @intCast(idx) });
@@ -303,16 +351,41 @@ pub const Compiler = struct {
     }
 
     fn compileFuncDecl(self: *Compiler, f: *const ast.FuncDecl) !void {
-        const func_name_duped = try self.allocator.dupe(u8, f.name);
-        const idx = self.chunk.constants.items.len; try self.chunk.constants.append(.{ .string = func_name_duped });
-        try self.emit(.{ .load_var = @intCast(idx) });
+        // Build params list
+        var params = try self.allocator.alloc([]const u8, f.params.len);
+        for (f.params, 0..) |p, i| {
+            params[i] = try self.allocator.dupe(u8, p.name);
+        }
+
+        var instructions = std.array_list.Managed(bytecode.Instruction).init(self.allocator);
+        errdefer instructions.deinit();
+
+        const name_duped = try self.allocator.dupe(u8, f.name);
+        errdefer self.allocator.free(name_duped);
+
+        try self.chunk.functions.append(.{
+            .name = name_duped,
+            .params = params,
+            .instructions = instructions,
+            .arity = @intCast(f.params.len),
+        });
+
+        const saved = self.current_function;
+        self.current_function = &self.chunk.functions.items[self.chunk.functions.items.len - 1];
+
+        for (0..f.body.len) |i| {
+            try self.compileStatement(&f.body[i]);
+        }
+        try self.emit(.{ .ret = {} });
+
+        self.current_function = saved;
     }
 
     fn emitLiteral(self: *Compiler, lit: ast.Literal) anyerror!void {
         if (lit.kind == .dict) {
             try self.emit(.{ .make_dict = {} });
             for (lit.dict_entries) |entry| {
-                const key_lit = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = entry.key, .dict_entries = &.{}, .allocator = self.allocator };
+                const key_lit = ast.Literal{ .kind = .string, .int_value = 0, .freal_value = 0, .raw = entry.key, .dict_entries = &.{}, .elements = &.{}, .allocator = self.allocator };
                 try self.emitLiteral(key_lit);
                 try self.compileExpression(entry.value);
                 try self.emit(.{ .dict_set = {} });
@@ -333,6 +406,13 @@ pub const Compiler = struct {
             .tuple => value_mod.Value{ .null = {} },
             .dict => unreachable,
         };
+        if (lit.kind == .tuple) {
+            for (lit.elements) |el| {
+                try self.compileExpression(el);
+            }
+            try self.emit(.{ .make_tuple = @intCast(lit.elements.len) });
+            return;
+        }
         const idx = self.chunk.constants.items.len; try self.chunk.constants.append(val);
         try self.emit(.{ .load_const = @intCast(idx) });
     }

@@ -109,3 +109,10 @@ Five canonical roles mapped to default labels: `needs-triage`, `needs-info`, `re
 ### Domain docs
 
 Single-context. See `docs/agents/domain.md`.
+
+## Graphify Skill (Thường Xuyên Sử Dụng — không bắt buộc, đối chiếu)
+
+- Skill `graphify` đã được cài đặt tại `.kilo/skills/graphify/SKILL.md` (và global `~/.config/kilo/skills/graphify/SKILL.md`), MCP server `graphify` đã cấu hình trong `mcp`.
+- **Thường xuyên sử dụng** skill/command `/graphify` và MCP tools (`query_graph`, `get_node`, `get_neighbors`, `get_community`, `god_nodes`, `graph_stats`, `shortest_path`) để tra cứu cấu trúc codebase, quan hệ file, và nội dung project — đặc biệt khi `graphify-out/graph.json` tồn tại, ưu tiên query graph trước khi grep/read.
+- **Không bắt buộc**: chỉ dùng khi hữu ích; tra cứu đơn lẻ ("X định nghĩa ở đâu", "gọi Y ở đâu") trong codebase vừa/phải có thể dùng grep/Read nhanh hơn.
+- **Đối chiếu (cross-reference)**: kết quả từ graphify phải đối chiếu với source code thực tế (file/line) trước khi kết luận; không coi graph là sự thật tuyệt đối. Sau khi sửa code, chạy `graphify update .` để đồng bộ graph.
