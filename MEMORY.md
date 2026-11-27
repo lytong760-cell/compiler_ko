@@ -376,3 +376,13 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 - **Architectural Mutations:** Releases chua tat ca fix Lane B: B1 print/printf noi suy, B2 bytes(N)+len, B3 method self-binding+clone fields, M1 catch AST walker, B5 type(), M3/C1 UnknownSystemTag, A1-runtime (.tuple/emitLiteral/.make_tuple opcode). Co 10 case test qua Executor.execute (testing/test_executor.zig).
 - **Technical Debt & Anti-Patterns:** Khong con.
 - **Shared Variables & Symbols:** Khong con.
+
+### [2026-11-27] LONG-TERM MEMORY DUMP — Sửa web-terminal.yml (Windows + Linux web terminal)
+- **Identified Truths:** Worker user báo "Powershell không vào đc" / "nhấn URL thì không kết nối" / lỗi 504 trên job `windows-terminal` và `linux-terminal`. Nguyên nhân gốc: (1) `cloudflared` dùng `-RedirectStandardOutput "tunnel.log"` → URL công khai bị ghi vào file thay vì job log, người dùng không thấy URL; (2) `cloudflared` chạy ngay sau `sleep 2`/`5` mà `ttyd` có thể chưa listen trên port 8899 → cloudflared trả 504 Gateway Timeout; (3) URL tunnel từ cloudflared cần thời gian để được in ra log, nếu đọc log quá sớm sẽ không có URL. Không có thay đổi code compiler/Zig.
+- **Architectural Mutations:** Sửa `.github/workflows/web-terminal.yml`:
+  - Windows step (sau dòng 100): dọn sạch tiến trình cũ `ttyd` + `cloudflared` trước khi khởi động; `ttyd.exe -W -p 8899 powershell.exe` chạy nền `-NoNewWindow`; **poll `Test-NetConnection localhost:8899` mỗi 1s lên to 30s** trước khi chạy cloudflared (mencegah 504); `cloudflared.exe tunnel --url http://localhost:8899` chạy nền `-NoNewWindow -PassThru -RedirectStandardOutput "cloudflared.log" -RedirectStandardError "cloudflared.log" | Out-Null`; **poll `cloudflared.log` mỗi 1s lên to 30s** để lấy URL `https://....trycloudflare.com`, in `PUBLIC URL: <url>` rõ ràng vào job log; cuối bước dừng cả `cloudflared` và `ttyd` theo tên tiến trình.
+  - Linux step (dòng 47-62): `ttyd -W -p 8899 bash &` chạy nền; **poll `nc -z localhost 8899` (hoặc `/dev/tcp`) mỗi 1s lên to 30s** trước khi chạy cloudflared; `/tmp/cloudflared tunnel --url http://localhost:8899 2>&1 | tee /tmp/tunnel.log &`; **poll `/tmp/tunnel.log` mỗi 1s lên to 30s** để lấy URL trycloudflare.com. Cùng logic dừng tiến trình khi hết thời gian.
+- **Technical Debt & Anti-Patterns:** Tải binary `ttyd.win32.exe` / `cloudflared-windows-amd64.exe` / `cloudflared-linux-amd64` từ `releases/latest/download` — nếu asset tên thay đổi thì job sẽ fail; chưa verify trên runner thực (không có Windows/Linux sandbox trong thời gian này); cloudflared quick tunnel URL là ngẫu nhiên mỗi lần, người dùng phải copy URL từ job log.
+- **Shared Variables & Symbols:** `.github/workflows/web-terminal.yml:47-126`.
+
+

@@ -51,10 +51,25 @@ jobs:
           pkill -f ttyd || true
           # ttyd serves a bash shell on port 8899; cloudflared exposes it publicly
           ttyd -W -p 8899 bash &
-          sleep 2
+          # Đợi ttyd listen trên port 8899 (tránh 504 khi cloudflared kết nối sớm quá)
+          for i in $(seq 1 30); do
+            if command -v nc >/dev/null 2>&1; then
+              nc -z localhost 8899 && break
+            elif command -v bash >/dev/null 2>&1; then
+              bash -c 'echo > /dev/tcp/localhost/8899' 2>/dev/null && break
+            fi
+            sleep 1
+          done
           echo "=== PUBLIC URL BELOW (open in browser) ==="
           /tmp/cloudflared tunnel --url http://localhost:8899 2>&1 | tee /tmp/tunnel.log &
           TUNNEL_PID=$!
+          # Đợi cloudflared in URL tunnel (https://....trycloudflare.com) vào log
+          for i in $(seq 1 30); do
+            if grep -oE 'https://[a-zA-Z0-9-]+\.trycloudflare\.com' /tmp/tunnel.log 2>/dev/null | head -1; then
+              break
+            fi
+            sleep 1
+          done
           # Keep alive for the requested duration
           DUR=${{ github.event.inputs.duration || 60 }}
           echo "Keeping terminal alive for ${DUR} minutes..."
@@ -101,14 +116,47 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "$PWD\zig-out\bin;$env:PATH"
-          # Clean up any stale ttyd process
+          # Clean up any stale processes from a previous run
           Get-Process -Name "ttyd" -ErrorAction SilentlyContinue | Stop-Process -Force
+          Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force
           # ttyd serves PowerShell on port 8899
           Start-Process -FilePath ".\ttyd.exe" -ArgumentList "-W","-p","8899","powershell.exe" -NoNewWindow
-          Start-Sleep -Seconds 2
+          # Tunggu sampai ttyd benar-benar listen di port 8899 (mencegah 504 dari cloudflared)
+          $ttydReady = $false
+          for ($i = 0; $i -lt 30; $i++) {
+            if (Test-NetConnection -ComputerName localhost -Port 8899 -InformationLevel Quiet) {
+              $ttydReady = $true
+              break
+            }
+            Start-Sleep -Seconds 1
+          }
+          if (-not $ttydReady) {
+            Write-Host "ERROR: ttyd tidak listen di port 8899 setelah 30 detik"
+            exit 1
+          }
           Write-Host "=== PUBLIC URL BELOW (open in browser) ==="
-          $tunnel = Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://localhost:8899" -NoNewWindow -PassThru -RedirectStandardOutput "tunnel.log"
+          # cloudflared chạy nền, stdout+stderr ghi vào cloudflared.log
+          Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://localhost:8899" -NoNewWindow -PassThru -RedirectStandardOutput "cloudflared.log" -RedirectStandardError "cloudflared.log" | Out-Null
+          # Tunggu sampai cloudflared in URL tunnel (https://....trycloudflare.com) vào log
+          $tunnelUrl = $null
+          for ($i = 0; $i -lt 30; $i++) {
+            if (Test-Path cloudflared.log) {
+              $content = Get-Content cloudflared.log -Raw
+              if ($content -match 'https://[a-zA-Z0-9-]+\.trycloudflare\.com') {
+                $tunnelUrl = $matches[0]
+                break
+              }
+            }
+            Start-Sleep -Seconds 1
+          }
+          if ($tunnelUrl) {
+            Write-Host "PUBLIC URL: $tunnelUrl"
+          } else {
+            Write-Host "WARNING: Không phát hiện URL cloudflared; log tail:"
+            Get-Content cloudflared.log -Tail 40
+          }
           $DUR = [int]("${{ github.event.inputs.duration || 60 }}")
           Write-Host "Keeping terminal alive for $DUR minutes..."
           Start-Sleep -Seconds ($DUR * 60)
-          Stop-Process -Id $tunnel.Id -ErrorAction SilentlyContinue
+          Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force
+          Get-Process -Name "ttyd" -ErrorAction SilentlyContinue | Stop-Process -Force

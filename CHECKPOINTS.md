@@ -209,3 +209,20 @@
 - **Active Node/Context:** src/image/architecture.drawio.svg (draw.io diagram)
 - **Volatile Context Diagnostics:** Regenerated architecture.drawio.svg from SPECIFICATION.md: 7 sections (mathematical pipeline, conductor+subsystems, multi-language tiers, execution pipeline phases, CDEL frame, file structure sections A-E, EngineTarget dispatch). Outer SVG + embedded mxfile both parse as XML (69 mxCell). No code/build changes.
 - **Next Execution Phase Vectors:** none
+
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** SUCCESS
+- **Active Node/Context:** .github/workflows/web-terminal.yml — Windows + Linux web terminal steps
+- **Volatile Context Diagnostics:**
+  ```
+  Trước fix: cloudflared dùng -RedirectStandardOutput "tunnel.log" → URL công khai bị ghi vào file, KHÔNG in ra job log → người dùng không thấy PUBLIC URL ("Powershell không vào đc").
+  Fix lần 1: xoá -RedirectStandardOutput, để cloudflared in stdout trực tiếp, Start-Sleep 3s, dừng tiến trình theo tên.
+  Fix lần 2: cloudflared ghi stdout+stderr vào cloudflared.log, Get-Content in log ra job log, Start-Sleep 5s.
+  Fix lần 3 (hiện tại): 
+    - Windows: đợi Test-NetConnection localhost:8899 thành công trước khi chạy cloudflared (mencegah 504); sau đó poll cloudflared.log mỗi 1s lên to 30s để lấy URL trycloudflare.com, in PUBLIC URL rõ ràng.
+    - Linux: đợi nc / /dev/tcp localhost:8899 thành công trước khi chạy cloudflared; sau đó poll /tmp/tunnel.log mỗi 1s lên to 30s để lấy URL trycloudflare.com.
+    - Cả hai job: dọn sạch ttyd + cloudflared cũ trước khi khởi động; dừng cả hai theo tên tiến trình khi hết thời gian.
+  ```
+- **Next Execution Phase Vectors:** none
+
+
