@@ -124,7 +124,7 @@ jobs:
           # Tunggu sampai ttyd benar-benar listen di port 8899 (mencegah 504 dari cloudflared)
           $ttydReady = $false
           for ($i = 0; $i -lt 30; $i++) {
-            if (Test-NetConnection -ComputerName localhost -Port 8899 -InformationLevel Quiet) {
+            if (Test-NetConnection -ComputerName 127.0.0.1 -Port 8899 -InformationLevel Quiet) {
               $ttydReady = $true
               break
             }
@@ -135,12 +135,12 @@ jobs:
             exit 1
           }
           Write-Host "=== PUBLIC URL BELOW (open in browser) ==="
-          # cloudflared chạy nền, stdout+stderr ghi vào cloudflared.log
-          Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://localhost:8899" -NoNewWindow -PassThru -RedirectStandardOutput "cloudflared.log" -RedirectStandardError "cloudflared.log" | Out-Null
+          # cloudflared chạy nền; stdout và stderr ghi vào file khác nhau (PowerShell không cho cung file)
+          Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://localhost:8899" -NoNewWindow -PassThru -RedirectStandardOutput "cloudflared.out.log" -RedirectStandardError "cloudflared.err.log" | Out-Null
           # Tunggu sampai cloudflared in URL tunnel (https://....trycloudflare.com) vào log
           $tunnelUrl = $null
           for ($i = 0; $i -lt 30; $i++) {
-            if (Test-Path cloudflared.log) {
+            if (Test-Path cloudflared.out.log) {
               $content = Get-Content cloudflared.log -Raw
               if ($content -match 'https://[a-zA-Z0-9-]+\.trycloudflare\.com') {
                 $tunnelUrl = $matches[0]
@@ -153,7 +153,8 @@ jobs:
             Write-Host "PUBLIC URL: $tunnelUrl"
           } else {
             Write-Host "WARNING: Không phát hiện URL cloudflared; log tail:"
-            Get-Content cloudflared.log -Tail 40
+            Get-Content cloudflared.out.log -Tail 40
+            Get-Content cloudflared.err.log -Tail 40
           }
           $DUR = [int]("${{ github.event.inputs.duration || 60 }}")
           Write-Host "Keeping terminal alive for $DUR minutes..."
