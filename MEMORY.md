@@ -386,3 +386,9 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 - **Shared Variables & Symbols:** `.github/workflows/web-terminal.yml:47-126`.
 
 
+### [2026-11-27] LONG-TERM MEMORY DUMP
+- **Identified Truths:** GitHub Actions Windows cũ đăng ký `testing/test_modules.zig` dù `mod_check` bị bỏ qua trên Windows và gây 11/11 spawn failures. Lệnh đã chạy: `zig build test < /dev/null` exit 0 trên Linux; `zig build -Dtarget=x86_64-windows` exit 0; `git diff --check` exit 0.
+- **Architectural Mutations:** `build.zig` tách core test suite khỏi module POSIX test suite; module suite chỉ đăng ký trên non-Windows. `.github/workflows/web-terminal.yml` đọc cả stdout và stderr của cloudflared thay vì tên file `cloudflared.log` không tồn tại.
+- **Technical Debt & Anti-Patterns:** Không dùng test POSIX `.so/dlopen/dlsym` trên Windows. Không giả định Cloudflare ghi URL tunnel vào một log cố định; URL có thể ở stdout hoặc stderr.
+- **Shared Variables & Symbols:** `files[]` là core test suite; `module_test_files` chỉ chứa `testing/test_modules.zig` trên POSIX; `cloudflared.out.log` và `cloudflared.err.log` là hai log đã redirect.
+

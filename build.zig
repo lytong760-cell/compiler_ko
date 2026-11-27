@@ -112,9 +112,15 @@ pub fn build(b: *std.Build) !void {
         "testing/test_3600.zig",
         "testing/test_lexer_extended.zig",
         "testing/test_parser_extended.zig",
-        "testing/test_modules.zig",
         "testing/test_value.zig",
     };
+
+    // mod_check uses POSIX dlopen/dlsym and shared libraries use .so naming.
+    // Keep module ABI tests on POSIX; Windows builds validate the core suites.
+    const module_test_files: []const []const u8 = if (is_windows)
+        &[_][]const u8{}
+    else
+        &[_][]const u8{"testing/test_modules.zig"};
 
     const src_module = b.createModule(.{
         .root_source_file = b.path("src/testing_imports.zig"),
@@ -137,13 +143,30 @@ pub fn build(b: *std.Build) !void {
             .root_module = test_root_module,
         });
         const test_run = b.addRunArtifact(test_exe);
-        if (target.result.os.tag != .windows) {
-            if (std.mem.eql(u8, file, "testing/test_modules.zig")) {
-                test_run.addPathDir(b.getInstallPath(.bin, ""));
-                test_run.step.dependOn(mod_check_step.?);
-            }
-        }
         // Libraries must be built (and installed to zig-out/lib) before the test runs.
+        var i: usize = 0;
+        while (i < lib_count) : (i += 1) {
+            test_run.step.dependOn(&lib_handles[i].step);
+        }
+        test_step.dependOn(&test_run.step);
+    }
+
+    for (module_test_files) |file| {
+        const test_root_module = b.createModule(.{
+            .root_source_file = b.path(file),
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+            .imports = &.{
+                .{ .name = "src", .module = src_module },
+            },
+        });
+        const test_exe = b.addTest(.{
+            .root_module = test_root_module,
+        });
+        const test_run = b.addRunArtifact(test_exe);
+        test_run.addPathDir(b.getInstallPath(.bin, ""));
+        test_run.step.dependOn(mod_check_step.?);
         var i: usize = 0;
         while (i < lib_count) : (i += 1) {
             test_run.step.dependOn(&lib_handles[i].step);

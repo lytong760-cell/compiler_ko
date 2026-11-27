@@ -140,12 +140,16 @@ jobs:
           # Tunggu sampai cloudflared in URL tunnel (https://....trycloudflare.com) vào log
           $tunnelUrl = $null
           for ($i = 0; $i -lt 30; $i++) {
+            $content = ""
             if (Test-Path cloudflared.out.log) {
-              $content = Get-Content cloudflared.log -Raw
-              if ($content -match 'https://[a-zA-Z0-9-]+\.trycloudflare\.com') {
-                $tunnelUrl = $matches[0]
-                break
-              }
+              $content += Get-Content cloudflared.out.log -Raw
+            }
+            if (Test-Path cloudflared.err.log) {
+              $content += "`n" + (Get-Content cloudflared.err.log -Raw)
+            }
+            if ($content -match 'https://[a-zA-Z0-9-]+\.trycloudflare\.com') {
+              $tunnelUrl = $matches[0]
+              break
             }
             Start-Sleep -Seconds 1
           }

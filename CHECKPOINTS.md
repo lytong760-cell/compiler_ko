@@ -2,6 +2,21 @@
 
 ### LAST KNOWN EXECUTION CHECKPOINT
 - **Task State:** SUCCESS
+- **Active Node/Context:** `build.zig`, `.github/workflows/web-terminal.yml`
+- **Volatile Context Diagnostics:**
+  ```
+  zig build test < /dev/null                → exit 0
+  zig build -Dtarget=x86_64-windows         → exit 0
+  git diff --check                          → exit 0
+  Nguyên nhân test_modules Windows: mod_check POSIX không được build nhưng test_modules vẫn được đăng ký, nên spawn "mod_check" thất bại 11 case.
+  Sửa workflow: đọc cả cloudflared.out.log và cloudflared.err.log để bắt tunnel URL.
+  ```
+- **Next Execution Phase Vectors:**
+  1. Re-run GitHub Actions Windows job để xác minh toàn bộ suite và terminal tunnel.
+  2. Chạy `graphify update .` để đồng bộ đồ thị code sau thay đổi build.
+
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** SUCCESS
 - **Active Node/Context:** BUG.md (báo cáo 978 case), CHECKPOINTS.md, MEMORY.md — test toàn diện, KHÔNG sửa source
 - **Volatile Context Diagnostics:**
   ```
