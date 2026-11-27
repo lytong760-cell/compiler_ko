@@ -47,11 +47,13 @@ jobs:
       - name: Start web terminal
         run: |
           export LD_LIBRARY_PATH=$PWD/zig-out/lib:$LD_LIBRARY_PATH
-          # ttyd serves a bash shell on port 7681; cloudflared exposes it publicly
-          ttyd -p 7681 -W bash &
+          # Clean up any stale ttyd process from a previous run
+          pkill -f ttyd || true
+          # ttyd serves a bash shell on port 8899; cloudflared exposes it publicly
+          ttyd -W -p 8899 bash &
           sleep 2
           echo "=== PUBLIC URL BELOW (open in browser) ==="
-          /tmp/cloudflared tunnel --url http://localhost:7681 2>&1 | tee /tmp/tunnel.log &
+          /tmp/cloudflared tunnel --url http://localhost:8899 2>&1 | tee /tmp/tunnel.log &
           TUNNEL_PID=$!
           # Keep alive for the requested duration
           DUR=${{ github.event.inputs.duration || 60 }}
@@ -99,11 +101,13 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "$PWD\zig-out\bin;$env:PATH"
-          # ttyd serves PowerShell on port 7681
-          Start-Process -FilePath ".\ttyd.exe" -ArgumentList "-p","7681","powershell.exe" -NoNewWindow
+          # Clean up any stale ttyd process
+          Get-Process -Name "ttyd" -ErrorAction SilentlyContinue | Stop-Process -Force
+          # ttyd serves PowerShell on port 8899
+          Start-Process -FilePath ".\ttyd.exe" -ArgumentList "-W","-p","8899","powershell.exe" -NoNewWindow
           Start-Sleep -Seconds 2
           Write-Host "=== PUBLIC URL BELOW (open in browser) ==="
-          $tunnel = Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://localhost:7681" -NoNewWindow -PassThru -RedirectStandardOutput "tunnel.log"
+          $tunnel = Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://localhost:8899" -NoNewWindow -PassThru -RedirectStandardOutput "tunnel.log"
           $DUR = [int]("${{ github.event.inputs.duration || 60 }}")
           Write-Host "Keeping terminal alive for $DUR minutes..."
           Start-Sleep -Seconds ($DUR * 60)
