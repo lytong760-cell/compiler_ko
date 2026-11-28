@@ -236,4 +236,17 @@
 - **Next Execution Phase Vectors:** Re-trigger workflow windows-terminal và quan sát job log.
 
 
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** SUCCESS
+- **Active Node/Context:** `.github/workflows/web-terminal.yml` — Windows PowerShell web terminal step (sửa lỗi redirect cloudflared stdout)
+- **Volatile Context Diagnostics:**
+  ```
+  python3 -c "import yaml; yaml.safe_load(open('.github/workflows/web-terminal.yml'))" → YAML valid
+  ```
+  Sửa lỗi: Bỏ `-RedirectStandardOutput "cloudflared.out.log" -RedirectStandardError "cloudflared.err.log"` khỏi `Start-Process .\cloudflared.exe` (dòng 139). Theo known fact `web_terminal_windows_cloudflared_stdout`: Windows job KHÔNG được dùng `-RedirectStandardOutput` cho cloudflared.exe — URL bị ghi vào file thay vì job log, tunnel bị ổn định kém → trình duyệt hiển thị "Reconnecting..." liên tục. Cloudflared giờ in URL trực tiếp lên stdout (job log). Xoá vòng lặp đọc file log cũ (dòng 142-155) vì file không còn tạo ra. Linux step không đổi.
+- **Next Execution Phase Vectors:**
+  1. Re-trigger GitHub Actions `windows-terminal` job để xác minh tunnel không còn "Reconnecting...".
+  2. Chạy `graphify update .` để đồng bộ đồ thị code sau thay đổi workflow (tùy chọn, workflow không ảnh hưởng source code).
+
+
 

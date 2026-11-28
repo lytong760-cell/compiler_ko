@@ -392,3 +392,14 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 - **Technical Debt & Anti-Patterns:** Không dùng test POSIX `.so/dlopen/dlsym` trên Windows. Không giả định Cloudflare ghi URL tunnel vào một log cố định; URL có thể ở stdout hoặc stderr.
 - **Shared Variables & Symbols:** `files[]` là core test suite; `module_test_files` chỉ chứa `testing/test_modules.zig` trên POSIX; `cloudflared.out.log` và `cloudflared.err.log` là hai log đã redirect.
 
+---
+### [2026-11-28] LONG-TERM MEMORY DUMP — Sửa web-terminal.yml (Windows PowerShell "Reconnecting...")
+
+- **Identified Truths:** Worker báo Windows job `windows-terminal` bị màn hình trình duyệt "Reconnecting..." liên tục, Linux job `linux-terminal` bình thường. Nguyên nhân: `cloudflared.exe` dùng `-RedirectStandardOutput "cloudflared.out.log" -RedirectStandardError "cloudflared.err.log"` → URL công khai bị ghi vào file thay vì job log, và output của cloudflared khi ghi sang file (không phải terminal/pipe) có thể bị buffer/không flush kịp → tunnel không ổn định. Theo known fact `web_terminal_windows_cloudflared_stdout`: Windows job KHÔNG được dùng `-RedirectStandardOutput` cho `cloudflared.exe`; cloudflared phải in URL trực tiếp lên stdout (job log). Verify: YAML valid qua `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/web-terminal.yml'))"` → "YAML valid".
+- **Architectural Mutations:** Sửa `.github/workflows/web-terminal.yml`:
+  - Bỏ `-RedirectStandardOutput "cloudflared.out.log" -RedirectStandardError "cloudflared.err.log"` khỏi `Start-Process .\cloudflared.exe tunnel --url ...` (dòng 139). cloudflared giờ in URL trực tiếp lên stdout → xuất hiện trong GitHub Actions job log, người dùng copy URL mở trình duyệt.
+  - Xoá vòng lặp đọc file `cloudflared.out.log`/`cloudflared.err.log` (dòng 142-155 cũ) vì file không còn được tạo. Giữ thông báo `=== PUBLIC URL BELOW ===`, sleep giữ terminal, dừng `cloudflared` + `ttyd` khi hết thời gian.
+  - Linux step không đổi (dùng `2>&1 | tee /tmp/tunnel.log` đã gửi output đồng thời lên stdout và file).
+- **Technical Debt & Anti-Patterns:** Không dùng `-RedirectStandardOutput`/` -RedirectStandardError` cho cloudflared trên Windows PowerShell. Không đọc log file để lấy URL — dựa vào job log của GitHub Actions.
+- **Shared Variables & Symbols:** `.github/workflows/web-terminal.yml:137-144` (Windows step, sau edit).
+

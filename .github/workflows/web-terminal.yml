@@ -135,31 +135,8 @@ jobs:
             exit 1
           }
           Write-Host "=== PUBLIC URL BELOW (open in browser) ==="
-          # cloudflared chạy nền; stdout và stderr ghi vào file khác nhau (PowerShell không cho cung file)
-          Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://localhost:8899" -NoNewWindow -PassThru -RedirectStandardOutput "cloudflared.out.log" -RedirectStandardError "cloudflared.err.log" | Out-Null
-          # Tunggu sampai cloudflared in URL tunnel (https://....trycloudflare.com) vào log
-          $tunnelUrl = $null
-          for ($i = 0; $i -lt 30; $i++) {
-            $content = ""
-            if (Test-Path cloudflared.out.log) {
-              $content += Get-Content cloudflared.out.log -Raw
-            }
-            if (Test-Path cloudflared.err.log) {
-              $content += "`n" + (Get-Content cloudflared.err.log -Raw)
-            }
-            if ($content -match 'https://[a-zA-Z0-9-]+\.trycloudflare\.com') {
-              $tunnelUrl = $matches[0]
-              break
-            }
-            Start-Sleep -Seconds 1
-          }
-          if ($tunnelUrl) {
-            Write-Host "PUBLIC URL: $tunnelUrl"
-          } else {
-            Write-Host "WARNING: Không phát hiện URL cloudflared; log tail:"
-            Get-Content cloudflared.out.log -Tail 40
-            Get-Content cloudflared.err.log -Tail 40
-          }
+          # cloudflared chạy nền; URL tunnel in trực tiếp lên stdout (job log), không redirect sang file
+          Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://localhost:8899" -NoNewWindow -PassThru | Out-Null
           $DUR = [int]("${{ github.event.inputs.duration || 60 }}")
           Write-Host "Keeping terminal alive for $DUR minutes..."
           Start-Sleep -Seconds ($DUR * 60)
