@@ -411,3 +411,17 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 - **Technical Debt & Anti-Patterns:** Không dùng `localhost` làm originService của cloudflared trên Windows do `localhost` có thể resolve IPv6 `[::1]`; luôn dùng `127.0.0.1` rõ ràng.
 - **Shared Variables & Symbols:** `.github/workflows/web-terminal.yml:139` (`--url http://127.0.0.1:8899`).
 
+---
+### [2026-11-28 07:35 UTC] LONG-TERM MEMORY DUMP — Reconnect khi Windows origin ttyd từ chối kết nối
+
+- **Identified Truths:**
+  - Log đính kèm báo `originService=http://127.0.0.1:8899` và `connectex: ... actively refused it` (Pasted text #1, 2026-11-28 07:34:41Z), nên nguyên nhân IPv6/localhost không còn giải thích được lỗi hiện tại; chưa xác định vì sao listener ttyd dừng.
+  - `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/web-terminal.yml')); print('YAML valid')"` → `YAML valid`; `git diff --check` → exit 0.
+  - `gh run view 46121775530 --repo lytong760-cell/compiler_ko --json status,conclusion,url` → `status=completed`, `conclusion=cancelled`.
+- **Architectural Mutations:** `.github/workflows/web-terminal.yml` yêu cầu `TERMINAL_USERNAME`/`TERMINAL_PASSWORD` secrets trên cả hai hệ điều hành trước khi mở shell; ttyd bật credential auth; Windows capture stdout/stderr của ttyd, giám sát process/cổng và cloudflared, đồng thời dừng process khi thoát bình thường hoặc lỗi. Xác nhận nội dung qua `git diff -- .github/workflows/web-terminal.yml`; YAML hợp lệ theo lệnh nêu trên.
+- **Technical Debt & Anti-Patterns:** Chưa có xác minh chạy thực tế trên Windows runner; lệnh `command -v pwsh` và `command -v actionlint` không trả về đường dẫn. Cần cấu hình hai repository secrets trước khi chạy workflow mới.
+- **Shared Variables & Symbols:** `.github/workflows/web-terminal.yml`: `TERMINAL_USERNAME`, `TERMINAL_PASSWORD`, `$ttydProcess`, `$tunnelProcess`.
+
+## Chưa xác minh
+- Chưa xác minh ttyd trên Windows có giữ listener ổn định suốt phiên; cần chạy lại workflow sau khi cấu hình secrets.
+

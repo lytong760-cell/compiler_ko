@@ -45,12 +45,19 @@ jobs:
           /tmp/cloudflared --version
 
       - name: Start web terminal
+        env:
+          TERMINAL_USERNAME: ${{ secrets.TERMINAL_USERNAME }}
+          TERMINAL_PASSWORD: ${{ secrets.TERMINAL_PASSWORD }}
         run: |
+          if [ -z "$TERMINAL_USERNAME" ] || [ -z "$TERMINAL_PASSWORD" ]; then
+            echo "::error::Set TERMINAL_USERNAME and TERMINAL_PASSWORD repository secrets before starting the public terminal."
+            exit 1
+          fi
           export LD_LIBRARY_PATH=$PWD/zig-out/lib:$LD_LIBRARY_PATH
           # Clean up any stale ttyd process from a previous run
           pkill -f ttyd || true
-          # ttyd serves a bash shell on port 8899; cloudflared exposes it publicly
-          ttyd -W -p 8899 bash &
+          # Require credentials because the quick tunnel URL is publicly reachable.
+          ttyd -W -p 8899 -c "$TERMINAL_USERNAME:$TERMINAL_PASSWORD" bash &
           # Đợi ttyd listen trên port 8899 (tránh 504 khi cloudflared kết nối sớm quá)
           for i in $(seq 1 30); do
             if command -v nc >/dev/null 2>&1; then
@@ -114,16 +121,31 @@ jobs:
 
       - name: Start PowerShell web terminal
         shell: pwsh
+        env:
+          TERMINAL_USERNAME: ${{ secrets.TERMINAL_USERNAME }}
+          TERMINAL_PASSWORD: ${{ secrets.TERMINAL_PASSWORD }}
         run: |
+          if ([string]::IsNullOrWhiteSpace($env:TERMINAL_USERNAME) -or [string]::IsNullOrWhiteSpace($env:TERMINAL_PASSWORD)) {
+            Write-Host "::error::Set TERMINAL_USERNAME and TERMINAL_PASSWORD repository secrets before starting the public terminal."
+            exit 1
+          }
           $env:PATH = "$PWD\zig-out\bin;$env:PATH"
           # Clean up any stale processes from a previous run
           Get-Process -Name "ttyd" -ErrorAction SilentlyContinue | Stop-Process -Force
           Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force
-          # ttyd serves PowerShell on port 8899
-          Start-Process -FilePath ".\ttyd.exe" -ArgumentList "-W","-p","8899","powershell.exe" -NoNewWindow
+          # Keep ttyd diagnostics so a dead origin is visible in the Actions log.
+          $credential = "$($env:TERMINAL_USERNAME):$($env:TERMINAL_PASSWORD)"
+          $ttydProcess = Start-Process -FilePath ".\ttyd.exe" -ArgumentList @("-W","-p","8899","-c","`"$credential`"","powershell.exe") -NoNewWindow -PassThru -RedirectStandardOutput "$PWD\ttyd.out.log" -RedirectStandardError "$PWD\ttyd.err.log"
           # Tunggu sampai ttyd benar-benar listen di port 8899 (mencegah 504 dari cloudflared)
           $ttydReady = $false
           for ($i = 0; $i -lt 30; $i++) {
+            $ttydProcess.Refresh()
+            if ($ttydProcess.HasExited) {
+              Write-Host "ERROR: ttyd exited during startup (exit code $($ttydProcess.ExitCode))"
+              Get-Content ".\ttyd.out.log" -ErrorAction SilentlyContinue
+              Get-Content ".\ttyd.err.log" -ErrorAction SilentlyContinue
+              exit 1
+            }
             if (Test-NetConnection -ComputerName 127.0.0.1 -Port 8899 -InformationLevel Quiet) {
               $ttydReady = $true
               break
@@ -132,13 +154,33 @@ jobs:
           }
           if (-not $ttydReady) {
             Write-Host "ERROR: ttyd tidak listen di port 8899 setelah 30 detik"
+            Get-Content ".\ttyd.out.log" -ErrorAction SilentlyContinue
+            Get-Content ".\ttyd.err.log" -ErrorAction SilentlyContinue
             exit 1
           }
           Write-Host "=== PUBLIC URL BELOW (open in browser) ==="
           # cloudflared chạy nền; URL tunnel in trực tiếp lên stdout (job log), không redirect sang file
-          Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://127.0.0.1:8899" -NoNewWindow -PassThru | Out-Null
+          $tunnelProcess = Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://127.0.0.1:8899" -NoNewWindow -PassThru
           $DUR = [int]("${{ github.event.inputs.duration || 60 }}")
           Write-Host "Keeping terminal alive for $DUR minutes..."
-          Start-Sleep -Seconds ($DUR * 60)
-          Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue | Stop-Process -Force
-          Get-Process -Name "ttyd" -ErrorAction SilentlyContinue | Stop-Process -Force
+          try {
+            for ($elapsed = 0; $elapsed -lt ($DUR * 60); $elapsed += 5) {
+              Start-Sleep -Seconds ([Math]::Min(5, ($DUR * 60) - $elapsed))
+              $ttydProcess.Refresh()
+              $tunnelProcess.Refresh()
+              if ($ttydProcess.HasExited -or -not (Test-NetConnection -ComputerName 127.0.0.1 -Port 8899 -InformationLevel Quiet)) {
+                Write-Host "ERROR: ttyd stopped serving port 8899"
+                Get-Content ".\ttyd.out.log" -ErrorAction SilentlyContinue
+                Get-Content ".\ttyd.err.log" -ErrorAction SilentlyContinue
+                exit 1
+              }
+              if ($tunnelProcess.HasExited) {
+                Write-Host "ERROR: cloudflared exited (exit code $($tunnelProcess.ExitCode))"
+                exit 1
+              }
+            }
+          }
+          finally {
+            if (-not $tunnelProcess.HasExited) { Stop-Process -Id $tunnelProcess.Id -Force -ErrorAction SilentlyContinue }
+            if (-not $ttydProcess.HasExited) { Stop-Process -Id $ttydProcess.Id -Force -ErrorAction SilentlyContinue }
+          }

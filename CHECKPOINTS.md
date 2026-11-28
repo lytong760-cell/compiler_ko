@@ -249,5 +249,20 @@
   1. Re-trigger GitHub Actions `windows-terminal` job để xác minh tunnel không còn "Reconnecting..." sau khi ép IPv4.
   2. Chạy `graphify update .` để đồng bộ đồ thị code sau thay đổi workflow (tùy chọn, workflow không ảnh hưởng source code).
 
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** BLOCKED
+- **Active Node/Context:** `.github/workflows/web-terminal.yml` — xác thực và giám sát Windows web terminal
+- **Volatile Context Diagnostics:**
+  ```
+  Pasted text #1: cloudflared báo originService=http://127.0.0.1:8899 connectex actively refused.
+  git diff --check: exit 0.
+  python3 -c "import yaml; yaml.safe_load(open('.github/workflows/web-terminal.yml')); print('YAML valid')" → YAML valid.
+  gh run view 46121775530 --repo lytong760-cell/compiler_ko --json status,conclusion,url → completed / cancelled.
+  ```
+  Đã thêm xác thực ttyd bằng secrets và Windows process/port monitoring kèm log stdout/stderr. Chưa xác minh trên Windows runner. `gh run cancel` trả HTTP 403; truy vấn trạng thái sau đó cho thấy run đã cancelled.
+- **Next Execution Phase Vectors:**
+  1. Tạo GitHub Actions repository secrets `TERMINAL_USERNAME` và `TERMINAL_PASSWORD`.
+  2. Chạy lại workflow và kiểm tra ttyd listener cùng log stderr/stdout nếu listener thoát.
+  3. Xác nhận terminal yêu cầu credential và không còn reconnect.
 
 
