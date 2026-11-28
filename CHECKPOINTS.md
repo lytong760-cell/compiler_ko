@@ -243,9 +243,10 @@
   ```
   python3 -c "import yaml; yaml.safe_load(open('.github/workflows/web-terminal.yml'))" → YAML valid
   ```
-  Sửa lỗi: Bỏ `-RedirectStandardOutput "cloudflared.out.log" -RedirectStandardError "cloudflared.err.log"` khỏi `Start-Process .\cloudflared.exe` (dòng 139). Theo known fact `web_terminal_windows_cloudflared_stdout`: Windows job KHÔNG được dùng `-RedirectStandardOutput` cho cloudflared.exe — URL bị ghi vào file thay vì job log, tunnel bị ổn định kém → trình duyệt hiển thị "Reconnecting..." liên tục. Cloudflared giờ in URL trực tiếp lên stdout (job log). Xoá vòng lặp đọc file log cũ (dòng 142-155) vì file không còn tạo ra. Linux step không đổi.
+  Sửa lỗi: Bỏ `-RedirectStandardOutput "cloudflared.out.log" -RedirectStandardError "cloudflared.err.log"` khỏi `Start-Process .\cloudflared.exe` (dòng 139). Theo known fact `web_terminal_windows_cloudflared_stdout`: Windows job KHÔNG được dùng `-RedirectStandardOutput` cho cloudflared.exe — URL bị ghi vào file thay vì job log, tunnel bị ổn định kém → trình duyệt hiển thị "Reconnecting..." liên tục. Cloudflared giờ in URL trực tiếp lên stdout (job log). Xoá vòng lặp đọc file log cũ vì file không còn tạo ra. Linux step không đổi.
+  Sửa tiếp: Thay `http://localhost:8899` thành `http://127.0.0.1:8899` trong `--url` của cloudflared (dòng 139). Nguyên nhân cloudflared log: `dial tcp [::1]:8899 connectex refused` (originService=http://localhost:8899) — `localhost` resolve IPv6 `[::1]` trước, ttyd chỉ lắng nghe IPv4 `127.0.0.1` → cloudflared không kết nối origin. Ép IPv4 rõ ràng khớp với `Test-NetConnection -ComputerName 127.0.0.1` đã dùng kiểm tra ttyd.
 - **Next Execution Phase Vectors:**
-  1. Re-trigger GitHub Actions `windows-terminal` job để xác minh tunnel không còn "Reconnecting...".
+  1. Re-trigger GitHub Actions `windows-terminal` job để xác minh tunnel không còn "Reconnecting..." sau khi ép IPv4.
   2. Chạy `graphify update .` để đồng bộ đồ thị code sau thay đổi workflow (tùy chọn, workflow không ảnh hưởng source code).
 
 

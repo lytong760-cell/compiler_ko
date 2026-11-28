@@ -136,7 +136,7 @@ jobs:
           }
           Write-Host "=== PUBLIC URL BELOW (open in browser) ==="
           # cloudflared chạy nền; URL tunnel in trực tiếp lên stdout (job log), không redirect sang file
-          Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://localhost:8899" -NoNewWindow -PassThru | Out-Null
+          Start-Process -FilePath ".\cloudflared.exe" -ArgumentList "tunnel","--url","http://127.0.0.1:8899" -NoNewWindow -PassThru | Out-Null
           $DUR = [int]("${{ github.event.inputs.duration || 60 }}")
           Write-Host "Keeping terminal alive for $DUR minutes..."
           Start-Sleep -Seconds ($DUR * 60)

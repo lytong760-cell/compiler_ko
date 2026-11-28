@@ -403,3 +403,11 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 - **Technical Debt & Anti-Patterns:** Không dùng `-RedirectStandardOutput`/` -RedirectStandardError` cho cloudflared trên Windows PowerShell. Không đọc log file để lấy URL — dựa vào job log của GitHub Actions.
 - **Shared Variables & Symbols:** `.github/workflows/web-terminal.yml:137-144` (Windows step, sau edit).
 
+---
+### [2026-11-28] LONG-TERM MEMORY DUMP (thêm) — cloudflared kết nối qua IPv6 [::1] bị từ chối
+
+- **Identified Truths:** Sau fix redirect stdout, cloudflare logs vẫn báo `dial tcp [::1]:8899: connectex: No connection could be made because the target machine actively refused it.` Nguyên nhân: cloudflared tunnel URL là `http://localhost:8899`, `localhost` trên Windows giải quyết thành IPv6 `[::1]` trước, nhưng ttyd chỉ lắng nghe IPv4 `127.0.0.1` → cloudflared không kết nối được origin → trình duyệt vẫn "Reconnecting...". Verify: cloudflared log thực tế in `dest=https://poll-social-themselves-motorcycles.trycloudflare.com/... originService=http://localhost:8899` kèm lỗi `[::1]:8899` refused.
+- **Architectural Mutations:** Thay `http://localhost:8899` thành `http://127.0.0.1:8899` trong аргум `--url` của `Start-Process .\cloudflared.exe` (dòng 139). Ép cloudflared dùng IPv4, khớp với ttyd lắng nghe `127.0.0.1:8899` (kiểm tra sẵn qua `Test-NetConnection -ComputerName 127.0.0.1` ở dòng 127).
+- **Technical Debt & Anti-Patterns:** Không dùng `localhost` làm originService của cloudflared trên Windows do `localhost` có thể resolve IPv6 `[::1]`; luôn dùng `127.0.0.1` rõ ràng.
+- **Shared Variables & Symbols:** `.github/workflows/web-terminal.yml:139` (`--url http://127.0.0.1:8899`).
+
