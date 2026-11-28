@@ -265,4 +265,19 @@
   2. Chạy lại workflow và kiểm tra ttyd listener cùng log stderr/stdout nếu listener thoát.
   3. Xác nhận terminal yêu cầu credential và không còn reconnect.
 
+### LAST KNOWN EXECUTION CHECKPOINT
+- **Task State:** BLOCKED
+- **Active Node/Context:** `.github/workflows/web-terminal.yml` — Windows ttyd/PowerShell lifecycle
+- **Volatile Context Diagnostics:**
+  ```
+  Run 46122551017 Windows job: tunnel registered at 07:46:43Z; at 07:47:09Z failed `ERROR: ttyd stopped serving port 8899`.
+  ttyd stdout/stderr had no visible output in captured failure log; exact reason remains unknown.
+  `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/web-terminal.yml')); print('YAML valid')"` → YAML valid.
+  `git diff --check` → exit 0.
+  ```
+  Windows shell now explicitly starts `powershell.exe -NoLogo -NoProfile -NoExit`; port health check tolerates two consecutive misses and prints listener state after the third. Not yet run on GitHub Actions.
+- **Next Execution Phase Vectors:**
+  1. Commit and push this Windows shell/health-check adjustment.
+  2. Dispatch Web Terminal and inspect the Windows job for stable port 8899 or new ttyd diagnostics.
+  3. Leave any active Linux terminal run undisturbed unless the user requests cancellation.
 

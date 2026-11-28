@@ -424,4 +424,6 @@ Chỉ ghi kèm **bằng chứng**. Điều chưa kiểm chứng thì để dư�
 
 ## Chưa xác minh
 - Chưa xác minh ttyd trên Windows có giữ listener ổn định suốt phiên; cần chạy lại workflow sau khi cấu hình secrets.
+- Log run `46122551017` cho thấy tunnel đăng ký thành công (`07:46:43Z`), sau đó job thất bại với `ERROR: ttyd stopped serving port 8899` (`07:47:09Z`); không có output ttyd stdout/stderr trong đoạn log. Nguyên nhân chính xác chưa được xác minh.
+- Workflow cập nhật Windows để chạy PowerShell với `-NoLogo -NoProfile -NoExit`, và chỉ đánh dấu lỗi port sau ba lần kiểm tra liên tiếp thất bại; xác nhận cấu hình YAML bằng `python3 -c "import yaml; yaml.safe_load(open('.github/workflows/web-terminal.yml')); print('YAML valid')"` → `YAML valid`, `git diff --check` → exit 0. Chưa xác minh trên runner.
 
